@@ -1,0 +1,117 @@
+\section{Timeline}
+\label{sec:timeline}
+
+% Effort split: Task 1 is 80% and Task 2 is 20% of the overall effort, and
+% each task's effort is spread evenly over its three milestones. Every team
+% member's hours (Section~\ref{sec:budget}) are split in the same proportions:
+% a Task 1 milestone gets 80%/3 and a Task 2 milestone gets 20%/3 of each
+% member's hours. Tinoco's 430 hours do not divide evenly, so his hours are
+% rounded to whole hours with the remainder on each task's last milestone
+% (115/115/114 and 29/29/28). Budgets are salaries only, as in the ethzone
+% timeline.
+
+The proposed project has a performance period of 6 months. 
+%We allocate
+%80\% of the overall effort to Task~1 and 20\% to Task~2, and spread each
+%task's effort evenly over its milestones. 
+%Each team member's hours are
+%allocated in the same proportions. 
+%In total, Task~1 accounts for 545.6
+%personnel-hours and \$38,943.60 in salaries, and Task~2 accounts for
+%136.4 personnel-hours and \$9,735.90 in salaries. 
+The budget of each
+milestone below is based on the hourly rates in \Cref{sec:budget} and does not
+include fringe benefits, cloud computing and AI services, or indirect
+costs.
+
+\paragraph{Task 1: Faster Garbled RAM (80\% of the overall effort)}
+\begin{itemize}
+\item {\bf Milestone 1.a: extending Garbled RAM to multiple parties.}
+We will combine the multi-party arithmetic garbling techniques of our
+CRYPTO~2026 paper~\cite{mparithgarble} with the RAM techniques of PicoGRAM
+and Zebra, initially targeting a setting with 10--20 parties
+(\Cref{sec:gram}).
+
+\vspace{5pt}
+\noindent {\it Expected number of hours.} 182.2 personnel-hours (Tinoco: 115,
+Shi: 19.2, research engineer: 48).
+
+\vspace{5pt}
+\noindent {\it Budget.} \$13,004.85 (Tinoco: \$8,159.25, Shi: \$1,440.00,
+research engineer: \$3,405.60), not including fringe benefits.
+
+\item {\bf Milestone 1.b: faster preprocessing.}
+We will improve the preprocessing 
+of our Garbled RAM scheme (e.g., based on Ring-LPN 
+rather than LPN), and create an open-source implementation.
+%We will replace the LPN-based pseudorandom correlation generators in our
+%preprocessing with Ring-LPN-based ones~\cite{ringlpnpcg}, and adapt and
+%benchmark them in our framework, so that preprocessing is no longer an
+%end-to-end bottleneck.
+
+\vspace{5pt}
+\noindent {\it Expected number of hours.} 182.2 personnel-hours (Tinoco: 115,
+Shi: 19.2, research engineer: 48).
+
+\vspace{5pt}
+\noindent {\it Budget.} \$13,004.85 (Tinoco: \$8,159.25, Shi: \$1,440.00,
+research engineer: \$3,405.60), not including fringe benefits.
+
+\item {\bf Milestone 1.c: GPU and AVX-512 acceleration.}
+We will accelerate garbling and preprocessing on GPUs and with AVX-512
+vector instructions. 
+%We will release the resulting multi-party Garbled RAM
+%as open source and evaluate it on the account dataset and, after further
+%memory optimizations, on the full Ethereum state, comparing its
+%performance with InsPIRe~\cite{efinspire}.
+
+\vspace{5pt}
+\noindent {\it Expected number of hours.} 181.2 personnel-hours (Tinoco: 114,
+Shi: 19.2, research engineer: 48).
+
+\vspace{5pt}
+\noindent {\it Budget.} \$12,933.90 (Tinoco: \$8,088.30, Shi: \$1,440.00,
+research engineer: \$3,405.60), not including fringe benefits.
+\end{itemize}
+
+\paragraph{Task 2: MicrORAM (20\% of the overall effort)}
+\begin{itemize}
+\item {\bf Milestone 2.a: develop a full-featured implementation.}
+We will complete our work-in-progress implementation of MicrORAM and
+deliver a production-quality library that supports both small and large
+entries (\Cref{sec:microram}).
+
+\vspace{5pt}
+\noindent {\it Expected number of hours.} 45.8 personnel-hours (Tinoco: 29,
+Shi: 4.8, research engineer: 12).
+
+\vspace{5pt}
+\noindent {\it Budget.} \$3,268.95 (Tinoco: \$2,057.55, Shi: \$360.00,
+research engineer: \$851.40), not including fringe benefits.
+
+\item {\bf Milestone 2.b: proof of security.}
+We will work on proving the security of our new MicrORAM scheme.
+
+\vspace{5pt}
+\noindent {\it Expected number of hours.} 45.8 personnel-hours (Tinoco: 29,
+Shi: 4.8, research engineer: 12).
+
+\vspace{5pt}
+\noindent {\it Budget.} \$3,268.95 (Tinoco: \$2,057.55, Shi: \$360.00,
+research engineer: \$851.40), not including fringe benefits.
+
+\item {\bf Milestone 2.c: tailoring MicrORAM to Ethereum's application.}
+We will integrate MicrORAM into our oblivious key-value store for Ethereum
+state and Merkle proofs, test it on both the account dataset and the full
+Ethereum state, including the retrieval of Merkle paths, and use it to
+upgrade the oblivious server that we delivered to the Ethereum Foundation
+in our earlier grant.
+
+\vspace{5pt}
+\noindent {\it Expected number of hours.} 44.8 personnel-hours (Tinoco: 28,
+Shi: 4.8, research engineer: 12).
+
+\vspace{5pt}
+\noindent {\it Budget.} \$3,198.00 (Tinoco: \$1,986.60, Shi: \$360.00,
+research engineer: \$851.40), not including fringe benefits.
+\end{itemize}

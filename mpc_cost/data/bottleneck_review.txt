@@ -1,0 +1,137 @@
+Independent bottleneck review -- 2026-10-13
+
+Scope: fixed central circuit in results/summary.json and results/circuits.json.
+Numbers use the existing unmeasured deployment parameters; they are not an
+MPC implementation benchmark or an AWS throughput guarantee. Prices remain
+the dated 2026-10-12 snapshot. No model or result files were changed by this review.
+
+CENTRAL CONFIGURATION
+N=2^28, B=128, fanout=128, flat base=32768, compact metadata, bitonic sorting.
+10 parties, each replica uses six r6in.24xlarge nodes per party, 530 replicas.
+Total 31,800 instances; instance bill $2,331,012,453.12/year.
+Batch CPU time 3.452209s; NIC time 2.224828s; RAM time 0.094001s;
+dependent exchange time 1.291200s (6456 phases at 0.2ms).
+Service = 1.291200 + max(3.452209, 2.224828, 0.094001) = 4.743409s.
+Modeled mean response = 4.769759s. The synthetic p99 is 5.340801s; a five-second
+mean constraint is not a five-second tail guarantee.
+
+MEMORY UNITS AND NECESSARY NODE COUNT
+ORAM state is 1926.045837 GiB = 1.880904 TiB per party per replica.
+It is not 1.926 TiB. State plus 15% scratch and the current preprocessing-buffer
+proxy is 2216.533869 GiB = 2.164584 TiB. The buffer contributes about 1.581 GiB.
+Each r6in.24xlarge provides 768 GiB physical, modeled as 576 GiB usable (75%).
+Memory therefore requires ceil(2216.534/576)=4 nodes per party per replica.
+The selected six-node configuration is only 64.14% full relative to modeled
+usable memory; removing the memory constraint does not improve this point.
+
+At fixed circuit and deployment, varying nodes per party per replica gives:
+ nodes   mean seconds   replicas   annual USD       fits modeled memory
+   1      15.816828        1763     1,292,319,168      no
+   2      11.674177        1300     1,905,859,238      no
+   3       8.221968         915     2,012,147,542      no
+   4       6.495864         723     2,119,901,891      yes
+   5       5.460201         607     2,224,724,149      yes
+   6       4.769759         530     2,331,012,453      yes
+   7       4.276586         475     2,437,300,757      yes
+   8       3.906707         434     2,545,055,106      yes
+Rows failing memory show the counterfactual with state storage removed. They
+still fail the five-second mean constraint. The special k=1 scaling removes
+the model's 70% distribution efficiency penalty and intraparty routing.
+
+RESOURCE-ONLY FLOORS FOR THIS BACKEND AND CIRCUIT
+Work per batch per party:
+  weighted local operations                 43,497,833,524
+  average interparty sent bytes            80,531,428,636.4
+  hottest-party interparty sent bytes      90,195,200,072.8
+  modeled intraparty routing bytes         23,688,172,288
+  hottest-party total network bytes       113,883,372,360.8
+For 10,000 reads/s, divide each per-batch number by 128 and multiply by 10,000.
+
+A ten-party fleet with one r6in.24xlarge per party costs $733,022.784/year.
+The following bounds count nodes PER PARTY and multiply by that fleet cost:
+  Raw peak NIC, average interparty bytes only: 336 nodes; $246,295,655/year.
+  NIC with routing, hot party, 65% NIC efficiency, 70% distributed efficiency,
+    and 70% utilization: 1490 nodes; $1,092,203,948/year.
+  CPU at assumed 2B weighted operations/s per 64 vCPU, i.e. 3B per 96-vCPU
+    node, with 70% distribution and 70% utilization:
+    2312 nodes; $1,694,748,677/year.
+  RAM at 60 GB/s per 96-vCPU node, same efficiencies:
+    63 nodes; $46,180,435/year.
+These are separate ceilings on capacity, not costs to add together. CPU is
+the current resource bottleneck; dependent rounds add occupancy/latency.
+The peak NIC bound is conditional on this backend and circuit, not a universal
+lower bound on MPC or ORAM. No raw NIC bound establishes an achievable fleet.
+
+COUNTERFACTUALS: SAME CIRCUIT, SAME SKU, FIVE-SECOND MEAN LIMIT
+Search integer nodes 1..100 for each counterfactual, minimizing modeled bill:
+  Remove all ORAM state storage: 6 nodes x 530 replicas, $2.331012B/year.
+  Infinite NIC and RAM bandwidth: unchanged, $2.331012B/year.
+  Infinite local CPU: 4 nodes x 517 replicas, $1.515891B/year,
+    mean 4.654792s; network becomes critical.
+  Zero dependent exchange latency: 8 nodes x 289 replicas, $1.694749B/year,
+    mean 2.615507s. Integer packing gives 2312 aggregate nodes per party.
+The last row is the CPU resource floor and saves 27.30% versus the original
+dedicated-replica fleet. None is an implementation result.
+
+DEDICATED REPLICAS ARE A PROVISIONING POLICY, NOT AN INHERENT LOWER BOUND
+The current provision() reserves whole physical nodes for each independent
+ORAM replica, including its exchange-wait time. An asynchronous worker pool
+could cohost independent replicas while retaining separate mutable states.
+All 530 replicas need about 1,174,763 GiB of modeled material per party; at
+576 GiB usable per node that is 2040 nodes per party. Thus the CPU floor of
+2312 nodes per party has enough aggregate memory for all 530 states. It might
+be possible to approach this floor by using CPU/NIC time during other replicas'
+round waits. Doing so while maintaining the latency objective requires a real
+scheduler and contention measurements. This observation does not establish
+that the $1.695B resource floor is feasible.
+Sharing the mutable state of one ORAM among concurrent batches is a separate
+protocol problem. The present model chooses independent ORAM copies. It does
+not prove that every valid concurrent ORAM must duplicate the complete state.
+
+SCAN BASELINE: USE SHARED IMMUTABLE DATA AND STREAMED TILES
+For the same 32-byte key plus 32-byte value, each uses three 127-bit field
+elements under the model's 126-bit payload packing. Six field elements with
+16-byte values and 16-byte authentication shares give 192 bytes per record.
+A dense N=2^28 read-only array is therefore 48 GiB per party before optional
+flags and working buffers. It fits in one memory node and can be shared among
+threads and concurrent queries; there is no reason to duplicate the full
+immutable array for every batch worker.
+
+Use public row shards and query tiles. Every party evaluates the same public
+tile schedule; retain only a bounded tile's equality intermediates, and
+accumulate partial output sums. A row/column tiling implementation can stream
+network messages and avoid materializing N x B equality masks. Parallel query
+workers share read-only arrays while keeping query/preprocessing state private.
+Across machines, partition rows (and optionally replicate read-only shards to
+scale query groups), and combine partial output sums. Count query fanout,
+partial-result reductions, preprocessing, and actual network traffic.
+
+At batch 128, the optimistic database-read lower bound from reading every
+record only once per batch is 48 GiB * (10000/128) = 4.0265 TB/s per party.
+Scanning the entire stored database separately for each query would instead
+read 515.396 TB/s per party. Tiling can improve reuse substantially, but these
+figures omit scratch traffic and say nothing about MPC equality cost.
+
+Use the construction team's cheaper exact three-limb equality for the scan
+baseline, rather than independently applying three Fermat equalities. For
+p=2^127-1 (p=3 mod 4), set u=d0^2+d1^2 and v=u^2+d2^2 using two length-two
+dot outputs. Since -1 is not a square, v=0 exactly when all three limbs are
+zero. Then 1-v^(p-1) tests full-key equality using the existing 135-product
+Fermat chain. This gives 137 outputs per row, or 36,775,657,472 outputs per
+query at N=2^28. The simple 59/6-words/output traffic proxy gives about
+5.786 TB sent per party per query, before payload selection and extra checks.
+The dot outputs have additional local work, and the scalar/dot overhead must
+follow the actual backend implementation. This is an improved baseline, not
+a claim of optimal equality. Sharing immutable memory cannot itself remove
+these cryptographic comparisons.
+
+REPORTING RECOMMENDATION
+Separate memory capacity from memory bandwidth, and both from weighted CPU,
+communication, and dependent rounds. This fixed point is CPU-bound under its
+assumptions, then limited by dependent-round latency. Its memory capacity is
+large but not the active constraint at six nodes. Publish the resource vector
+and assumptions first. The billion-dollar figures diagnose an expensive
+arithmetic circuit/template plus a particular scheduler; they do not establish
+that every honest-majority MPC design has this cost. Compare a properly tiled
+scan baseline using shared immutable data, rather than mechanically applying
+the ORAM state-replication policy to scans.

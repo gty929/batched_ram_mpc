@@ -1,0 +1,98 @@
+AWS research for MPC cost model -- accessed 2026-10-12 (America/New_York)
+
+PRICE SNAPSHOT
+The raw selected rows are in aws_research.json. They were fetched directly from:
+https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/us-east-1/index.csv
+Publication Date: 2026-10-12T19:39:25Z; Version: 20261012193925.
+Every selected hourly rate is effective 2026-10-01. Filters: us-east-1 / US East
+(N. Virginia), Linux, Shared tenancy, NA preinstalled software, Used capacity,
+OnDemand term, Hrs unit. Pricing includes neither tax nor EBS, backups, support,
+engineering, spares, setup, or communications charges. No EC2 capacity was launched.
+The companion Python script streams the public CSV and extracts the selected rows.
+The raw JSON retains SKU, rate code, term metadata, and product fields for auditing.
+
+Suggested primary comparisons:
+  r8i.24xlarge:  $6.66816/hr,  96 vCPU / 48 physical cores, 768 GiB, 40 Gbps.
+  r6in.24xlarge: $8.36784/hr,  96 vCPU / 48 physical cores, 768 GiB, 150 Gbps.
+  r6in.32xlarge: $11.15712/hr, 128 vCPU / 64 physical cores, 1024 GiB, 200 Gbps.
+  r8in.32xlarge: $13.38880/hr, 128 vCPU / 64 physical cores, 1024 GiB, 200 Gbps.
+The r8i family is an alternative when network is not binding. The r6in family
+has a substantially lower price per advertised Gbps. R8in is 20% dearer than
+the same-size R6in, and its newer CPU/memory subsystem needs an actual MPC
+benchmark to establish that the premium is worthwhile. R7iz's high-clock CPU
+is not automatically advantageous for memory or bandwidth constrained MPC.
+
+The official instance documentation corroborates CPU/core counts and NICs:
+https://docs.aws.amazon.com/ec2/latest/instancetypes/mo.html
+https://aws.amazon.com/ec2/instance-types/r8i/
+https://aws.amazon.com/ec2/instance-types/r7iz/
+The 16xlarge R6in/R8in shapes have 64 vCPUs but 32 physical cores. The 24xlarge
+shapes have 96/48. The 32xlarge shapes have 128/64. Do not equate vCPU count
+with independently measured MPC workers or claim linear multicore scaling.
+R6in.32xlarge has two network cards; total 200 Gbps requires using both.
+R8in.32xlarge advertises 200 Gbps with one network card. EFA is available on
+R6in.32xlarge but not on R6in.16xlarge/24xlarge or R8in.32xlarge. ENA Express
+is supported by these R6in/R8in shapes. EFA needs backend integration; it is
+not automatically used by an ordinary TCP MPC process.
+
+NETWORK CAPACITY
+https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-network-bandwidth.html
+AWS's bandwidth figure applies separately to inbound and outbound traffic,
+simultaneously. Model max(send_bytes,receive_bytes), not their sum, against
+the capacity of a symmetric link. Traffic skew and protocol coordinators can
+still require different send/receive bottleneck analyses at each party.
+Single-flow traffic is generally limited to 5 Gbps; a cluster placement group
+can raise this to 10 Gbps; ENA Express can permit 25 Gbps between eligible
+same-AZ instances. A single flow is one unique TCP/UDP 5-tuple. Use multiple
+flows/paths to saturate a 100-200 Gbps NIC. Total protocol bytes divided by
+party count does not establish an achievable balanced flow schedule.
+Network packet-rate/connection allowances can bind below the advertised rate.
+The selected large shapes have fixed bandwidth entries, unlike smaller burst
+shapes. Even fixed bandwidth does not establish delivered MPC throughput.
+Using 50%, 70%, and 80% of specified bandwidth is a planning sensitivity, NOT
+an AWS guaranteed or measured sustained rate. RTT must also be measured; AWS
+does not establish a fixed sub-millisecond application collective RTT here.
+
+R8i supports configuring a bandwidth weighting that shifts EBS capacity to
+the network by up to 25%. Use default network capacities unless this change is
+explicitly modeled and tested:
+https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configure-bandwidth-weighting.html
+
+TRANSFER BILLING
+Same physical AZ VPC peering transfer is free, including across accounts:
+https://docs.aws.amazon.com/vpc/latest/peering/what-is-vpc-peering.html
+Physical AZ alignment must use AZ-ID; AZ names may map differently by account.
+Same-AZ transfer in a shared VPC is also free irrespective of account ownership:
+https://docs.aws.amazon.com/vpc/latest/userguide/vpc-share-billing.html
+Use private VPC paths. NAT/transit gateways and other network products have
+their own processing charges and are not needed for a direct peering model.
+
+Cross-AZ VPC peering in the same region costs $0.01/GB in AND $0.01/GB out:
+https://aws.amazon.com/vpc/pricing/
+If B is total transmitted bytes counted once per network send over all parties,
+f is the transmitted-byte crossing fraction, and U bytes is the billing GB,
+then cross-AZ charge is B*f/U*0.02. Do not count receive bytes again after
+applying the factor 0.02. For uniform all-to-all traffic, placing ten parties
+as 4/3/3 across three AZs yields f=66/90; as 5/5 across two AZs f=50/90.
+Other protocol topologies need their own byte-weighted f.
+The VPC pricing page does not explicitly define GB in bytes. Keep U configurable
+and label 10^9 as a conservative decimal convention pending invoice validation.
+Using 2^30 instead yields costs 6.8677% lower. Related official AWS billing
+documentation uses 1024 GB/TB but does not directly define this VPC meter:
+https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/useconsolidatedbilling-effective.html
+The unit ambiguity is smaller than uncertainty in the MPC workload.
+
+Same-AZ across accounts can represent distinct party operators, but it is not
+provider independence or failure-domain independence. Three-zone placement
+does not remove the AWS administrative trust dependency either. This is an
+operational deployment assumption, not a substitute for the adversary model.
+
+CONVERSION
+For n parties, K homogeneous instances per party, hourly price p, target QPS R:
+  compute_USD_per_year = n*K*p*8760
+  compute_USD_per_million_queries = n*K*p*1000000/(3600*R)
+  annual_queries_at_continuous_10k_qps = 315360000000
+These instance costs establish only the cost of a configuration. Feasibility
+requires independently satisfying memory, compute, network, and latency, plus
+a correct concurrent ORAM schedule. Multiple parallel workers must not silently
+duplicate hundreds of GiB of ORAM state or assume conflicting writes commute.

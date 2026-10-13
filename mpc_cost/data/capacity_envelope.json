@@ -1,0 +1,161 @@
+{
+  "description": "Backend-conditional resource envelope; not an ORAM cost estimate, benchmark, or sufficient provisioning plan.",
+  "parameters": {
+    "parties": 10,
+    "qps": 10000,
+    "instance": "r6in.32xlarge",
+    "instance_vcpu": 128,
+    "instance_memory_GiB": 1024,
+    "instance_hourly_usd": 11.15712,
+    "instance_network_Gbps": 200,
+    "hours_year": 8760,
+    "field_bytes": 16,
+    "mean_sent_words_per_output": 9.833333333333334,
+    "framing_factor": 1.05,
+    "hottest_party_factor": 1.12,
+    "nic_efficiency": 0.65,
+    "capacity_utilization": 0.7,
+    "weighted_local_operations_per_scalar_reduction": 83,
+    "annual_seconds": 31536000,
+    "cross_AZ_usd_per_GB_in_plus_out": 0.02,
+    "billing_unit_bytes": 1000000000
+  },
+  "formulas": {
+    "raw_nic_nodes_per_party": "ceil(G*QPS*words_per_output*field_bytes / (network_Gbps*1e9/8))",
+    "headroom_nic_nodes_per_party": "ceil(raw_send_Bps*framing*hotspot / (NIC_Bps*nic_efficiency*capacity_utilization))",
+    "conditional_cpu_nodes_per_party": "ceil(G*QPS*83 / (rate_per_64vCPU*(128/64)*capacity_utilization))",
+    "annual_compute_usd": "nodes_per_party * parties * hourly_price * 8760",
+    "all_cross_AZ_usd": "sum_over_parties(raw_send_Bps) * 31536000 / billing_unit_bytes * .02"
+  },
+  "limitations": [
+    "The network floor is conditional on a particular backend and its output count. It is not a universal MPC communication lower bound.",
+    "G counts scalar reductions or dot-product OUTPUTS, not Boolean gates or dot-product scalar multiplications.",
+    "The 83 weighted local operations is a scalar-reduction reference. Long dot products, random-bit production, exact conversion, sorting, checking, hashing and routing can add work independently.",
+    "The CPU rates 0.5, 2 and 8 billion weighted operations per second per 64 vCPU are unmeasured assumptions; do not cite them as AWS or MPC performance.",
+    "Node counts ignore storage capacity, state duplication, dependent-round latency, intraparty routing, imperfect distributed scaling, coordinator skew beyond the stated factor, setup, backups and failures.",
+    "A raw NIC minimum need not be achievable. NIC efficiency and headroom factors are planning assumptions rather than guarantees.",
+    "Cross-AZ transfer row uses raw protocol sends, without framing inflation; add it if budgeting wire overhead."
+  ],
+  "rows": [
+    {
+      "outputs_per_read": 10000,
+      "bytes_per_party_per_read": 1573333.3333333335,
+      "outbound_gbps_per_party_at_target": 125.86666666666667,
+      "raw_nic_nodes_per_party": 1,
+      "raw_nic_only_annual_usd": 977363.712,
+      "headroom_nic_nodes_per_party": 2,
+      "headroom_nic_only_annual_usd": 1954727.424,
+      "all_cross_az_annual_usd_decimal_GB": 99233280.0,
+      "conditional_scalar_cpu_and_nic": [
+        {
+          "unmeasured_weighted_operations_per_sec_64vcpu": 500000000.0,
+          "cpu_nodes_per_party": 12,
+          "max_cpu_nic_nodes_per_party": 12,
+          "annual_usd": 11728364.544000002
+        },
+        {
+          "unmeasured_weighted_operations_per_sec_64vcpu": 2000000000.0,
+          "cpu_nodes_per_party": 3,
+          "max_cpu_nic_nodes_per_party": 3,
+          "annual_usd": 2932091.1360000004
+        },
+        {
+          "unmeasured_weighted_operations_per_sec_64vcpu": 8000000000.0,
+          "cpu_nodes_per_party": 1,
+          "max_cpu_nic_nodes_per_party": 2,
+          "annual_usd": 1954727.424
+        }
+      ]
+    },
+    {
+      "outputs_per_read": 30000,
+      "bytes_per_party_per_read": 4720000.0,
+      "outbound_gbps_per_party_at_target": 377.6,
+      "raw_nic_nodes_per_party": 2,
+      "raw_nic_only_annual_usd": 1954727.424,
+      "headroom_nic_nodes_per_party": 5,
+      "headroom_nic_only_annual_usd": 4886818.56,
+      "all_cross_az_annual_usd_decimal_GB": 297699840.0,
+      "conditional_scalar_cpu_and_nic": [
+        {
+          "unmeasured_weighted_operations_per_sec_64vcpu": 500000000.0,
+          "cpu_nodes_per_party": 36,
+          "max_cpu_nic_nodes_per_party": 36,
+          "annual_usd": 35185093.63200001
+        },
+        {
+          "unmeasured_weighted_operations_per_sec_64vcpu": 2000000000.0,
+          "cpu_nodes_per_party": 9,
+          "max_cpu_nic_nodes_per_party": 9,
+          "annual_usd": 8796273.408000002
+        },
+        {
+          "unmeasured_weighted_operations_per_sec_64vcpu": 8000000000.0,
+          "cpu_nodes_per_party": 3,
+          "max_cpu_nic_nodes_per_party": 5,
+          "annual_usd": 4886818.56
+        }
+      ]
+    },
+    {
+      "outputs_per_read": 100000,
+      "bytes_per_party_per_read": 15733333.333333334,
+      "outbound_gbps_per_party_at_target": 1258.6666666666667,
+      "raw_nic_nodes_per_party": 7,
+      "raw_nic_only_annual_usd": 6841545.984,
+      "headroom_nic_nodes_per_party": 17,
+      "headroom_nic_only_annual_usd": 16615183.104000002,
+      "all_cross_az_annual_usd_decimal_GB": 992332800.0000001,
+      "conditional_scalar_cpu_and_nic": [
+        {
+          "unmeasured_weighted_operations_per_sec_64vcpu": 500000000.0,
+          "cpu_nodes_per_party": 119,
+          "max_cpu_nic_nodes_per_party": 119,
+          "annual_usd": 116306281.72800002
+        },
+        {
+          "unmeasured_weighted_operations_per_sec_64vcpu": 2000000000.0,
+          "cpu_nodes_per_party": 30,
+          "max_cpu_nic_nodes_per_party": 30,
+          "annual_usd": 29320911.360000003
+        },
+        {
+          "unmeasured_weighted_operations_per_sec_64vcpu": 8000000000.0,
+          "cpu_nodes_per_party": 8,
+          "max_cpu_nic_nodes_per_party": 17,
+          "annual_usd": 16615183.104000002
+        }
+      ]
+    },
+    {
+      "outputs_per_read": 1000000,
+      "bytes_per_party_per_read": 157333333.33333334,
+      "outbound_gbps_per_party_at_target": 12586.666666666668,
+      "raw_nic_nodes_per_party": 63,
+      "raw_nic_only_annual_usd": 61573913.856000006,
+      "headroom_nic_nodes_per_party": 163,
+      "headroom_nic_only_annual_usd": 159310285.05600002,
+      "all_cross_az_annual_usd_decimal_GB": 9923328000.000002,
+      "conditional_scalar_cpu_and_nic": [
+        {
+          "unmeasured_weighted_operations_per_sec_64vcpu": 500000000.0,
+          "cpu_nodes_per_party": 1186,
+          "max_cpu_nic_nodes_per_party": 1186,
+          "annual_usd": 1159153362.4320002
+        },
+        {
+          "unmeasured_weighted_operations_per_sec_64vcpu": 2000000000.0,
+          "cpu_nodes_per_party": 297,
+          "max_cpu_nic_nodes_per_party": 297,
+          "annual_usd": 290277022.46400005
+        },
+        {
+          "unmeasured_weighted_operations_per_sec_64vcpu": 8000000000.0,
+          "cpu_nodes_per_party": 75,
+          "max_cpu_nic_nodes_per_party": 163,
+          "annual_usd": 159310285.05600002
+        }
+      ]
+    }
+  ]
+}

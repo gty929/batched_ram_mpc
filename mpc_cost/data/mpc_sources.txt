@@ -1,0 +1,196 @@
+MPC backend research for the proposal model (2026-10-12 client date)
+
+SOURCE PIN AND SECURITY
+Public GitHub API master revision read: 73eb8556cdfc670c5d3dc1067a3ae5b4ad0d4441.
+All source-derived formulas below were verified by rereading raw files at this SHA.
+Base URL: https://github.com/data61/MP-SPDZ/blob/73eb8556cdfc670c5d3dc1067a3ae5b4ad0d4441/
+Relevant paths:
+ Machines/sy-shamir-party.cpp
+ Protocols/SpdzWise.h
+ Protocols/SpdzWise.hpp
+ Protocols/SpdzWisePrep.hpp
+ Protocols/SpdzWiseMC.h
+ Protocols/Shamir.hpp
+ Protocols/ShamirInput.hpp
+ Protocols/ShamirMC.hpp
+ Protocols/MaliciousShamirMC.hpp
+ Protocols/ReplicatedPrep.hpp
+ Protocols/mac_key.hpp
+ Protocols/ShamirOptions.cpp
+The machine specializes SpdzWiseShare<MaliciousShamirShare<T>>. Internal protocols
+resolve to passive Shamir operating on the value and its information-theoretic
+tag; checks make the result malicious-secure with abort. It is a valid n=10,t=4
+honest-majority candidate, unlike protocols restricted to t<n/3. ShamirOptions
+enforces 2t<n; explicitly use -N 10 -T 4. MP-SPDZ atlas-party.x is passive;
+the author ATLAS implementation benchmark is malicious with abort.
+
+Field proposal: use prime p=2^127-1, 16 encoded bytes, and two field words per
+stored SY share (value + tag), unless measured representation says otherwise.
+The primitive field-size check merely compares field bits with requested
+security_parameter. It does NOT certify an entire service lifetime. With e.g.
+up to 2^60 bad-check opportunities, a conservative per-op C/p union bound leaves
+approximately 67-log2(C) bits. Reads/year at 10k/s are 3.1536e11 (~2^38.2); if
+there are <=1e6 relevant checked gates/read, annual gates are <2^59, so p127 has
+about 68 bits under a C/p-per-gate conservative illustration. Actual SY check
+theorem/composability/constants must still be audited. Never label 61-bit
+arithmetic as a lifetime64-bit active guarantee. Exact canonical-mask equality
+and persistent valid bit metadata avoid statistical integer-mask privacy loss.
+Using k=28 and statistical slack64 in field127 gives ~2^-64 per comparison,
+not lifetime64; the latter would require slack to cover the total test count.
+
+SOURCE-DERIVED COMMUNICATION MODEL
+Counts are transmitted field words, excluding TLS/framing, startup, finite
+preprocessing batches, and fixed check work shown separately. Word size16 for
+p127. Multiplying by n=10 gives total transmitted network traffic; do not then
+also count received traffic as newly sent data.
+
+n=10,t=4. In Shamir::prepare_mul, 2t+1=9 parties reshare each local product.
+Each reshare transmits n-t-1=5 words; t destinations obtain shares through
+pairwise PRGs, and the sender retains one share. Thus a passive reduction sends
+45 words system-wide =4.5 words/party average, or5 on a sending party.
+SY value+tag doubles this:9 average,10 on each of first9 parties. Raw random
+Shamir coefficient generation sends n(n-t-1)=50 words per n-t=6 fresh scalars,
+therefore5/6 words/party/scalar, uniform across parties.
+
+Let O=M+V be scalar multiplication output count plus vector dot-product output
+count (each dot product can have arbitrary length K). Let H be the number of
+completed active check batches, including mandatory checks before output release.
+Leading average transmitted words/party:
+  (59/6)*O + (161/6)*H.
+59/6=9+5/6 includes one secret random checking coefficient/output. Fixed check:
+two passive dot reductions9, multiplication alpha*w4.5, masking product4.5,
+checked opening8, extra random coefficient5/6 =>161/6 words/party/check.
+H cannot be zero for released outputs. Finite batches round randomness up to6
+and the configured buffer length. A practical estimator should add overhead.
+Hottest party leading output traffic:10+5/6=65/6 vs avg59/6, ratio65/59=1.1017;
+use peak/average1.12 as conservative scenario. Empty-message/TLS overhead may
+have a larger peak factor for very small vectors.
+
+Checked public opening:8 transmitted words/party, one exchange phase. The
+opening collects 2t+1=9 shares (self+8) and tests reconstruction consistency
+for degrees t using successively larger subsets. It detects errors and aborts;
+it does not correct4 errors in a degree8 polynomial.
+
+Scalar SY multiplication: one nonempty exchange phase because value+tag are
+prepared in the same internal buffer. SY dot product currently uses separate
+internal and internal2 buffers, and exchange() calls them sequentially, giving
+two nonempty exchange phases. A protocol-engineering change could combine
+them, but the model should not silently claim that improvement.
+Each completed active check requires >=4 dependent exchange phases (two
+accumulated dot products in one exchange, alpha*w, mask product, checked
+opening), plus random-coefficient replenishment if not already available.
+Do not call one such exchange an RTT without calibration. Expose effective
+seconds/exchange; central gather/broadcast protocols require different phases.
+
+Primitive tuple should be (scalar outputs, dot outputs, local dot terms,
+explicit openings, random bits, canonical masks, dependency phases, memory).
+SY has uses_triples=false. Do not add Beaver-triple production to SY scalar
+cost. Ordinary malicious-shamir-party.x DOES use Beaver/triple sacrifice and
+has a different cost. ATLAS 4word leading constant must NOT be combined with
+SY constant-communication dot products without implementing/proving that mix.
+
+BITS, MASKS, AND CPU
+For SY prime-field Shamir, bit generation uses buffer_bits_from_squares:
+generate authenticated uniform u, square securely, open u^2, reject zero, then
+take a public square root and divide the share by it. Leading traffic/bit is
+  authenticated random6.1667 + SY square9.8333 + opening8 =24 words/party,
+plus fixed check work and negligible rejection. Authenticated random consists
+of raw random5/6 + passive authentication product4.5 + check coefficient5/6.
+For p=2^127-1, a public square root can use exponent2^125, hence125 LOCAL field
+squarings, plus public inversion/division and local linear arithmetic. This is
+not a measured CPU time, and generic library square-root/inversion may be more
+expensive. Budget random-bit CPU separately; assigning one scalar gate/bit is
+too optimistic for this concrete algorithm.
+
+Canonical uniform field mask:127 valid shared bits, reject all-ones candidate.
+With a simple balanced tree, add126 scalar products and one public opening
+for acceptance per candidate; rejection probability2^-127. Its bit vector and
+compact field representation can be constructed linearly. Exact equality then
+opens x-y+r, creates public-vs-secret matches locally, multiplies127 matches:
+online126 scalar products, depth7 plus opening1. Fresh mask per equality.
+Mask preprocessing can be optimized, but cannot be deleted from sustained QPS.
+Power-tuple equality reduces online phases but retains mask generation and
+adds correlated powers; do not claim throughput improvement without pricing it.
+
+Local operator-count approximation from the pinned source, to guide CPU fit:
+one sender's passive reduction costs2 field products for x*y*rec_factor plus
+30 field products to construct n-t=6 shares from t+1=5 coefficients. SY scalar
+therefore64 field products before check generation. Per-output secret random
+check coefficients cost about15 local field products; check accumulation costs
+another4 local products/output. Thus ~83 local field products/scalar-output on
+a sending party, excluding PRG, adds, allocations, opening, TLS, and constants.
+SY length-K dot product similarly costs ~4K+79 local field products on a sender
+(explicit source multiplies x*y*rec_factor for both value and tag). These are
+source operation counts, not benchmarked cycles. A bit uses hundreds of local
+field operations, one public inverse, and one public square root.
+
+Fit sustainable CPU using separate measured coefficients:
+  Tcpu = c_scalar*M + c_dot_output*V + c_dot_term*sum(K) + c_bit*B
+         + c_open*A + c_local_linear*L + c_check*H.
+Until measurements, report sensitivity using e.g.0.1/0.3/1.0 million scalar
+outputs/vCPU/s and local-product throughput10/30/100million/vCPU/s as expressly
+UNMEASURED scenario assumptions, not empirical capacity. Modern p127 cost
+cannot be inferred by dividing/doubling an old p61 benchmark. For CPU term
+avoid double-counting dot terms if included in c_scalar equivalent conversion.
+
+DERIVED PRIMITIVES (independent algebra, not library performance claims)
+Field add, multiply by public field constant, and public array indexing: local.
+Secret conditional move of W field words:W scalar products,1 arithmetic layer.
+Conditional swap of W pairs can share each control*(x-y):W products,1layer.
+Secret AND over arithmetic-shared bits:1 product; XOR similarly1 product.
+Equality of k valid arithmetic bit-shares, both inputs secret:2k-1 products,
+1+ceil(log2 k) layers. Public-versus-secret:k-1 products,ceil(log2 k) layers.
+Comparison of k-bit secret operands: compute per-bit ab, e=1-a-b+2ab,
+l=b-ab, then combine (e_hi*e_lo,l_hi+e_hi*l_lo) in balanced tree. With final
+e omitted:3k-3 products for k>=2, <=1+ceil(log2 k) layers. Keeping final e
+costs3k-2. k=1 uses1 product. Range/bit validity must be maintained by inputs
+and updates; do not treat unchecked malicious field elements as bits.
+Public leaf vs bit-shared label common-prefix eligibility can use one prefix
+product scan on public-secret bit matches:O(k) products and O(log k) depth,
+rather than k independent full comparisons. All prefix outputs yield unary
+deepest-placement indicators through local differences.
+
+Given secret index bits and F=2^f public slots, construct one-hot selectors by
+branching a probability tree. First two selectors(1-b0,b0) are local. At each
+later node compute right=parent*bit and left=parent-right. F-2 products total,
+f-1 layers. Then reading W field words uses W length-F dot products (2 phases
+in current SY),FW local terms. This beats independently computing F equalities.
+Write selected entry: each word in each slot is v_i+selector_i*(new-v_i), so
+FW scalar products in1 layer; reading optimization does not eliminate writes.
+When changing only one position label in a block of F labels, W=1 =>F update
+products, plus selector generation. If labels are stored as k arithmetic bits,
+label-width is k and update costsFk products. A compact word plus separately
+maintained bit representation must both be updated and moved consistently.
+Batched queries with colliding slots require secret deduplication/ordering or
+proper fixed-pattern sequential semantics before combining updates. Do not
+reuse a stale path label or reveal duplicate classes to save work.
+
+LITERATURE CALIBRATION (not a p127/ten-party deployment guarantee)
+ATLAS author PDF:
+https://ntt-research.com/wp-content/uploads/2022/07/ATLAS-Efficient-and-Scalable-MPC-in-the-Honest-Majority-Setting.pdf
+Sec5, Table2:10million multiplications, depth20,9parties7.892s and11parties8.628s;
+61-bit Mersenne field; each party one AWS c4.large,2cores,3.75GB; same region;
+malicious-with-abort information-theoretic variant. Therefore1.27m/1.16m gates/s
+per COMPLETE PARTY INSTANCE, not per core, not ten-party benchmark, not DB.
+Table1 shows the strong depth effect and benefit of round compression. Leading
+full-multiplication communication incl preprocessing is4 words/party, PRG2;
+round compression changes to4.5/2.5. Sublinear malicious verification remains.
+Paper studies n=2t+1; ten-party instantiation needs explicit implementation.
+The paper's calibration is network+CPU end-to-end; it cannot separately fit
+c_scalar or c_dot_term. Restrict claims derived from this one source to a concise
+summary if quoting/citing in user-facing final output (source word limit200).
+
+Author code: https://github.com/hanjunli/ATLAS
+MP-SPDZ docs: https://mp-spdz.readthedocs.io/en/latest/readme.html
+Protocol reading map: https://mp-spdz.readthedocs.io/en/latest/reading.html
+SY foundational paper: https://eprint.iacr.org/2018/570
+Lindell--Nof baseline: https://eprint.iacr.org/2017/816
+
+CALIBRATION RUN REQUIREMENTS
+Pin exact VM/compiler/field/-N10/-T4; benchmark scalar output batches, length-F
+dot outputs, public openings, random bits/canonical masks, comparison and
+prefix primitives. Include input/check/release phases, peak party bytes, CPU
+utilization, memory highwater, and10^2..10^4-sized operation layers. Fit online
+phase latency and whole-service prep throughput separately, then validate an
+entire recursive batched ORAM. No combination of abstract counts guarantees
+10k QPS without these measured coefficients and batch scheduling.

@@ -1,0 +1,194 @@
+% Design/research fragment. Included by the main cost report.
+% No numerical cost conclusion is asserted by this fragment.
+\section{Construction choice and what the estimates establish}
+
+The design target is a read service for $N=2^{28}$ key--value pairs, each
+containing a 32-byte key and a 32-byte value, at 10,000 logical requests per
+second. The security target is ten parties with at most four malicious
+corruptions and security with abort. Mean response time should remain below
+five seconds, with lower latency preferred. The raw database is 16\,GiB;
+cuckoo slack, tree buckets, shares, authentication, recursive maps, and
+independent service replicas add to this substantially. Logical reads still
+modify the ORAM's position maps and placement state. Application writes and
+their replication protocol are outside this estimate.
+
+The proposed starting point is two-choice cuckoo hashing over recursive
+Circuit OPRAM, with both candidates probed on every lookup. Two separate
+cuckoo tables permit two independent OPRAMs to run in parallel; this modestly
+reduces individual pool sizes without requiring secret-dependent shard
+routing. The model uses single-slot hashing with explicit slack and a scanned
+overflow stash. Hash-table and ORAM stash capacities remain parameters that
+need a failure analysis. If clients supply secret shares of indices computed
+using public hash functions, the interface must specify which input
+consistency properties are checked. A keyed hash evaluated inside MPC is a
+different, additional cost; it has not been selected and is not implicitly
+free.
+
+\paragraph{Circuit OPRAM is more than a batch of Circuit ORAM paths.}
+For $b$ probes into a binary tree with leaf depth $H$, let
+$r=\lceil\log_2(2b)\rceil$. The parallel construction keeps disjoint subtrees
+below depth $r$ and represents the upper tree and stash in a pool. Its
+algorithms include private conflict resolution, pool retrieval, eviction
+candidate selection, and pool cleanup. The deterministic eviction paths
+occupy distinct subtrees. These are essential costs, not an optional
+implementation detail.\footnote{Chan and Shi, \emph{Circuit OPRAM: Unifying
+Statistically and Computationally Secure ORAMs and OPRAMs},
+\url{https://eprint.iacr.org/2016/1084}.}
+
+For accounting, the reference template uses
+\[
+ P=Z(2^r-1)+R_{\mathrm{stash}},\qquad h=H-r+1,
+\]
+where $Z$ is bucket capacity and $R_{\mathrm{stash}}$ is an exposed slack
+parameter. A conservative temporary allocation allows $P+3b$ records while
+fetched blocks and returned eviction candidates are processed. The pool
+replaces the upper tree buckets; their storage must not be counted twice.
+Recursion stops before an additional tree would have fewer than $2b$ leaves.
+This capacity accounting does not certify the chosen concrete stash slack.
+
+\paragraph{Reference compilation versus the best achievable system.}
+The program constructs an explicit operation ledger for a plausible
+Circuit-OPRAM-inspired compilation. It includes pool operations, metadata
+conversion, record movement, duplicate handling, and eviction planning. Some
+scan and planning coefficients are deliberately exposed estimates. It is
+neither a complete circuit implementation nor a proven upper bound on every
+implementation detail. Large reduction counts therefore demonstrate the
+expense of this specified compilation; they are not a lower bound on MPC
+lookup, a proof that the throughput goal is infeasible, or a claim to have
+found the globally optimal construction. AWS prices translate these
+conditional workloads into dollars; they do not validate the workload or
+processor-throughput assumptions.
+
+The accounting distinguishes scalar products, private inner-product outputs,
+local arithmetic, random bits, openings, memory traffic, and dependent
+communication phases. In an appropriate Shamir backend, an inner product
+can communicate per output rather than per scalar term. Its local
+computation still grows with its length. This distinction is particularly
+valuable for retrieval and flat position-map bases.
+
+\section{Optimizations with a concrete implementation path}
+
+\paragraph{Use private shuffles to reduce repeated payload movement.}
+The optimized reference sort augments each sorting key with a secret unique
+ordinal, securely shuffles records, and then opens comparison outcomes.
+Subsequent sorting moves are public local operations. The unique ordinal is
+essential: otherwise duplicate-key comparison patterns can disclose
+multiplicity. Vectorizing comparisons across quicksort recursion levels
+exposes parallelism, although its height and latency remain random.
+This shuffle-then-sort approach is described in the Orq implementation.
+\footnote{\emph{Orq: Complex Analytics on Private Data with Strong Security
+Guarantees}, SOSP 2025,
+\url{https://cs-people.bu.edu/vkalavri/assets/pdf/orq-sosp25.pdf}.}
+
+A generic realization has five fixed parties each choose a uniform private
+permutation and input checked switching-network controls. Under static
+corruption of at most four parties, at least one permutation remains hidden.
+Uniform switch bits alone would not produce uniform permutations. Restoring
+request order requires both undoing public sorting moves and applying the
+secret networks in reverse; the latter is charged. This is a useful
+reproducible baseline, but five sequential networks are expensive.
+
+For a more ambitious implementation, benchmark a Shamir-specific permutation
+primitive. The 2026 Shuffle2 work uses inner products and preprocessing to
+obtain linear online shuffle communication in the malicious honest-majority
+setting. Its published implementation measures semi-honest execution; the
+paper's malicious overhead factors are estimates. Its offline cost also
+remains substantial. Consequently, it motivates an optimization experiment,
+not an unqualified replacement throughput assumption.\footnote{Gao et al.,
+\emph{SLIDE: Shuffle Shamir Secret Shares Uniformly with Linear Online
+Communication and Guaranteed Output Delivery}, especially Sections 5 and
+Appendix C.4, \url{https://arxiv.org/html/2608.27129v1}.
+Implementation: \url{https://github.com/GJCPP/ShamirShuffle}.}
+
+\paragraph{Specialize pool operations rather than sorting everything alike.}
+Pool cleanup is stable compaction on validity bits. Local prefix sums and
+scalar products can compute a unique secret destination permutation, leaving
+private routing as the expensive primitive; long-key comparisons are
+unnecessary. Maintaining the pool in logical-address order also permits a
+derived finite-difference gather: attach differences of adjacent payloads to
+pool records, insert zero increments for requests, merge by address, and use
+local prefix sums to recover candidate values. Secret equality still decides
+whether an exact match exists. Candidate-selection routing must subsequently
+be undone and stable compaction must preserve the sorted-pool invariant.
+This optimization needs an implemented invariant check and security argument;
+it is not assumed by the reference scan coefficients.
+
+\paragraph{Choose metadata representation separately from payload encoding.}
+Moving one field word and comparing a secret integer have different costs.
+Repeatedly converting compact arithmetic metadata to bits is expensive;
+retaining every address and leaf bit as an arithmetic share expands both
+storage and routing. A practical comparison should include compact metadata,
+retained bit metadata, and a mixed representation with narrow comparisons
+and explicit conversion costs. Retained bits must be charged whenever their
+record moves. Leaf compatibility against a public eviction path can reuse
+prefix-match products; target-depth comparisons use roughly $\log_2 H$ bits,
+rather than the full key width.
+
+The published depth analysis of Circuit ORAM provides a starting point for
+parallel eviction planning. Its word-depth bound is not directly an MPC-round
+bound: comparison, selection, and authentication phases remain to be
+compiled.\footnote{Chan, Chung, and Shi, \emph{On the Depth of Oblivious
+Parallel RAM}, \url{https://eprint.iacr.org/2017/861}.}
+
+\paragraph{Tune recursive packing and the base together.}
+Packing $F$ parent labels per recursive block reduces record counts but
+increases record width, private subblock selection, and routing cost.
+Moderate powers of two, for example $F=8$ through $128$, are useful search
+points rather than a predetermined optimum. The binary eviction tree can
+remain unchanged. Several requests may update different offsets of the same
+map block: group those updates privately and commit the block once.
+Independent whole-block writes would overwrite each other.
+
+The base contains one scalar label per record in the last instantiated tree.
+It is not smaller by another factor of $F$ unless another recursive tree has
+been paid for. With $n=2^d$ base labels, a divide-and-conquer one-hot decoder
+has the derived multiplication recurrence
+\[
+ T(d)=T(\lfloor d/2\rfloor)+T(\lceil d/2\rceil)+2^d,
+ \qquad T(0)=T(1)=0,
+\]
+and depth $\lceil\log_2 d\rceil$. For $n=4096$, this is 4,272 products per
+request and four product layers, before validity gating and read/write
+operations. After duplicate resolution, dot-product retrieval and aggregated
+updates need about $b+n$ reduction outputs, while local work remains
+proportional to $bn$. Compare this against a complete additional recursive
+level. The reference program uses the divide-and-conquer decoder, adding one
+product and a conservative extra phase for a secret representative-valid bit.
+
+\paragraph{Optimize scheduling after retaining dependencies.}
+At one level, pool fetch and subtree fetch can overlap once old labels are
+available. Maintenance on an already accessed recursive tree can overlap
+fetching from the next tree if remapping labels have been sampled beforehand
+and state updates are coordinated. Recursion still has a base-to-data fetch
+dependency, and the next batch must not observe an uncommitted state. A sum
+of all phase counts is a conservative serial schedule; replacing it by the
+maximum level depth would be unjustified. Centrally forming batches before
+dispatching them to independent replicas avoids multiplying formation delay
+by the number of replicas. At 10,000 requests/s, batch size $Q$ alone adds
+approximately $(Q-1)/(2\cdot10{,}000)$ seconds of mean formation delay.
+
+\section{Validation needed before using a deployment budget}
+
+The next experiment should implement and measure one complete recursive
+batch, including duplicates and misses, on the selected malicious backend.
+Separately measure comparison/conversion, shuffle and inverse routing, pool
+cleanup, subblock updates, eviction, and preprocessing replenishment. Then
+measure the composed dependency schedule and memory footprint, rather than
+inferring end-to-end performance from multiplication throughput alone.
+
+Failure parameters must cover the intended deployment lifetime. One year at
+10,000 requests/s contains about $2^{38.2}$ logical requests, before counting
+two probes, recursive levels, replicas, and checking events. If $A$ events
+each have failure probability at most $\epsilon$, a simple lifetime bound is
+$A\epsilon$. For example, an annual target of $2^{-40}$ with $2^{42}$
+relevant events would require per-event probability at most $2^{-82}$.
+The ORAM stash, cuckoo overflow, statistical checks, and any randomized
+sorting limits need their own justified bounds. A simulated absence of
+overflow is useful testing evidence but does not establish such a bound.
+
+Finally, capacity should include authentication and preprocessing, local
+routing between machines of one party, batch queues, and the full memory of
+each independently evolving replica. Cross-availability-zone placement
+changes both communication charges and latency. The resulting estimate is a
+proposal-planning scenario until an end-to-end malicious implementation has
+been calibrated on the intended topology.

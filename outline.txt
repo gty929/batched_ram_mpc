@@ -1,0 +1,51 @@
+
+
+Section 1: Status Quo of Private Blockchain Access 
+
+In our previous project with Ethereum Foundation, we developed
+a TEE-based oblivious access server 
+that enables private accesses to on-chain data. 
+
+This proposal will explore methods to remove the TEE and still obtain
+logarithmic scaling. 
+
+
+Ethereum Foundation recently implemented 
+a private block access
+service based on a GPU-accelerated 
+version of the InsPIRe Private Information Retrieval scheme.
+[cite: 
+@article{Mahdavi2026InsPIReCP,
+  title={InsPIRe: Communication-Efficient PIR with Server-Side Preprocessing},
+  author={Rasoul Akhavan Mahdavi and Sarvar Patel and Joon Young Seo and Kevin Yeo},
+  journal={2026 IEEE Symposium on Security and Privacy (SP)},
+  year={2026},
+  pages={1463-1482},
+  url={https://api.semanticscholar.org/CorpusID:282150601}
+}
+]
+
+they are deploying it right now for account balances
+206.8M mainnet accounts holding ETH
+a key-value store implementation : use a public cuckoo hash table
+latency: ~250ms 
+
+their implementation's test cases : 2^23, 2^25, 2^27 entries, 120 byte
+
+
+reported: 60 queries/second/gpu
+
+our oblivious TEE implementation: 
+latency: 20us -- 50us, 
+throughput 300K-400K queries/sec with 2^27 entries 
+(in the same scenario as the InsPIRe deployment,
+what we built for ethereum is more complicated)
+
+
+Ethereum state: 2^32 entries, 32 bytes
+
+
+
+
+
+

@@ -1,0 +1,198 @@
+%\documentclass[conference]{IEEEtran}
+\documentclass[11pt,letterpaper]{article}
+\usepackage[margin=1in]{geometry}
+
+%\usepackage{times}
+\usepackage{amsthm}
+%\usepackage{xcolor}
+\usepackage{multicol}
+\usepackage{setspace}
+
+\usepackage{colortbl}
+\usepackage{xspace}
+\usepackage{mdframed}
+\usepackage{color,soul}
+%\usepackage{tabstackengine}
+
+\usepackage{paralist}
+\usepackage{pdfpages}
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage[font=small,labelfont=bf,skip=6pt]{caption}
+\usepackage[override]{cmtt}
+%\usepackage{titlesec}
+\usepackage{color,xcolor}
+\usepackage{authblk}
+%\usepackage{inconsolata,graphicx,color,eso-pic}
+\usepackage{graphicx,color,eso-pic}
+\usepackage{pgfplots, pgfplotstable}
+
+
+%\usepackage{tikz}
+%\usepackage{pgfplots}
+%\pgfplotsset{compat=newest}
+%\usepgfplotslibrary{fillbetween}
+%\usetikzlibrary{fit, shapes, positioning, patterns, arrows,shadows}
+%\usetikzlibrary{decorations.pathreplacing,calligraphy}
+
+
+%\definecolor{lightgray}{rgb}{0.85, 0.85, 0.85}
+\sethlcolor{lightgray}
+%% Macros used in this paper
+%\input{macro.tex}
+
+\newcommand{\ignore}[1]{}
+
+% Pros/cons lists for comparing approaches.
+\newenvironment{tradeofflist}[1]{\par\smallskip\noindent\underline{\textit{#1:}}%
+  \begin{itemize}[topsep=1pt,itemsep=1pt,parsep=0pt,leftmargin=1.5em]}%
+  {\end{itemize}}
+\newenvironment{pros}{\begin{tradeofflist}{Pros}}{\end{tradeofflist}}
+\newenvironment{cons}{\begin{tradeofflist}{Cons}}{\end{tradeofflist}}
+
+
+\usepackage{cite}
+\usepackage{amsthm,amstext}
+\usepackage{amsmath,amstext,amsfonts,amssymb,latexsym}
+\usepackage{amsbsy}
+\usepackage{stmaryrd}
+\usepackage{pifont}
+%\usepackage{mathabx}
+
+\definecolor{darkred}{rgb}{0.5, 0, 0}
+
+\usepackage[bookmarks=true,pdfstartview=FitH,colorlinks,linkcolor=darkred,filecolor=darkred,citecolor=darkred,urlcolor=darkred]{hyperref}
+
+%\usepackage[bookmarks=true,pdfstartview=FitH,colorlinks=false]{hyperref}
+\usepackage[capitalize,noabbrev]{cleveref} %% for referencing use \cref
+
+\hyphenation{op-tical net-works semi-conduc-tor}
+
+
+%\input{macro.tex}
+%\def\authorNote{} % comment this line to remove the author note
+\ifdefined\authorNote
+\newcommand{\elaine}[1]{{\footnotesize\color{magenta}[Elaine: #1]}}
+\newcommand{\hubert}[1]{{\footnotesize\color{blue}[Hubert: #1]}}
+\newcommand{\ke}[1]{{\footnotesize\color{red}[Ke: #1]}}
+\newcommand{\tianyao}[1]{{\footnotesize\color{orange}[Tianyao: #1]}}
+\else
+\newcommand{\elaine}[1]{}
+\newcommand{\hao}[1]{}
+\newcommand{\ke}[1]{}
+\newcommand{\tianyao}[1]{}
+\fi 
+
+\newcommand{\R}{\ensuremath{\mathbb{R}}}
+
+\newcommand{\reactively}{}
+\newcommand{\Reactively}{}
+\newcommand{\reactive}{}
+\newcommand{\Reactive}{}
+\newcommand{\Rft}{Fault-tolerant\xspace}
+
+%\newenvironment{MyEnumerate}[1]{\begin{enumerate}\setlength{\itemsep}{0.1cm}
+%\setlength{\parskip}{-0.05cm} #1}{\end{enumerate}}
+%\newenvironment{MyItemize}[1]{\begin{itemize}\setlength{\itemsep}{0.1cm}
+%\setlength{\parskip}{-0.05cm} #1}{\end{itemize}}
+
+
+
+\newcommand{\elainetodo}[1]{%
+    \colorbox{red!20}{%
+\parbox{\textwidth}{
+elaine: \\
+ #1
+    }
+}
+}
+
+\newcommand{\rb}[1]{\colorbox{blue!20}{#1}}
+\newcommand{\wt}[1]{{#1}}
+\newcommand{\highlight}[1]{\colorbox{lightgray}{$\displaystyle #1$}}
+
+\newtheorem{thm}{Theorem}[section]      % A counter for Algorithms etc
+
+
+\newtheorem{theorem}[thm]{Theorem}
+\newtheorem{conj}[thm]{Conjecture}
+\newtheorem{conjecture}[thm]{Conjecture}
+\newtheorem{lemma}[thm]{Lemma}
+\newtheorem{claim}[thm]{Claim}
+\newtheorem{corollary}[thm]{Corollary}
+\newtheorem{fact}[thm]{Fact}
+\newtheorem{proposition}[thm]{Proposition}
+\newtheorem{example}[thm]{Example}
+\newtheorem{constraints}[thm]{Parameter Constraints}
+\newtheorem{remark}[thm]{Remark}
+
+\theoremstyle{definition}
+\newtheorem{definition}[thm]{Definition}
+
+\newcommand{\mcal}[1]{\ensuremath{\mathcal {#1}}}
+\newcommand{\amt}{\ensuremath{v}\xspace}
+\newcommand{\id}{\ensuremath{u}\xspace}
+\newcommand{\aux}{\ensuremath{\alpha}\xspace}
+\newcommand{\potential}{\ensuremath{\Phi}}
+\newcommand{\totalgeq}{\ensuremath{\geq_r}}
+\newcommand{\totalleq}{\ensuremath{\leq_r}}
+\newcommand{\config}{\ensuremath{{\boldsymbol{\mu}}}\xspace}
+
+\usepackage{authblk}
+
+\newcommand{\proposalAuthor}[2]{%
+  \parbox[t]{0.36\textwidth}{\centering #1\\[0.3ex]{\small\texttt{#2}}\par}%
+}
+
+\begin{document}
+%
+% Mechanism Design for Automated Market Makers
+%\title{(Im)possibility Results for Transaction Fee Mechanism Design}
+\title{Faster Oblivious Accesses to Blockchains} 
+\renewcommand{\Authand}{\hspace{1.2em}}
+\author{\protect\proposalAuthor{Afonso Tinoco}{afonsotfaria21@gmail.com}}
+\author{\protect\proposalAuthor{Elaine Shi}{runting@gmail.com}}
+\affil{Oblivious Labs, Inc.}
+% \footnote{}
+%\date{Oblivious Labs, Inc.}
+
+\date{}
+
+\maketitle
+\thispagestyle{empty}
+%\begin{abstract}
+%\elaine{to add}
+%\end{abstract}
+
+\input{body}
+
+%\onehalfspacing
+
+%\paragraph{Abstract.}
+
+%\tableofcontents
+%\thispagestyle{empty}
+%\newpage
+%\setcounter{page}{1}
+%\thispagestyle{empty}
+
+%\bibliographystyle{alpha}
+%\bibliography{refs,gametheory,tfm-refs}
+
+
+%\newpage 
+%\input{intro}
+%\input{method}
+\input{personnel}
+\input{timeline}
+\input{budget}
+
+\bibliographystyle{alpha}
+\bibliography{refs}
+
+
+\end{document}
+

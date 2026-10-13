@@ -29,6 +29,7 @@ def render():
     text=r'''
 \clearpage
 \section{Bottleneck clarification and scan comparison (13 October update)}
+\label{sec:bottleneck}
 \textbf{The current model is limited first by total CPU demand, then by online
 communication. Storage is large, but is not the binding constraint at the selected
 point.} This is a diagnosis of the analytical model, not a measured profile of an

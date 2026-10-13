@@ -5,6 +5,8 @@ import csv
 import json
 from pathlib import Path
 from .render_bottleneck_section import render as render_bottleneck_section
+from .render_size_section import render as render_size_section
+from .render_garbled_section import render as render_garbled_section
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -12,6 +14,8 @@ import matplotlib.pyplot as plt
 ROOT=Path(__file__).resolve().parent
 OUT=ROOT/'results'
 render_bottleneck_section()
+render_size_section()
+garbled=render_garbled_section()
 summary=json.loads((OUT/'summary.json').read_text())
 scenarios=summary['scenarios']
 central=next(x for x in scenarios if x['scenario']=='central')
@@ -76,8 +80,19 @@ report=r'''\documentclass[11pt]{article}
 {\color{teal}\large CONSTRUCTION AND CAPACITY STUDY}\par
 {\color{navy}\LARGE\bfseries A 10,000-query/s key--value database\\in ten-party honest-majority MPC}\par
 Updated 13 October 2026, America/New\_York\par
-\textbf{Target:} $2^{28}$ records, 32-byte keys and values; ten parties, at most four
+\textbf{Target:} $2^{28}$ and $2^{32}$ records, 32-byte keys and values; ten parties, at most four
 malicious corruptions, security with abort; average response time at most five seconds.
+
+\textbf{Updated comparison.} The interactive reference costs approximately
+\$2.33B/year and \$5.16B/year, respectively, at modeled mean latencies 4.77 and
+3.97 seconds. Local arithmetic is the critical resource; RAM capacity also
+constrains the larger case. Under the requested network-bottleneck assumption,
+the conditional garbled-RAM model costs GRAM28/year and GRAM32/year using the
+best prepared horizons in its grid. Preprocessing dominates its communication;
+SSD retention is strongly horizon-dependent. Concrete correlation generation and
+secure epoch renewal remain unpriced. Sections~\ref{sec:scale}
+and~\ref{sec:garbled} give the calculations, sensitivities and limits.
+The earlier detailed interactive sections use $N=2^{28}$ unless stated otherwise.
 
 \section{Decision for the proposal}
 \textbf{Continue with two cuckoo tables over binary Circuit OPRAM, but make the
@@ -269,7 +284,7 @@ cards to attain the aggregate200Gbps. No sustained MPC bandwidth or collective
 latency is guaranteed by the instance specification.\footnote{
 \url{https://docs.aws.amazon.com/ec2/latest/UserGuide/ec2-instance-network-bandwidth.html};
 \url{https://docs.aws.amazon.com/ec2/latest/instancetypes/mo.html}.}
-The prices exclude EBS, snapshots, setup, backups, client transfer, NAT,
+The interactive prices exclude EBS, snapshots, setup, backups, client transfer, NAT,
 orchestration, failover reserve, support, taxes, and engineering. Same-provider
 or same-AZ placement does not by itself establish independent corruption domains.
 
@@ -277,11 +292,20 @@ or same-AZ placement does not by itself establish independent corruption domains
 
 \input{bottleneck_scan_notes.tex}
 
+\input{size_comparison_notes.tex}
+
+\input{garbled_ram_notes.tex}
+
 \section{Reproduction and next decision}
 From the repository root:
 \begin{verbatim}
 python -m mpc_cost.run --full
 python -m mpc_cost.compare_scans
+python -m mpc_cost.run --full `
+  --config mpc_cost/data/design_2p32.json `
+  --output mpc_cost/results/size_2p32
+python -m mpc_cost.compare_scans --results mpc_cost/results/size_2p32
+python -m mpc_cost.garbled_cost
 python -m unittest discover -s mpc_cost -p "test_*.py" -v
 python -m mpc_cost.render_report
 \end{verbatim}
@@ -289,11 +313,16 @@ Compile \texttt{mpc\_cost/mpc\_oram\_cost\_report.tex} with its working director
 set to \texttt{mpc\_cost}. The program has no runtime dependencies beyond Python's
 standard library; generating figures additionally needs Matplotlib and PDF
 compilation needs LaTeX. \texttt{README.txt} explains overrides and price refresh.
+The backticks above continue a command in PowerShell; elsewhere put its arguments
+on one line. The garbled sweep saves \texttt{results/garbled\_ram\_comparison.json}.
 
 The tests validate arithmetic witnesses (comparison, gated decoding, duplicate
 updates, Fermat equality), recursive base dimensions, metadata movement, all-party
 and replica billing, transfer send-counting, and queue saturation. They do not
 validate an unimplemented ORAM security proof or MPC performance.
+Additional checks validate both database sizes, finite garbling coefficients,
+generated versus visited gate counts, routing-only setup, arbitrary traffic-graph
+fleet bounds, framing, SSD-copy scaling and transfer accounting.
 
 Before choosing a proposal budget, benchmark checked scalar batches, long dot
 products, mask production, and a complete recursive read with duplicate updates.
@@ -309,6 +338,9 @@ replacements={'SCENARIO_ROWS':scenario_rows,'ENV_ROWS':env_rows,'LEVEL_ROWS':lev
               'ROUND':f"{x['round_seconds']:.2f}",'REDUCTIONS':f"{x['reductions_per_read']/1e6:.2f}",
               'BITS':f"{x['random_bits_per_read']/1e3:.1f}",'SENT':f"{x['sent_mb_per_party_read']:.1f}",
               'AZB':f"{az_all/1e9:.1f}"}
+for case,n in zip(garbled['best_horizons'],(28,32)):
+    p=case['price']
+    replacements[f'GRAM{n}']=f"\\${p['total_min_usd_year']/1e9:.2f}--{p['total_upper_usd_year']/1e9:.2f}B"
 for old,new in replacements.items():report=report.replace(old,new)
 spacing={
  'batches64':'batches 64', 'fanouts4':'fanouts 4', 'cutoffs256':'cutoffs 256',

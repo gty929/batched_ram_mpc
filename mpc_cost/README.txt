@@ -1,6 +1,45 @@
 MPC KEY-VALUE DATABASE COST MODEL
 ===============================
 
+13 October 2026 expansion: N=2^32 and multiparty garbled RAM
+---------------------------------------------------------
+The current report is mpc_oram_cost_report.tex, rendered to
+../output/pdf/mpc_oram_cost_report.pdf. The original continuity report has a
+dated summary directing readers to the revised numerical study.
+
+Reproduce the larger interactive case and both garbled cases:
+
+  python -m mpc_cost.run --full --config mpc_cost/data/design_2p32.json --output mpc_cost/results/size_2p32
+  python -m mpc_cost.compare_scans --results mpc_cost/results/size_2p32
+  python -m mpc_cost.garbled_cost
+  python -m unittest discover -s mpc_cost -p "test_*.py" -v
+  python -m mpc_cost.render_report
+
+The Boolean gate template in garbled_circuit.py is independent of arithmetic
+reduction counts. garbled_cost.py uses the audited finite Appendix H ledger
+from 2025/444, zero stack/adaptor cost under the requested 2026/761 migration,
+and user-assumed network throughput dominance. It separately prices global
+preprocessing bytes, table delivery, literal retained state, complete programme
+epochs on gp3 SSD, and full-duplex NIC capacity with arbitrary party imbalance.
+Default T=2N and two complete retained epochs are policies, not space lower
+bounds. The horizon sweep jointly reoptimizes map packing/base/template choices;
+its selected horizon minimizes the conservative fleet endpoint. Smaller epochs
+need a secure renewal protocol, not simply repeated input encoding. The main
+source-derived template omits that protocol, concrete OLE/VOLE generation, and
+reactive client-input integration. It is not a priced OT-only implementation.
+
+Results: results/garbled_ram_comparison.json and results/size_comparison.json.
+Primary-source derivation ledgers: data/garbling_backend_notes.txt,
+data/garbled_ram_construction_notes.txt, data/garbled_ram_aws_notes.txt.
+Prices: data/aws_garbled_prices_2026-10-13.json (official AWS US East snapshot).
+Local source PDFs: ../multiparty_ot.pdf and ../garbled_merge.pdf.
+The report distinguishes the finite multiplication-count repair from the
+paper's printed approximation. Extra correlation traffic, supplied-control
+initialization routing, internal hashes, epoch copies, independent states,
+and cross-AZ transport are explicit sensitivities. They are not proven bounds
+on the omitted implementations. Label width128 does not certify a128-bit
+service-lifetime failure bound at the total workload under consideration.
+
 Run from the repository root with Python 3.10+ (no third-party packages):
 
   python -m mpc_cost.run --full

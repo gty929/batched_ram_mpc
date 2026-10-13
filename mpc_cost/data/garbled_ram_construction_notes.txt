@@ -1,0 +1,342 @@
+GARBLED RAM CONSTRUCTION / FORMULA LEDGER
+Research date: 2026-10-13. Scope: Boolean multiparty garbling, n=10,t=4,
+malicious with abort, 256-bit keys, 256-bit values, 10,000 read-only KV queries/s.
+This ledger is independent of the earlier arithmetic-MPC reduction counter.
+
+1. SOURCE AND EVIDENCE MAP
+
+[S1] Heath, Kolesnikov, Narayanan, Ostrovsky, Shah, Multiparty Garbling from OT
+with Linear Scaling and RAM Support, CRYPTO2025, https://eprint.iacr.org/2025/444.
+The backend agent owns the source-based per-gate/initialization byte formulas.
+This is a multiparty Boolean/tri-state compiler, not an implementation of the
+proposal's future multiparty arithmetic PicoGRAM/Zebra construction.
+
+[S2] Liu, Liu, Luo, Heath, Improved Garbled RAM via Garbled Merge,
+https://eprint.iacr.org/2026/761. Final user-downloaded garbled_merge.pdf inspected:
+Section3.4 pages11-12 describes replacing pairwise stacks with stable merge;
+Theorem2 is the (w+1)(m+n) join-gate merge;
+Section5.3 page19 separates merge, non-merge read/write, recursive-map costs;
+Section6.2 page21 measures only N=2^10..2^24 and reports stack share about20%.
+It does not benchmark ten parties, N=2^28/2^32, or a continuous 10kQPS service.
+
+[S3] Authors' artifact v2, https://zenodo.org/records/20751401,
+https://zenodo.org/records/20751401/files/ccs_artifact_garbled_merge.tar.gz?download=1.
+Archive MD5 displayed by Zenodo:2146f8af3e06c25e0cc8019085c422e1.
+June18,2026 artifact contains an older accepted/submission PDF and C++ sources.
+Its abstract contains a stale6x merge comparison; final paper says3x.
+Structural formulas and the non-stack operation definitions are consistent with
+the final paper. Relevant files extracted into tmp/garbled_merge_source:
+  picogram_imp/gadgets/circuit_oram.hpp
+  picogram_imp/gadgets/rec_oram.hpp
+  picogram_imp/types/word.hpp
+  picogram_imp/types/vec.hpp
+  picogram_imp/gadgets/gadget_group.hpp
+  picogram_imp/scripts/sim_cost.py
+Our Python model is mpc_cost/garbled_circuit.py. It is a transparent derived
+circuit template, NOT an execution of the authors' native FAST_MEASURE mode.
+
+[S4] Keccak team specification,
+https://keccak.team/keccak_specs_summary.html, rounds and chi equations.
+
+Local proposal: body.tex:60-80 gives extrapolated/current and target throughputs;
+body.tex:137ff assumes one flat-database lookup per request; body.tex:173-196 gives
+the previous $133M/$233M and proposed $5.6-8.3M/$8.3-11M estimates;
+body.tex:523ff explicitly proposes an as-yet unimplemented multiparty arithmetic
+extension. Those throughput numbers cannot calibrate S1's Boolean protocol.
+The proposal states preprocessing costs at least an order of magnitude more work
+than online, reinforcing that online rates alone do not price the service.
+
+2. WHAT THE USER'S ZERO-STACK ASSUMPTION MEANS
+
+Set language-translation/stack/merge AND, join, buffer, public-key and hash costs
+to zero. Retain actual node read/evict Boolean gates, recursive position maps,
+flat map exchange, exact candidate checking, hashing, initialization, input bits,
+retained live encodings, preprocessing, and all provisioned unused invocations.
+S2's theorem partitions these costs explicitly. The zero-stack assumption is
+more optimistic than S2: real merge still has (w+1)(m+n) joins and many local
+hash calls. It is an authorized prospective transfer assumption, not a proved
+ten-party implementation or a statement that the final paper makes stacks free.
+
+Inside each node we compile the whole fixed metadata/access function as ordinary
+Boolean AND/XOR gates. Parent/child language translation is in the omitted
+component. Hence no extra non-stack tri-state joins are added on top of this
+chosen unified Boolean function. Alternative TSC lowering can split read/evict
+subcircuits and introduce joins; the old sim_cost.py does that and is a different
+compilation, so its AND/join vectors must not be combined with ours.
+
+3. KV DATA SHAPE AND RAM CALLS
+
+Each dictionary has N entries; two cuckoo tables have D=2N slots each, for total
+capacity4N and actual load1/4. This matches the previous model's power-of-two
+capacity; it is not a proof of a chosen lifetime cuckoo failure probability.
+Always perform one RAM access in each table, even on a miss. The tables may be
+evaluated concurrently, but their work and bytes add. Both probes return a full
+key/value plus occupied flag (w0=513 Boolean bits). Check all256 key bits exactly.
+Eight stash entries are kept in a resident encoded circuit state and scanned.
+
+Ten candidates cost10*(255 equality AND +1 occupied AND +256 output-mask AND)
++9 AND to combine the membership flag =5129 AND/KV. Output XOR aggregation
+adds9*256 XOR; key equality inputs add10*256 XOR. Dictionary uniqueness ensures
+at most one candidate contributes. Returns value256bits and membership1bit.
+Keys/values are not reduced modulo a field, so no arithmetic norm/Fermat test.
+
+Each ordinary dense probe additionally performs one access at each recursive
+position-map level, including map updates. Read-only application data does not
+make ORAM metadata or garbled encodings read-only.
+
+4. NODE AND/XOR CIRCUIT TEMPLATE
+
+Parameters at an individual tree: h=log2(D), payloadw bits, tree leveli,
+p remaining leaf-position bits, z local slots, g=log2(children), L=ceil(h/2),
+m=ceil(log2(L+1)). The artifact normally uses four children, with a two-child
+level when needed; g=ceil(p/ceil(p/2)). A resident block at that node contains
+  b = w+h+p+1 bits
+(payload, full virtual address, trimmed position, valid bit).
+
+Chosen primitive allowances:
+  k-bit equality: k-1 AND, k XOR.
+  k-bit comparison: <=k AND, <=5k XOR via ripple arithmetic.
+  k-bit mux: k AND, 2k XOR.
+  k-bit conditional swap: k AND, 3k XOR.
+  q-bit popcount: <=2q AND, <=6q XOR using carry-save/ripple addition.
+  NOT/constants/bit slicing/bit permutations: no communicated garbled gates.
+These are explicit compilation allowances, not measured average gate costs.
+The C++ code's extra constant propagation, public-to-evaluator half-gates and
+word-bound analysis can reduce work relative to this template.
+
+For p>0 define q=ceil(p/g). Grouped trailing-zero computation obtains the deepest
+legal descendant by position XOR, p-1 prefix ANDs and q-bit popcount. The local
+argmax, exact virtual-address matching, one-hot winner, child metadata and
+return metadata are counted together as:
+  A_meta = z*(max(0,p-1)+2q+2m+h+7)+7m+6
+  X_meta = z*(p+6q+7m+h)+22m.
+At a leaf p=0:
+  A_meta = 2m+z*(h+2)+2
+  X_meta = 7m+zh.
+
+For access_local, initialize three control flags, plus one at the root; form
+three per-slot control flags and conditionally swap the ENTIRE block. Mask the
+read payload; if nonleaf, forward the held block and XOR the child read output.
+Let r=p-g+h+w for nonleaves:
+  A_access = 3+[i=0]+z*(b+3)+w + [p>0]*(2+r)
+  X_access = 3zb + [p>0]*(2r+w).
+One generic invocation uses A_meta+A_access and X_meta+X_access. The top-level
+CircuitORAM::access also computes eligibility of its newly inserted block once:
+add max(0,h-1)+2ceil(h/2) AND and h+6ceil(h/2) XOR per dense RAM access.
+
+The primitive allowances and source transcription are transparent and cover
+the operations named above; this is NOT a formal machine-checked upper bound
+on every possible compiler/runtime implementation. Source stash/leaf parameter
+choices are inherited prototype assumptions and require failure analysis.
+
+5. SOURCE PARAMETER FAMILIES, RECURSION, AND BASE
+
+ORAMConstParams compute-friendly:
+  h<16: root stash42, other buckets7, one extra deterministic eviction;
+  h>=16: root stash50, other buckets6, one extra deterministic eviction.
+Read traversal also performs eviction, so there are two traversals per access.
+
+Communication-friendly:
+  h<8: root17,bucket5,extraevictions2;
+  8<=h<26: root21,bucket4,extraevictions2;
+  h>=26: root34,bucket3,extraevictions2.
+There are three traversals per access. Neither set is a certified annual
+overflow guarantee at 10kQPS; especially do not treat a prototype's finite
+bucket/root sizes as the asymptotic negligible-failure theorem's constants.
+
+The artifact packs F=4 leaf positions in each map block. Our explicitly derived
+variant supports any power-of-twoF by the same Vec::write functionality:
+  D_{j+1}=D_j/F; w_{j+1}=F*h_j; h_j=log2(D_j).
+Packed subblock update is one-hot decoding followed byF conditional swaps.
+A shared-prefix decoder can use F-2 AND and F-2 XOR forF>=2, so exchange of
+one h-bit label costsF*h+F-2 AND and3F*h+F-2 XOR. The final carried word is the
+old selected label. The C++ code computes the two decoder branches separately;
+our shared-prefix rewrite is a small explicit optimization, not its native count.
+For a flat base ofB scalar h-bit labels, replaceF byB. The base contains the
+FULL position map of the last actual ORAM, not a further free factorF reduction.
+The source constructor's default threshold makes this base512 or1024 entries.
+
+6. PROVISIONED GATES VERSUS VISITED GATES
+
+LetT be provisioned logical accesses per table/epoch, ande the extra eviction
+count. Root invocation budget is(e+1)T. A child receives
+  child_calls = min(parent_calls,
+      ceil(parent_calls/2^g)+[parent_is_root]*2^(p-g)).
+Sum nodes_at_level * child_calls * node_gate_count /T. This is generated work
+per query, including unused/dummy provisioned code. Visited work is simply
+(e+1) times the sum of nodes on one path, separately reported. Count generated
+gates for preprocessing/retained garbled program, visited gates for evaluator
+online arithmetic; never equate the two.
+
+The extraD term comes from initial labels: rec_oram.hpp creates a permutation
+ofT+D positions, usesD for initial data andT for fresh positions, then retains
+lowh bits. This balances access budgets. The constructor supportsT<D, but deep
+node rounding andD/T provisioning overhead can become expensive. The source's
+usual benchmark usesT=D. A largeT is PREPROCESSING HORIZON, not client batch size
+and does not mean queries must wait to accumulateT requests.
+
+Important epoch boundary: reusing arbitrary evolved ORAM state with a newly
+sampled epoch's future labels has not been shown to satisfy the source's joint
+initial/future permutation distribution. A horizon sweep must either charge
+fresh initialization/relabeling at every epoch, or explicitly assume/prove a
+correct continuation schedule. Input-label generation cost alone does not pay
+for this joint hidden permutation or initial secret bucket placement.
+
+7. NUMERICAL TEMPLATE RESULTS (CORE, STACKS ZERO, HASH EXTRA)
+
+SweepF in{2,4,8,16,32,64,128}, base threshold16..4096 powers of two, and the two
+source parameter families, atT=D=2N. Minimum generated-AND configurations:
+  N=2^28: communication family,F8,actualflatbase256,8actualORAMtrees/probe.
+    h sequence29,26,23,20,17,14,11,8.
+    payload sequence513,232,208,184,160,136,112,88.
+    generatedAND/KV=1,287,666.43; visitedAND/KV=1,193,435.
+    generatedXOR/KV=3,146,604.16; visitedXOR/KV=2,925,508.
+    retainedphysicalwirebits=3,086,861,853,236 (both tables+maps+stash).
+    freshpositionbits/KV=296; functionality inputs610bits includingoneclientkey
+    andtwo29-bit privately supplied cuckooindices.
+    initialstatebits/T=5,749.73 (a conservative input-encoding policy).
+  N=2^32: communication family,F8,actualflatbase512,9actualORAMtrees/probe.
+    h sequence33,30,27,24,21,18,15,12,9.
+    payload sequence513,264,240,216,192,168,144,120,96.
+    generatedAND/KV=1,671,810.19; visitedAND/KV=1,561,929.
+    generatedXOR/KV=4,077,987.36; visitedXOR/KV=3,820,096.
+    retainedphysicalwirebits=49,994,416,161,600.
+    freshpositionbits/KV=378; functionality inputs700bits includingtwo33-bitindices.
+    initialstatebits/T=5,820.12.
+
+The artifact-defaultF4 compute-family reference is about1.460M and1.886M AND/KV.
+The optimized sweep is only optimal among THIS template's finite choices atT=D,
+not globally optimal garbled RAM, and not a measured ten-party system.
+
+8. HASHING / FRESH INPUTS / MALICIOUS INITIALIZATION
+
+Concrete hash option: prepend a public domain byte and hash the256-bit key with
+SHA3-256 twice; each padded message fits one1088-bit-rate block. Each Keccak-f
+permutation has24rounds and1600chiANDs/round, hence38,400 AND +115,200 XOR before
+constant folding. Two hashes add76,800 AND +230,400 XOR/KV. Selecth outputbits
+from each. One hash split into two index fields is another modeled random-oracle
+choice at38,400 AND, requiring its hash-family/initialization assumptions stated.
+The gate module leaves hash_ands_external=None so pricing must deliberately
+select a hash circuit, rather than silently giving free key-to-address mapping.
+
+Fresh position randomness must be jointly hidden from a corrupted evaluator
+colluding with up tofourparties. The2PC code's sole garbler knows all positions;
+directly assigning that role to one of ten parties is insecure under such
+collusion. S1's randomized-function MPC can in principle generate/encode the
+coins with secret inputs, but a concrete implementation must generate the
+balanced initial/future permutation, validate malicious inputs, and install the
+initial database and recursively consistent position maps. One jointly hidden
+bit is not automatically one free private input shared by allparties; the
+backend must price joint randomness and secret initialization separately.
+
+The main frontend accepts256 clientkeybits andtwo privately suppliedh-bit
+cuckooindices, matching the interactive comparison's caller-hashing convention.
+Exactkeychecks prevent a false hit when a maliciousclient suppliesbadindices;
+it canforcea miss for its ownquery. Clientscomputetheintendedhashfunctionlocally.
+Forstrictkey-onlyfunctionality selectthehashcircuitabove andremove2hindexinputs.
+The input counter reports256+2h clientbits +sum_h(newpositionbits) for the
+functionality, not a proven external coin-generation protocol cost. Likewise,
+physicalinitialstatebits/T is an explicit conservative encoding input policy,
+not the whole initialization circuit. Constants, seed expansion or public data
+may reduce input masking, while secret routing/permutation adds AND gates.
+
+The artifact init_ram(data,target_positions) itself uses a Waksman permutation
+of ALL physical slots, conditionally swapping valid,address,position,payload.
+Its switch controls are known to its2PC garbler. IfM physical slots are padded
+to power-of-twoK, a generic Benes routing allowance is
+  S=(K/2)*(2log2K-1) switches;
+  A_init_route=S*(w+2h+1), X_init_route=3*A_init_route.
+This accounts for applying already supplied secret controls only. It does not
+generate the hidden correct target slots, prove initialization correctness, or
+provide an efficient multiparty permutation sampler. Do not present this as a
+complete malicious initialization construction. Whole-circuit malicious MPC
+could implement a specified initialization algorithm, but needs its own budget.
+
+9. RETAINED GARBLINGS AND STORAGE
+
+Physical live Boolean bits for one tree:
+  sum_levels (nodes_at_level * slots_per_node * (w+h+p+1)).
+Addallrecursive trees, finalflatmapB*h, anddictionary stash8*513. The counts
+above include trimming positions at deeper nodes, fullvirtualaddress metadata,
+and dummy bucket slots. Raw DB size64N is16GiB/256GiB and is not garbled storage.
+
+The S1 backend agent's literal generic AppendixF pack atn10,c=2,kappa128 is:
+  evaluatorP1: ownfieldshare16B +ownK16B +all10activeMlabels160B
+               +twoYshares32B =224B/Booleanwire;
+  otherparty: ownfieldshare16B +ownK16B +twoYshares32B =64B/wire.
+The activeMvector alone160B/wire is a component lower bound. The paper's PSS
+compresses ciphertext shares, not this complete evaluator label vector. Boolean
+Section5 has a different144.125B representation and must not silently replace
+the tri-state pack without a conversion/lifetime argument.
+
+For the F8 configurations, literal evaluator live state is628.88TiB /10,185.20TiB.
+At64B/wire one otherparty's full resident packstate wouldbe179.68TiB/2,910.06TiB.
+Keeping allninegarblerstates resident is a conservative deployment policy,
+NOT an established minimum: the artifact garbles onegadget's fullT history
+before moving on, enabling garblerstate retirement/streaming. Evaluator labels
+for all resident buckets remain a separate major storage requirement.
+
+Retained garbled PROGRAM tables are additional: atTlogical KV queries per
+epoch, M_program =T * generated_gate_vector_per_KV * backendbytes_per_gate,
+including allpreprocessing which the evaluator must retain for that epoch as
+appropriate. The proposal explicitly says its current implementation keeps all
+garbled circuitry in memory. Moving it toSSD or streaming an upcoming buffer
+requires correct scheduling and a separately measuredIO/latency budget.
+Programstorage can dwarf evenlivewirestate; it is not proportional just toN*64B.
+Preprocessing atconstant sustainedthroughput mustcontinuously regenerate this
+one-time material. A constant online round count does not eliminate its cost.
+
+10. WHAT IS / IS NOT ESTABLISHED
+
+Established here: explicit Boolean operation kernels independent of arithmetic
+MPC reductions; two full512-bit probes/KV plusoccupancy/stash/hash ledger;
+map recursion/base accounting; source-based finiteT invocation budgets;
+separate generated/visited work; physicalwirestate and epochprogram size formulas;
+finalpaper validation thatmergingonly removesstackcost andleavesRAM circuits.
+
+Not established: optimal Boolean lowering, a ten-party implementation, empirical
+AND/XOR/RO throughput, complete joint initialization/reinitialization, malicious
+private sampling ofbalancedpositionpermutations, service-lifetime stash failures,
+throughput scaling across a singlemutableRAMstate, or actual five-secondlatency.
+Zero stackcost does not discharge these independent obligations. Report costs
+as conditional construction scenarios, not deployed-price guarantees or lower
+bounds. A substantiallycheaper design may require arithmetic garbling, compressed
+state, betterpositionmapcircuits, differentORAM, orstrongerbackend optimizations.
+
+11. INDEPENDENT REVIEW OF THE PRICING INTEGRATION
+
+The pricing code correctly treats T as the number of KV queries: each query
+touches each of the two independent tables once, and the circuit vector already
+contains both probes. Thus program_bytes=T*generated_ANDs_per_KV*1728 has no
+additional factor of two. With T=2N and one10kQPS state, an epoch lasts14.91hours
+for N=2^28 and9.942days for N=2^32. Two full program/state copies are a declared
+current-plus-next deployment policy. One copy halves SSD capacity cost only;
+it does not halve recurring preprocessing/network cost. Full-epoch retention is
+not a theorem asserting a minimum GRAM space requirement.
+
+At the selected F8 layouts, applying the padded Benes initialization-routing
+allowance fromSection8 to every actual tree costs306,333 AND/KV (N=2^28) or
+352,984 AND/KV (N=2^32) after amortizing over T=2N. Equivalently this is153,167
+or176,492 AND per dense table cell. This is only application of valid supplied
+secret switch controls, excluding their generation and verification. Therefore
+100 or1000 AND/tablecell setup sensitivities are very small, not representative
+stress tests of even this simple source-inspired routing procedure.
+
+The backend review did not locate an explicit reactive/adaptive-client-input
+theorem in2025/444. A finite RAM program may choose its own internal addresses
+adaptively during execution, but continuous arrival of externally chosen client
+queries across one pregarbled epoch needs a protocol/security argument of its
+own. Treat this as an additional service-integration assumption; the static-
+corruption standalone MPC statement alone does not settle that question.
+
+The executable routing ledger is now exposed by garbled_circuit.py as
+benes_routing_setup(physical_slots, block_bits), probe_routing_setup(probe), and
+kv_lookup(...)[routing_setup_ands_per_epoch]. The last field counts both tables;
+the companion routing_setup_xors_per_epoch and routing_setup_control_bits_per_epoch
+record local XOR work and the number of supplied secret switch controls. The
+nested routing_setup field retains per-tree slot counts, padded dimensions,
+widths, and explicit exclusions. The helper leaves generated_ands unchanged:
+callers must choose to add setup/T, and must separately charge missing setup work.
+Focused tests verify switch counts, full physical-tree slot accounting, and
+two-table/epoch accounting. At the selected N28/N32 layouts, the exact AND counts
+per epoch are164,461,347,219,456 and3,032,108,669,849,600, respectively.

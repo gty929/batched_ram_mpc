@@ -1,0 +1,4145 @@
+Multiparty Garbling from OT
+with Linear Scaling and RAM Support
+David Heath⋆,
+Vladimir Kolesnikov⋆⋆,
+Varun Narayanan ⋆⋆⋆,
+Rafail Ostrovsky†, and
+Akash Shah‡
+Abstract. State-of-the-art protocols that achieve constant-round secure multiparty computation
+currently present a trade-off: either consume an amount of communication that scales quadratically
+in the number of parties, or achieve better asymptotics at the cost of high constant factors (e.g.
+schemes based on LPN or DDH).
+We construct a constant-round MPC protocol where communication scales linearly in the number
+of parties n. Our construction relies only on OT and RO, and it leverages packed secret sharing.
+Due to building on simple primitives, our protocol offers concrete improvement over asymptotically-
+efficient LPN-based schemes. We consider security in the presence of a dishonest majority where
+the malicious (with abort) adversary corrupts an arbitrary constant fraction of parties.
+By leveraging tri-state circuits (Heath et al. Crypto 2023), we extend our protocol to the RAM
+model of computation. For a RAM program that halts within T steps, our maliciously-secure
+protocol communicates O(n · T log3 T log log T · κ) total bits, where κ is a security parameter.
+1
+Introduction
+Secure multiparty computation (MPC) protocols enable mutually untrusting parties to securely run
+arbitrary programs on their joint, private inputs. It is well known that MPC can be achieved using only
+a constant number of protocol rounds by applying the garbled circuit (GC) technique [Yao86].
+Typically, GC techniques garble Boolean circuits in a gate-by-gate fashion. Roughly speaking, each
+gate is encoded as a simple encryption of the rows of that gate’s truth table. These rows are encrypted us-
+ing symmetric-key methods, based either on a PRG or a hash function/random oracle (RO). This means
+that the garbling of each gate is a string of length O(κ), where κ is a security parameter corresponding
+to the length of symmetric keys.
+Multiparty Garbling. GC is most commonly used in the two party setting, but a line of works, start-
+ing with [BMR90], uses GC to achieve MPC for an arbitrary number of parties n. Roughly speaking,
+the [BMR90] protocol uses an MPC protocol to garble a circuit in a preprocessing phase. This jointly
+garbled circuit can then be evaluated in a constant number of rounds, completing the protocol. A key
+observation is that all of the circuit’s gates can be garbled in parallel, so the distributed garbling also
+runs in a constant number of rounds. Thus, the protocol achieves constant-round MPC for any number
+of parties.
+A na¨ıve variant of [BMR90] would use the preprocessing protocol to evaluate cryptographic primitives
+inside MPC, an impractical1 non-black-box use of cryptography. Amazingly, [BMR90] showed that non-
+black-box cryptography is unnecessary; each of the n parties can call a PRG locally, and yet they jointly
+garble a single circuit. An undesirable side-effect of this black-box approach to distributed garbling is
+that the garbling of each Boolean gate blows up to a string of length O(n2 · κ).
+⋆UIUC, email: daheath@illinois.edu
+⋆⋆Georgia Tech, email: kolesnikov@gatech.edu
+⋆⋆⋆UCLA, email: varunnkv@gmail.com
+† UCLA, email: rafail@cs.ucla.edu
+‡ UCLA, email: akashshah08@g.ucla.edu
+1 Recently, [BEBB+24] showed that non-black-box garbling can be improved by employing MPC-friendly
+PRFs [DGH+21]. Even with such PRFs, the non-black-box technique only outperforms black-box methods
+when there are a large number of parties, and MPC-friendly PRFs are far less studied than standard PRFs.
+
+Protocol
+Built on
+Free XOR RAM Bits per gate
+[LPSY15]
+SHE, ZKPoPK
+✗
+✗
+O(n4 · κ)
+[LSS16]
+SHE, ZKPoPK
+✗
+✗
+O(n3 · κ)
+[HSS20]
+OT, RO
+✓
+✗
+O(n2 · κ)
+[WRK17b]
+OT, RO
+✓
+✗
+O(n2 · κ)
+[BCO+21]
+LPN
+✓
+✗
+O(n · κ)
+[BGH+23]
+LPN
+✗
+✗
+O(κ)
+[GGMP16]
+OT
+✗
+✓
+unspecified
+[GLM+24]
+DDH
+✗
+✗
+O(n · κ)
+Ours
+OT, RO
+✓
+✓
+O(n · κ)
+Table 1: Constant-round MPC protocols with malicious security. [BCO+21,BGH+23] encrypt gates with
+LPN, so their gate encryptions are concretely large.
+Malicious Multiparty Garbling. Despite its quadratic scaling, the [BMR90] protocol is surprisingly ef-
+ficient in the semi-honest model. However, the natural elevation to the malicious model by generic
+application of ZK proofs [GMW87] is expensive. Subsequent works improved maliciously-secure garbled-
+circuit-based MPC [LPSY15,LSS16,HSS20], culminating in the work of [WRK17b], which showed how
+to use lightweight preprocessing (refined by [YWZ20]) to achieve a distributed garbled circuit whose
+asymptotic size matches that of the original [BMR90] result: O(n2 · κ) bits per gate (see Table 1).
+Of course, it is desirable to further reduce the cost of the multiparty garbling by reducing scaling in
+the number of parties n. In search of this, prior work replaced straightforward encryptions of gates based
+on a PRG or RO by encryptions based on the learning parity with noise (LPN) assumption [BCO+21],
+or, more recently, based on DDH [GLM+24]. [BGH+23] showed that by using LPN it is even possible
+achieve scaling independent of the number of parties, when a broadcast channel is available.
+While these results are asymptotically excellent, they forgo the efficiency of simple PRG/RO-based
+encryption. LPN-based encryption requires long keys, resulting in large truth table encryptions. This
+cost manifests in high constant factors: for instance, although [BGH+23] asymptotically improves over
+[WRK17b] by factor n2 (given broadcast channels), the size of their distributed garbled circuit breaks
+even with that of [WRK17b] only when there are close to 300 MPC participants. Thus, it remains
+interesting to explore multiparty garbled circuit techniques that scale well with small concrete costs.
+We are interested in achieving the best of both worlds: linear in n complexity over point-to-point
+channels, while relying only on concretely-cheap RO-based encryption.
+Multiparty Garbled RAM. Many programs compile to large Boolean circuits, leading to impractical
+garbled-circuit-based handling. Garbled RAM (GRAM) extends garbling to the random access ma-
+chine model of computation, allowing to efficiently handle a broader variety of programs in constant
+rounds [LO13]. The objective of GRAM is to construct a garbled program that scales only quasilinearly
+in the runtime T of the cleartext RAM program.
+While
+Garbled
+RAM
+in
+the
+two-party
+setting
+has
+enjoyed
+significant
+atten-
+tion
+[GHL+14,GLO15,GLOS15,CH16,CCHR16,LO17,HKO22,PLS23,HKO23],
+multiparty
+variants
+of GRAM are not well explored. [GGMP16] demonstrated malicious multiparty GRAM, but theirs is a
+feasibility result; the authors make no efficiency claims, other than that they achieve quasilinear scaling
+in T. Formally, their cost is O(T · poly(n, log T, κ)). To our knowledge, no subsequent work improved
+this result, and it is crucial to consider multiparty GRAM with complexity that is more practical.
+1.1
+Our Contribution
+We construct a novel maliciously-secure MPC protocol that runs in constant rounds and where the total
+communication complexity is O(n · κ) bits per gate. Our protocol is secure against an adversary that
+statically corrupts up to n(1 −ϵ) parties, for any constant fraction ϵ > 0. We prove our protocol secure
+assuming OT and a random oracle (RO).
+Malicious MPC state-of-the-art comprises two protocols: [BGH+23] (constant in n over broadcast
+channels but concretely expensive; they require an honest majority), and [GLM+24] (O(n) but concretely
+2
+
+efficient and supports n −1 corruptions). We improve performance over both. At n = 256, our garbled
+circuit (resp. total) communication is 13.5× (resp. 1.76×) better compared to [GLM+24]. Compared to
+[BGH+23], our garbled circuit (resp. total) communication is 3.4× (resp. 28×) better for same value
+of n. Our improvement over
+[WRK17b] grows with n; for n = 256, our garbled circuit (resp. total)
+communication is 60× (resp. 20×) better.
+By leveraging the tri-state circuit (TSC) model [HKO23], we additionally achieve malicious multi-
+party garbled RAM with total communication cost O(n · T log3 T log log T · κ).
+In sum, we achieve the following:
+Theorem 1 (Informal). In the (RO+OT)-hybrid model, there exists a constant-round n-party MPC
+protocol that is secure in the presence of a malicious (with abort) adversary that statically corrupts any
+t ≤n(1 −ϵ) parties, for ϵ > 0. The protocol supports computations expressed either (1) as Boolean
+circuits, with communication cost O(n · κ) bits per gate, or (2) as RAM programs, with communication
+cost O(n · T log3 T log log T · κ) bits for a RAM program terminating within T steps.
+Our construction improves multiparty garbling for moderate numbers of parties (i.e., fewer than
+many hundreds of parties) and allows to handle the expressive class of RAM programs.
+1.2
+Intuition
+At the highest level, we build on the approach of [WRK17b] (or just WRK). Roughly speaking, the WRK
+protocol encodes each circuit wire as a BDOZ-style secret sharing [BDOZ11]. Namely, for each pair of
+parties i, j, party i holds a bit that is authenticated to party j. Because the WRK approach considers
+each pair of parties i, j, its encodings of wire values naturally have length O(n2 · κ) bits. In other words,
+the WRK circuit invariant can be characterized as maintaining MACs of XOR shares. WRK carefully
+arranges that these MACs can be treated as keys suitable to circuit garbling.
+Our key observation is that the WRK invariant is stronger than what is needed to ensure security.
+Rather than maintaining MACs of shares, we can maintain shares of MACs. That is, we can encode each
+circuit wire as a simple XOR secret sharing of n MACs – one MAC per party.
+With this change to WRK made, we can consider replacing XOR secret sharing by something more
+efficient: packed secret sharing. The parties still share n MACs, but these MACs are now packed into
+a constant number of polynomials over F2κ, and each party holds only one point per polynomial. This
+compresses the encoding of each wire value to a string of length only O(n · κ) bits.
+Executing on this simple intuition requires a substantial redesign of the protocol, especially of the
+preprocessing step. The payoff is that the protocol uses encodings that are significantly smaller than
+those in the WRK approach, asymptotically and concretely reducing communication complexity (see
+comparisons with prior work in Section 1).
+2
+Preliminaries
+Notation. We use κ and σ to denote the computational security parameter and statistical security
+parameter respectively. We use = to denote equality, ←to denote assignment, and
+$←−to denote sampling
+a uniform distribution. ∥denotes concatenation. We consider finite field F = GF(2κ) and q = log |F|.
+H : {0, 1}ℓ1 →{0, 1}ℓ2 denotes a random oracle whose input length (ℓ1(κ)) and output length (ℓ2(κ))
+are defined based on the context of its application.
+Let f denote an n-party function, and C denote a boolean circuit computing f. Let W and G denote
+the set of wires and set of gates in the circuit C. An XOR gate g ∈G with α and β as left and right
+input wires and γ as output wire will be denoted as g = (α, β, ⊕, γ); and AND gate g with α and β as
+left and right input wires and γ as output wire as g = (α, β, ∧, γ). The set of gates is partitioned into
+G⊕and G∧which are, respectively, the set of all XOR and AND gates in C. Let Ii be the input wires
+of Pi for each i ∈{1, . . . , n}, W⊕be the set of all outputs wires of G⊕, and W∧be the set of all outputs
+wires of G∧, and O be the set of output wires. Then, {Ii}n
+i=1, W⊕and W∧form a partition of W.
+3
+
+2.1
+Security Model
+We consider the standard notion of maliciously-secure n-party MPC with abort. Let P1, . . . , Pn denote
+the n parties. We prove standalone security against a non-adaptive computationally-bounded malicious
+adversary that corrupts up to t < n(1 −ϵ) of the parties, for some ϵ > 0. For completeness, we describe
+the model in detail in Appendix A.
+2.2
+Secret Sharing
+We use additive secret sharing, Shamir secret sharing and packed Shamir secret sharing in our construc-
+tions.
+Definition 1. An n-party t-private perfect secret sharing scheme for message domain X is defined by a
+sharing function Share : X×R →S1×. . .×Sn and a reconstruction function Reconstruct : S1×. . .×Sn →
+X satisfying the following properties:
+Correctness. For any x ∈X and r ∈R, Reconstruct(Share(x, r)) = x.
+Privacy. For any x, x′ ∈X, and set A ⊂[n] such that |A| ≤t, the following distributions are identically
+distributed:
+
+si : i ∈A
+r
+$←−R; (s1, . . . , sn) ←Share(x, r)
+
+and
+
+si : i ∈A
+r
+$←−R; (s1, . . . , sn) ←Share(x′, r)
+
+.
+Additive Secret Sharing. We denote additive secret sharing of x ∈F by ⟨x⟩and share of party Pi is
+denoted by ⟨x⟩i.
+Packed Shamir secret sharing (PSS). PSS was proposed by [FY92]. Consider a finite field F over
+at least n + ℓdistinct points (e1, . . . , en, a1, . . . , aℓ). A degree-d PSS of a secret x = (x1, . . . , xℓ) in Fℓ
+is a vector s = (f(e1), . . . , f(en)) in Fn where f(·) is a polynomial over F of degree at most d sampled
+uniformly at random, subject to the constraint that f(ai) = xi for all i ∈[ℓ].
+In other words, Share algorithm of PSS distributes a share si to each party Pi such that, denoting
+(e1, . . . , en) by e and (a1, . . . , aℓ) by a, f(a) = x, and f(e) = s. For the same reason as in standard
+Shamir secret sharing, a collusion of t ≤d −ℓ+ 1 parties learn nothing about the secret. On the other
+hand, d + 1 shares can be interpolated to reconstruct the secret x (Reconstruct algorithm).
+Throughout this paper, we will only consider degree-(n−1) PSS that secret shares ℓ= (n−t) secrets
+with t-security. We use [x] to denote a polynomial of degree at most n −1 with the secret x stored at
+coordinates a = (n + 1, . . . , n + ℓ). We abuse this notation to also denote the output of PSS sharing
+algorithm, whenever the coordinates holding the shares are clear from context. The share of party Pi
+is denoted by [x]i. For two secrets x1, x2 ∈Fℓ, [x1] + [x2] denotes each party Pi locally adding their
+respective PSS shares to obtain shares of [x1 + x2].
+We use information-theoretic MACs to verify the authenticity of computation. For a given PSS [x],
+we hold PSS of the form [Ψ · x], where Ψ ∈$ F is the MAC key.
+2.3
+Circuits
+In this work, we consider two circuit models: boolean circuits and tri-state circuits (TSCs) [HKO23]. A
+circuit C (boolean or tri-state) is represented as a list of 2-input, 1-output gates (α, β, γ, type), where α
+and β are the identifiers of input wires, γ is the identifier of the output wire, and type denotes the gate
+type. For a boolean circuit, type ∈{⊕, ∧}. Below, we recall the notion of TSC as introduced in [HKO23].
+4
+
+Definition 2 (Tri-State Circuit (TSC) [HKO23]).
+A tri-state circuit is a list of gates
+(α, β, γ, type), where gate type “type” is either XOR (⊕), buffer (/), or join (▷◁). A tri-state wire carries
+a value in the set {0, 1, Z, ✗}. Informally, Z denotes that a wire does not yet have a value, and ✗denotes
+an error. The gate semantics are defined as follows:
+⊕
+Z
+0
+1
+✗
+Z
+Z
+Z
+Z
+✗
+0
+Z
+0
+1
+✗
+1
+Z
+1
+0
+✗
+✗
+✗
+✗
+✗
+✗
+/
+Z
+0
+1
+✗
+Z
+Z
+Z
+Z
+✗
+0
+Z
+Z
+0
+✗
+1
+Z
+Z
+1
+✗
+✗
+✗
+✗
+✗
+✗
+▷◁
+Z
+0
+1
+✗
+Z
+Z
+0
+1
+✗
+0
+0
+0
+✗
+✗
+1
+1
+✗
+1
+✗
+✗
+✗
+✗
+✗
+✗
+Tri-state circuits allow cycles in their graph. I.e., the input to a particular gate can be defined by a later
+gate. Inputs to the tri-state circuit are boolean-valued (i.e., in {0, 1}), and all other wires initially hold
+Z. At each step of evaluation, an arbitrary gate is chosen and its output wire is updated such that it
+is consistent with its gate function and its input wires. This continues until their are no further gates
+whose evaluation would change the wires.
+It will be convenient to consider a specific class of tri-state circuits which [HKO23] refer to as total
+TSCs:
+Definition 3 (Total TSC [HKO23]). Change the semantics of tri-state join gates such that they are
+multidirectional. Namely, executing a join gate updates each of its connected wires to the value α ▷◁β ▷◁γ.
+A tri-state C is considered total if after executing C on arbitrary input x, every wire in C has a boolean
+value. We henceforth only consider tri-state circuits that are total.
+The interesting property of tri-state circuits is that they can execute RAM programs [HKO23].
+Namely, T steps of random access machine execution can be compiled to a quasilinear in T number
+of tri-state gates. The key to this reduction is that tri-state circuit gates can execute in an order that
+depends on the input; this is formalized by the arbitrary gate evaluation order in Definition 2.
+Additionally, tri-state circuits can be garbled. The idea here is that the garbled circuit evaluator can
+evaluate gates in the runtime-prescribed order. However, this requires leaking to the evaluator the order
+in which gates should execute. To account for this, we consider oblivious tri-state circuits:
+Definition 4 (Oblivious TSC [HKO23]).
+We refer to the “denominator” β of each buffer gate
+(α, β, γ, /) as its control wire. Let controls(C, x) denote the collection of all control wire values in C
+upon executing with input x. Let D denote a distribution on bitstrings. We say that a tri-state circuit
+family {Ci : i ∈N} and family of distributions {Di : i ∈N} form an oblivious tri-state circuit if there
+exists a simulator Simctrl such that for all inputs x the following ensembles are statistically close:
+{controls(Cσ, (x; r)) : r
+$←−Dσ} ≈Simctrl(1σ)
+[HKO23] show that the order of execution of a tri-state circuit is implied by the configuration of
+its “control wires” alone. For particular tri-state circuits with randomized input, it is possible to show
+that these control wire values can be simulated, which implies that the garbled circuit evaluator learns
+nothing about the true input from the order of execution. Note that in the malicious setting, the tri-
+state circuit distribution Dσ must be jointly sampled by all parties as part of preprocessing. Here, it is
+crucial that the considered distributions are “simple”. In this work, all distributions consist simply of
+multiplication triples.
+2.4
+RAM Model of Computation and Connection to TSCs
+We consider a standard word random access machine (word RAM). The considered machine runs for T
+steps and has a memory where each memory cell has size w = Θ(log T) bits. We assume that each basic
+5
+
+instruction of the machine can be expressed by a Boolean circuit of size O(log2 T); this is sufficient to
+include instructions such as addition, multiplication, etc.
+[HKO23]’s key contribution was to show that there exists a relatively small oblivious tri-state circuit
+that achieves the behavior of such a machine. Specifically, there exists an oblivious tri-state circuit of size
+O(T · log3 T · log log T) that implements a word RAM. For our purposes, this means that it is sufficient
+to achieve the semantics of tri-state gates. By achieving multiparty garbling of each tri-state gate at cost
+O(n · κ), we as a corollary obtain multiparty garbled RAM with cost O(n · T log3 T log log T · κ).
+2.5
+Super Invertibility
+We recall the notion of super invertibility below.
+Definition 5 (Super Invertible Matrix).
+Let M ∈Fn×m. For any H ⊂{1, . . . , n} of size m, let
+MH be the m×m dimensional sub-matrix defined by the rows H of M. The matrix M is super-invertible
+if MH is invertible for every H ∈{1, . . . , n} of size m.
+Proposition 1. Suppose M ∈Fn×m is a super-invertible matrix. Then, for any H ⊂{1, . . . , n} of size
+m and any fixing of vi ∈F for each i ∈{1, . . . , n}\H, when vi is uniformly and independently distributed
+in F for each i ∈H, (v1, . . . , vn) · M is uniformly distributed in Fm.
+3
+Technical Overview
+In this section, we present in sufficient low-level detail to understand our contribution. Subsequent
+sections formalize our protocol.
+We start by reviewing [WRK17b]’s multiparty garbling protocol. Recall from Table 1, WRK incurs
+quadratic total communication in the number of parties n. As discussed in Section 1.2, rather than using
+WRK’s MACs on shares approach, we instead simplify to shares of MACs. This change is crucial, as
+it enables us to cleanly integrate packed secret sharing (PSS) into WRK. This results in a scheme for
+multi-party authenticated garbling of boolean circuits whose communication scales linearly with n.
+We extend this approach to tri-state circuits [HKO23], achieving multi-party authenticated GRAM.
+The communication of this construction also scales linearly with n, so our GRAM incurs communication
+cost O(n · log3 T · log log T · κ).
+3.1
+[WRK17b] Review
+Readers familiar with details of WRK may choose to skip this subsection.
+WRK introduces a multiparty garbling protocol where party P1 serves as the evaluator, and parties
+P2, . . . , Pn act as garblers. The protocol maintains a key invariant: the evaluator learns the value on each
+circuit wire masked by a random bit. To securely evaluate a circuit, the parties propagate this invariant
+across circuit gates, and then they jointly decrypt the circuit output.
+In more detail, WRK associates with each circuit wire w a random mask r(w). This bit r(w) is secret-
+shared and authenticated to prevent a malicious adversary (even one who corrupts a majority of the
+parties) from learning or tampering with r(w). To achieve this, WRK uses BDOZ-style secret sharing
+[BDOZ11]. In BDOZ-style secret sharing, each party Pi holds a global MAC key ∆i ∈{0, 1}κ. The
+BDOZ-style sharing of a bit x comprises additive secret shares (x1, . . . , xn). In addition, each party Pi’s
+share xi is authenticated to every other party Pj̸=i, using the latter party’s MAC key ∆j. Specifcally, a
+BDOZ-style secret sharing of x, which we denote by bdoz(x), has the following form:
+bdoz(x)i = (xi, (Ki[xj])j̸=i, (Mj[xi])j̸=i)
+6
+
+Here, each Ki[xj] is chosen uniformly from {0, 1}κ, and each Mj[xi] = Kj[xi] ⊕xi∆j. It is easy to see
+that BDOZ-style secret sharing is linearly homomorphic. Namely, if parties hold shares bdoz(x), bdoz(y),
+and if they locally XOR their respective shares, they obtain a valid BDOZ-style sharing bdoz(x ⊕y).
+WRK makes the important observation that, due to linear homomorphism, the same ∆i can be
+re-used as both the MAC key for BDOZ-style authentication, as well as garbler Pi’s Free XOR correla-
+tion [KS08].
+During evaluation, WRK maintains the invariant that for an evaluated wire w holding logical value
+x(w), evaluator P1 holds the masked true value ρ(w) = x(w) ⊕r(w) and all garblers’ MACs (X(w)
+i
+⊕ρ(w) ·
+∆i)i̸=1 authenticating ρ(w). Crucially, the mask r(w) hides logical value x(w) from P1, and the randomly
+chosen X(w)
+i
+held by garbler Pi hides ρ(w) · ∆i (and hence ∆i) from P1.
+In short, WRK handles XOR gates “for free”, thanks to the linear homomorphism of its representation
+of wire values. AND gates require that each garbler send to the evaluator an encryption of size O(nκ) bits.
+Thus, each AND gate incurs a total communication cost of O(n2κ) bits. For completeness, Appendix B
+provides a detailed explanation of WRK’s gate handling.
+3.2
+Replacing BDOZ-Style Sharings by Packed Secret Sharings
+The BDOZ-style secret sharing of r(w) requires that each party save an authentication of each other
+party’s additive share of r(w), using their global MAC. Hence, each party stores Ω(nκ) bits per wire
+mask; consequently, each party’s garbling of an AND gate requires Ω(nκ) bits. However, we observe that
+authenticating each party’s share to all other parties is not necessary. Instead, it suffices to authenticate
+r(w) itself using every party’s MAC key.
+The goal of authenticating r(w) is to prevent an adversary from erroneously flipping r(w), which
+would consequently flip wire value x(w), compromising the protocol’s security. But, neither security nor
+correctness of the protocol is affected by manipulations of shares (r(w)
+i
+)i∈[n] that leave r(w) unchanged,
+although the WRK protocol would abort under such manipulations. This observation was previously
+exploited in [KPR18].
+Building on this observation, we replace the BDOZ-style secret sharing of the wire mask r(w) by
+an authenticated secret sharing of (1) the value r(w) and (2) the authentication of r(w) by each party’s
+MAC. In the authenticated sharing of r(w), denoted by sec(r(w)), Pi’s share is as follows (⟨·⟩denotes an
+additive secret-sharing over a field F, and ∆i is Pi’s MAC):
+sec(r(w))i = (⟨r(w)⟩i, (⟨r(w) · ∆j⟩i)n
+j=1)
+As in WRK, we maintain the invariant that for an evaluated wire w with logical value x(w), the
+evaluator P1 holds the following:
+ρ(w) = x(w) ⊕r(w)
+and
+(X(w)
+i
+⊕ρ(w) · ∆i)i̸=1,
+Here, each X(w)
+i
+is a label held by garbler Pi. Garbling and evaluation closely follows WRK’s approach,
+as the redefined secret-sharing sec is also linearly homomorphic. XOR gates are handled locally, and
+AND gates are garbled similarly to as in WRK, by preprocessing multiplication triples of the following
+form:
+sec(r(α)), sec(r(β)), sec(r(α) · r(β))
+Here, r(α), r(β) are the masks on input wires to an AND gate.
+Note that we have not yet addressed the inefficient n2 scaling of WRK’s approach. This inefficiency
+persists even with the redefined sharings sec(r(w)), since sec(r(w)) contains a sharing of each ∆i · r(w).
+However, the above change makes it clearer that we can pack wire authentications together. Such packing
+will come at the expense of reducing the corruption threshold to ensure a constant fraction of honest
+parties, but it will greatly decrease communication cost.
+7
+
+Specifically, the above secret-sharing consists of n additive shares of authentications; we replace these
+by n/ℓpacked secret-sharings (PSS), where each packed secret-sharing holds authentications by ℓdistinct
+MAC keys. (For simplicity, we assume ℓdivides n.) The use of PSS ensures security against corruption
+of up to t = n−ℓparties. When ℓis a constant fraction of n, this results in a multiparty garbling scheme
+with O(κ) sized garbling per party per gate.
+Let ∆(χ) = (∆1+(χ−1)ℓ, . . . , ∆χℓ) for each 1 ≤χ ≤n/ℓ, and let [∆(χ) · r(w)] denote a packed secret
+sharing of r(w) · ∆(χ), where the multiplication is the standard scalar-vector multiplication. Our new
+sharings of wire masks r(w) are of the following form:
+pack(r(w)) =
+
+⟨r(w)⟩, ([∆(j) · r(w)])n/ℓ
+j=1
+
+Additionally, each Pi holds a label X(w)
+i
+, and their share of a packing of these labels [X(w,χ)] for each
+1 ≤χ ≤n/ℓ, where X(w,j) = (X(w)
+1+(j−1)ℓ, . . . , X(w)
+jℓ). For an evaluated wire w, our protocol also maintains
+the invariant that P1 holds ρ(w) and X(w)
+i
+⊕ρ(w) · ∆i, for all i̸ = 1.
+Interestingly, the garbling and evaluation procedures for these new forms is largely unchanged; we
+present details of gate handling in Section 5. However, the preprocessing of appropriate multiplication
+triples, needed to evaluate AND gates, becomes more sophisticated; see Section 3.4.
+3.3
+Multi-party Authenticated Garbled RAM
+Recall that one of our goals in this work is to achieve malicious multiparty garbled RAM. The tri-state
+circuit (TSC) model (see Section 2.3) provides a means by which to efficiently reduce RAM to a collection
+of explicitly connected gates [HKO23].
+The key attribute of TSCs is that their gates evaluate in data-dependent orders. Of course, this data
+dependence could compromise security, so
+[HKO23] introduced the notion of an oblivious TSC. An
+oblivious TSC is a randomized TSC circuit C that, in addition to the input x, also takes a string r of
+random bits distributed according to a distribution D and outputs C(x, r). The randomness r ensures
+that the order of execution of the gates can be simulated. [HKO23] showed that an oblivious TSC of
+size O(T log3 T log log T) can simulate T steps of any RAM program.
+In general, the oblivious TSC definition allows arbitrary distributions D which, for us, would be
+problematic, since, as we will discuss, the parties must sample D jointly. Fortunately, [HKO23] showed
+that if the goal is to use an oblivious TSC to emulate RAM, then it suffices to consider a distribution D
+consisting only of independent uniform bits and Beaver multiplication triples.
+Our handling of oblivious TSCs many follows our handling of Boolean circuits, so we focus on the
+differences. In our authenticated garbling of oblivious TSC (C, D), the garblers jointly garble of the
+circuit C. They sample from distribution D using a preprocessing functionality.
+By giving handling of each of the TSC gate types and appropriately incorporating preprocessing, we
+show how to securely evaluate a TSC with cost O(nκ) bits per gate, and hence as a corollary we obtain
+malicious multiparty garbled RAM at cost O(n·T log3 T log log T ·κ). Section 6 expands on our handling
+of TSCs.
+3.4
+Preprocessing the Correlations
+To propagate our packed secret shares of authentications across gates, we will need appropriate prepro-
+cessed randomness on each wire, and for AND gates we need a kind of preprocessed multiplication triple.
+Moreover, these correlations need to be securely sampled with O(|C|) communication per party. Many of
+the techniques needed for this preprocessing are known, but finding the right combination of techniques
+and incorporating them with multiparty garbling is one of the more technically-involved aspects of this
+work. We next present an overview of our preprocessing phase.
+8
+
+In the main protocol, for each wire w that is not the output wire of an XOR gate, the bit mask r(w)
+is to be sampled uniformly at random. To ensure free XOR, r(γ) is set to r(α) ⊕r(β) for every XOR gate
+(α, β, γ, ⊕). Further, for each AND gate σ = (α, β, γ, ∧), r(σ) is set to r(α) ∧r(β). Let D be correlation
+among the bit masks corresponding to all the wires excluding the output wires of XOR gates and bit
+masks corresponding to AND gates. In our construction, it suffices for the preprocessing stage to achieve
+the following: distribute pack(r) for each bit mask in D; and for the output wire w of each AND gate,
+deliver a randomly chosen label X(w)
+i
+to each Pi, and distribute PSS of X(w,χ) for each i ≤χ ≤n/ℓ,
+where X(w,χ) = (X(w)
+1+(χ−1)ℓ, . . . , X(w)
+χℓ). The latter can be achieved using an existing random secret
+sharing protocol from the literature which requires amortized O(1) communication per party per wire.
+The former is achieved in two steps. (i) securely sample bit masks according to the correlation D, and
+distribute |D|/ℓpacked secret sharing, each secret sharing a fresh batch of ℓbits in D; (ii) use the PSS
+of bit masks to compute distribute pack(r(w) for each bit mask w.
+To realize step (i), we first build an n-party circuit CD of size O(|C|) and constant depth that
+effectively samples the bit masks {r(w)}w (embedded in the ambient characteristic 2 field) according
+to the distribution D, and distributes SPDZ-style authenticated PSS of the bit masks; i.e., [r(ω)] and
+[ϕ · r(ω)], where {r(ω)}ω is a batching of all the bits masks into vectors of length ℓ, and ϕ is a random
+MAC key that is additively secret shared among the parties. The authentication of PSS prevents the
+corrupt parties from tampering with their shares in step (ii) of the preprocessing. The step (i) is realized
+by securely evaluating CD using a t-secure MPC protocol.
+The next step is to compute pack(r(w) for each bit r(w) in D. This involves computing ∆i · r(w) for
+each 1 ≤i ≤n: a computation requiring Ω(n|C|) multiplications, hence, cannot be realized within our
+communication budget by securely evaluating an appropriately designed circuit since any such circuit
+will be of size Ω(n|C|).
+In this step, we ‘unpack’ [r(ω)] generated in step (i), and compute PSS r(w) · ∆(χ) for each bit mask
+r(w) in D and ∆(i) = (∆1+(χ−1)ℓ, . . . , ∆χℓ) for each 1 ≤χ ≤n/ℓ. For this, every Pi and Pj engage
+in a secure 2-party computation to compute an additive secret sharing of ∆i · [r(ω)]j where ∆i is Pi’s
+randomly chosen global MAC. Using these additive shares, the parties obtain fresh PSS of [∆i · r(ω)] for
+each ω and i. The next task is to reroute the secrets in {[∆i · r(ω)]}ω,i to obtain [∆(χ) · r(w)] for each
+bit mask r(w) and χ. This is essentially a special case of network routing [GPS22]. For this we use an
+observation about reconstructing sub-shares. If each Pi sub-shares their share in a scalar Shamir secret
+sharing of a secret r ∈F, and every party reconstructs the secret defined by the sub-shares they received,
+then every party now holds a fresh re-sharing of r. Analogously in PSS, suppose each Pi sub-shares a
+packed secret sharing of shares ([r(1)]i, . . . , [r(ℓ)]i) where each [r(k)]i is Pi’s share in [r(k)] which secret
+shares r(k) ∈Fℓ, and every party reconstructs the secret vector defined by the sub-shares they received.
+Then every party now holds their share in a fresh PSS of (r(1)
+j , . . . , r(ℓ)
+j ) for each 1 ≤j ≤ℓ.
+Corrupt parties can sabotage the above approach in two ways: by providing incorrect and inconsistent
+inputs during the 2-party computations, and by adding additive errors to the secret sharings in the
+subsequent rounds. The latter effectively adds an additive error to the final output of every party which
+does not affect the security of the multi-party garbling and circuit evaluation. However, the former can
+sabotage the security of the protocol. To overcome this, we crucially use the fact that the step one
+authenticated [r(ω)] with a SPDZ-style authentication [ϕ · r(ω)]. We use standard random consistency
+checks to ensure that every corrupt party provided consistent inputs which preserve the secret shared
+by every PSS in the 2-PC.
+4
+Preprocessing for Garbling of Boolean Circuits
+In this section, we realize the preprocessing functionality FGBC-Pre described in Figure 4.1 that samples
+the correlations required to carry out the garbling.
+We follow the two step construction sketched in Section 3.4: (i) securely compute the mask correlation
+D, and distribute |D|/ℓPSS, each secret sharing a fresh batch of ℓbits in D; (ii) use the PSS of bit
+9
+
+masks to compute authenticated PSS of the masks, and, additionally, distribute the necessary random
+labels and their PSS. At the end of the second step, we would have realized FGBC-Pre.
+Public Input. Description of the circuit C.
+1. Sample (r(w)
+w∈W\W⊕, r(g)
+g∈G∧)
+$
+←−D. Map w ∈G∧∪W \ W⊕to w ∈{1, . . . , |G∧∪W \ W⊕|} using Υ.
+2. Sample ∆i
+$
+←−F and send ∆i to party Pi, for each 1 ≤i ≤n.
+3. For each 1 ≤χ ≤⌈n/ℓ⌉, distribute PSS [∆(χ)]
+$
+←−Share(∆(χ)), where ∆(χ) = (∆(1+(χ−1)ℓ), . . . , ∆(χℓ)).
+4. For each 1 ≤w ≤|G∧∪W \ W⊕|, distribute additive secret sharing ⟨r(w)⟩
+$
+←−Share(r(w)), and PSS
+[r(w) · ∆(χ)]
+$
+←−Share(r(w) · ∆(χ)) for each 1 ≤χ ≤⌈n/ℓ⌉.
+5. For each 1 ≤w′ ≤|O ∪I|, distribute additive secret sharing ⟨o(w′)⟩
+$
+←−Share(0).
+6. For each 1 ≤w′′ ≤|G∧|, sample X(w′′)
+i
+$
+←−F for each 1 ≤i ≤n; Send X(w′′)
+i
+to each Pi, and distribute
+PSS [X(w′′,χ)]
+$
+←−Share(X(w′′,χ)) for each 1 ≤χ ≤n/ℓ, where X(w′′,χ) = (X(w′′)
+1+(χ−1)ℓ, . . . , X(w′′)
+χℓ
+).
+Corrupt Parties. Corrupt parties can choose their outputs and add an additive error to every secret sharing.
+Fig. 4.1: Functionality FGBC-Pre
+4.1
+Generating Mask Correlation
+We define a correlation D that describes the wire and gate masks required to generate the multiparty
+garbling of C, and its XOR-free variant.
+Definition 6 (Mask correlation).
+For each wire w ∈W \ W⊕, choose r(w) uniformly and inde-
+pendently from {0, 1}. Traverse C according to a topological ordering. Set r(γ) ←r(α) ⊕r(β) for each
+gate (α, β, γ, ⊕) ∈G⊕and set r(γ) ←r(α) ∧r(β) for each (α, β, γ, ∧) ∈G∧. The distribution D outputs
+({r(w)}w∈W\W⊕, {r(g)}g∈G∧).
+For each w ∈W \ W⊕, define W(w) = w. For each w ∈W⊕, define W(w) ⊆W \ W⊕such that
+r(w) = ⊕w′∈W(w)r(w′) under the distribution D. The distribution D can be alternatively defined as
+Pr
+"
+r(w) = b(w), ∀w ∈W
+r(g) = b(g), ∀g ∈G∧
+
+
+{r(w)}w∈W, {r(g)}g∈G∧
+
+$←−D
+#
+= Pr
+
+
+r(w) = b(w), ∀w ∈W
+r(g) = b(g), ∀g ∈G∧
+
+r(w)
+$←−{0, 1}, ∀w ∈W \ W⊕
+r(w) = ⊕w′∈W(w)r(w′), ∀w ∈W⊕
+b(g) = r(α) ∧r(β), ∀g = (∧, α, β, γ) ∈G
+
+
+Circuit for sampling the masked correlation. The circuit CD which samples authenticated PSS
+of the masked correlation D is described in Figure 4.2. The circuit samples the bit masks according to
+D, and distributes PSS [r(ω)] and [ϕ · r(ω)], where {r(ω)}ω is a batching of all the bits masks in D into
+vectors of length ℓ, and ϕ is a randomly sampled MAC key that is additively secret shared among the
+parties. The authentication of PSS is necessary to prevent the corrupt parties from tampering with their
+shares in the secret shares distributed by this step during the next step of the preprocessing protocol.
+CD also distributes authenticated PSS of a random x ∈F which is also used in the checking phase of
+the next step.
+In D, for each w ∈W \ W⊕, r(w) is a uniform bit. CD samples them as follows: CD expects each Pi
+to provide ˆri such that (ˆr1, . . . , ˆrn) is a PSS of a random ℓ-bit string embedded in Fℓ. The circuit recon-
+structs the secret (a linear operation) to obtain ℓrandom bits. Repeating this sufficiently many times,
+10
+
+CD obtains sufficiently many (purported) random bits. Indeed, each such r(w) is a uniform independent
+bit if it belongs to {0, 1} ⊂F; this membership can be verified with the check: r(w)(r(w) −1) = 0. CD
+outputs err as a random linear combination of the above checks computed for all the sampled values;
+err is non-zero with overwhelming probability if at least one of the checks fail.
+In D, for any AND gate g = (α, β, γ, ∧), r(g) = (⊕(α)
+w∈Wr(w)) ∧(⊕(β)
+w∈Wr(w)), where W(θ) ⊆W \ W⊕
+for each θ ∈{α, β}. Hence, CD can compute the remaining bits {r(g)}g∈G∧using a depth 2 circuit.
+The circuit then takes a random field element ϕi from each Pi and computes ϕ as its sum, effectively
+additively secret sharing ϕ among the parties. It remains to distribute [r(ω)] and [ϕ·r(ω)], where {r(ω)}ω
+is a batching of all the bits masks into vectors of length ℓ. This is straightforward since the secret vector
+and randomness can be mapped to the shares of the PSS using a linear transformation. The randomness
+needed for PSS is obtained using a super-invertible matrix ensuring that (n −t) random field elements
+can be extracted by taking one random element from each party. Along similar lines, the circuit also
+computes [r(ω)] and [ϕ · r(ω)], where x
+$←−Fℓ.
+CD is t-secure, in that, the PSS distributed by CD are secure whenever the adversary corrupts at
+most t among the n-parties evaluating the circuit. Further, the circuit uses O(|C| and gates and O(|C|/n)
+field elements as inputs from each party. This is formalized in Lemma 1. Later, a t-secure MPC protocol
+is used to securely evaluate CD resulting in t-securely sampling of all the PSS computed by the circuit.
+Definitions. Define T = ⌈(|W \ W⊕| + |G∧| + 1)/ℓ⌉. Let M ∈Fn×ℓbe a super-invertible matrix. Let
+Υ : (W \ W⊕) ∪G∧→{1, . . . , |W \ W⊕| + |G∧|} be an enumeration such that for any w ∈W \ W⊕,
+Υ(w) ≤|W \ W⊕|.
+1. Receive ϕi for each Pi. Define ϕ = P
+i ϕi.
+2. For each 1 ≤j ≤⌈(|W \ W⊕|)/ℓ⌉, receive ˆr(j)
+i
+∈F from each Pi. Interpret (ˆr(j)
+1 , . . . , ˆr(j)
+n ) as a PSS and
+recover (r(1+(j−1)ℓ, . . . , r(jℓ)) as the secret vector.
+3. Receive ˆl(j)
+i
+∈F from each Pi and let (l(1+(j−1)ℓ), . . . , l(jℓ)) = (ˆl(j)
+1 , . . . , ˆl(j)
+n ) · M for each
+1 ≤j ≤⌈|W \ W⊕|/ℓ⌉. Set err = P|W\W⊕|
+j=1
+l(j) · r(j) · (r(j) ⊕1).
+4. For each gate g ∈G∧, when g = (α, β, ∧, γ), define r(Υ (g)) =
+
+⊕w∈W(α)rΥ (w)
+∧
+
+⊕w∈W(β)rΥ (w)
+.
+Finally, set r(|W\W⊕|+|G∧|+1) ←1.
+5. For each 1 ≤j ≤⌈(2n + (n −ℓ) · T) /ℓ⌉, receive ˆa(j)
+i
+∈F from each Pi. Let
+(a(1+(j−1)ℓ), . . . , a(jℓ)) = (ˆa(j)
+1 , . . . , ˆa(j)
+n ) · M.
+6. For 1 ≤ω ≤T, let r(ω) = (r(1+(ω−1)ℓ), . . . , r(ωℓ)). Sample [r(ω)]
+$
+←−Share(r(ω)) using
+(a(1+(ω−1)(n−ℓ)), . . . , aω(n−ℓ)) as randomness.a I.e., using the appropriate Vander-Monde matrix V ,
+compute
+[r(ω)] = (r(1+(ω−1)ℓ), . . . , r(ωℓ), a(1+(ω−1)(n−ℓ), . . . , aω(n−ℓ)) · V.
+7. Let a(j+1), . . . , a(j+n), for some j, be unused in the previous step, interpret (a(j+1), . . . , a(j+n)) as a PSS
+[x].
+8. Similarly, use fresh randomness to compute [ϕ · x]
+$
+←−Share(ϕ · x) and [ϕ · r(ω)]
+$
+←−Share(ϕ · r(ω)) for each
+1 ≤ω ≤T.
+9. To each party Pi, send err, ϕi, [x]i, [ϕ · x]i, and [r(ω)]i and [ϕ · r(ω)]i for each 1 ≤ω ≤T.
+a In the last iteration, pad (r(1+(T −1)ℓ, . . . , r(|W\W⊕|+|G∧|+1)) with unused a(k) to make it ℓ-dimensional
+Fig. 4.2: Description of the circuit CD.
+Lemma 1. Suppose (ˆr(j)
+1 , . . . , ˆr(j)
+n )
+$←−Share(b(j)) where b(j)
+$←−{0, 1}ℓ⊂F for each 1 ≤j ≤⌈|W \
+W⊕|/ℓ⌉. Let Pi, i ∈M be a set of at most t = n −ℓparties. Suppose each Pi, i /∈M chooses each ˆr(j)
+i
+as defined above and the rest of the inputs uniformly at random. Then, for any fixing of the inputs of
+11
+
+Pi, i ∈M, conditioned on err = 0, with all but 1/|F| probability, the outputs of CD are distributed as
+
+
+
+
+
+
+
+
+ϕ,
+[x], [ϕ · x],
+{[r(ω)]}ω,
+{[ϕ · r(ω)]}ω
+
+ϕ
+$←−F, x
+$←−Fℓ, [x]
+$←−Share(x), [ϕ · x]
+$←−Share(ϕ · x),
+{r(w)}1≤w≤|D|
+$←−D, r(|D|+1) = 1, {r(w)
+$←−F}|D|+1<w≤ℓ⌈(|D|+1)/ℓ⌉,
+r(ω) = (r(1+(ω−1)ℓ), . . . , r(ωℓ)), 1 ≤w ≤⌈(|D| + 1)/ℓ⌉
+[r(w)]
+$←−Share(r(w)), [ϕ · r(w)]
+$←−Share(ϕ · r(w))
+
+
+
+
+
+
+
+
+.
+Furthermore, CD has O(|C|) multiplication gates, receives O(|C|/n) inputs from each party, and provides
+O(|C|/n) outputs to each party.
+The proof of Lemma 1 is given in Appendix D.1.
+Securely Evaluating Circuit CD\D⊕. We use the SuperPack protocol (ΠSP) proposed in [EGP+23] to
+securely compute circuit CD\D⊕. The protocol makes use of programmable Multi-party Vector Oblivious
+Linear Evaluation (VOLE) functionality, FnVOLE, and programmable OLE functionality, FProg
+OLE , proposed
+in [RS22] (see Appendix C for the description of these functionalities). Raichuri and Scholl [RS22] propose
+instantiations of FProg
+OLE and FnVOLE functionality that achieve sub-linear communication complexity in
+the amount of preprocessed data in ΠSP construction based on variants of Ring-LPN/LPN assumption
+[BCG+20,RS22]. We recall the result of [EGP+23] below.
+Theorem 2. Let ϵ > 0 be a constant. For an arithmetic circuit C that computes an n-ary functionality
+F, there exists an n-party protocol that computes C with computational security against a fully mali-
+cious adversary who can control t ≤n(1 −ϵ) corrupted parties with O(|C|n) total communication in
+{FProg
+OLE , FnVOLE}-hybrid.
+We highlight that using the SuperPack protocol to securely evaluate CD\D⊕, the required Ring-
+LPN/LPN instances are sublinear in circuit size |C|, whereas the constructions in [BCO+21] and
+[GLM+24] respectively require Θ(|C|) LPN and DDH tuples.
+ΠSP [EGP+23] uses instantiations of FProg
+OLE and FnVOLE from [RS22], as they incur communication
+that is sublinear in the size of the circuit. We observe that calls to the FProg
+OLE and FnVOLE functionalities
+can be replaced by calls to standard OLE correlations FOLE (see Figure C.2) and FnVOLE (see Figure C.5).
+FnVOLE can be instantiated using FOLE. In turn, FOLE can be constructed using standard OT correlations
+that are based on more standard assumptions.
+The total communication complexity of the construction is still O(n|C|) with this modification. We
+formalize it below.
+Theorem 3. Let ϵ > 0 be a constant. For an arithmetic circuit C that computes an n-ary functionality
+F, there exists an n-party protocol that computes C with computational security against a fully malicious
+adversary who can control t ≤n(1−ϵ) corrupted parties with O(|C|n) total communication and O(|C|n)
+OLE correlations.
+4.2
+Preprocessing Protocol ΠGBC-Pre
+We use the authenticated PSS of bit masks from step 1 to realize the preprocessing functionality in
+the (Fmpc, F2pc, Frv)-hybrid model. The functionality Fmpc takes an n-party circuit as public input,
+and securely evaluate it on the inputs provided by the parties. Similarly, F2pc takes a 2-party circuit
+as public input, and securely evaluate it on the inputs provided by a pair of parties. The functionality
+Frv effectively samples (r1, . . . , rn)
+$←−Fn, delivers ri to each Pi and distributes PSS [r(χ)] where r(χ) =
+(r(1+(χ−1)ℓ), . . . , r(χℓ)) for each 1 ≤χ ≤n/ℓ. The resulting protocol ΠGBC-Pre is presented in Figures 4.3
+and 4.4. The protocol follows the outline sketched in Section 3.4.
+The full proof of Theorem 4 appears in Appendix D.3.
+12
+
+Definitions. Define T = {1, . . . , ⌈(|(W \ W⊕)| + |G∧| + 1)/ℓ⌉}
+1. Invoke Fmpc to compute the circuit CD described in Figure 4.2. The input of each Pi to CD is chosen as
+follows:
+a. Each Pi distributes {[s(j,i)]
+$
+←−Share(b(j,i)) where b(j,i)
+$
+←−{0, 1}ℓ⊂Fℓfor each
+1 ≤j ≤⌈|W \ W⊕|/k⌉.
+b. Define ˆr(j)
+i
+= [ˆr]i when [ˆr] = Pn
+i=1[s(i)]. All the remaining inputs uniformly and independently from F.
+The parties receive their respective shares of {[r(ω)], [ϕ · r(ω)]}ω∈T , [x] and [ϕ · x]. Additionally, each Pi
+receives ϕi and err.
+2. Each Pi samples ∆i
+$
+←−F, Ψi
+$
+←−F, λi
+$
+←−F and αi
+$
+←−F.
+3. Every pair of parties Pi, Pj use F2pc to realize the functionality that takes inputs
+([x]k, [ϕ · x]k, {[r(ω)]k, [ϕ · r(ω)]k}ω∈T , ∆k, ϕk, αk, Ψk) from Pk, k ∈{i, j} and distributes the following
+2-wise additive secret sharings to Pi and Pj:
+- ∆k · [r(ω)]k′ for each ω ∈T and (k, k′) ∈{(i, j), (j, i)};
+- Ψk · [r(ω)]k′ and Ψk · [ϕ · r(ω)]k′ for each ω and (k, k′);
+- Ψk · [x]k′, Ψk · [ϕ · x]k′, Ψk · ∆k′, Ψk · ϕk′, Ψk · λk′ and Ψk · αk′ for each (k, k′).
+Henceforth, we will denote the additive secret sharing between Pi and Pj of ∆i · [r(ω)]j by
+⟨∆i · [r(ω)]j⟩{i,j}, of Ψi · ∆j by ⟨Ψi · ∆j⟩{i,j}, and so on.
+4. For each ω ∈T :
+5.
+Pi sets si,i ←[r(ω)]i · ∆i, and each Pj, j̸ = i sets si,j ←⟨[r(ω)]j · ∆i⟩{i,j}
+j
+. Further, Pi sets s′
+i,i ←0
+and s′
+i,j ←⟨[r(ω)]j · ∆i⟩{i,j}
+i
+for each j̸ = i.
+6.
+Pi samples (o1, . . . , on)
+$
+←−Share(0ℓ), and sends s′′
+i,j = s′
+i,j + oj to each Pj.
+7.
+Each Pj, 1 ≤j ≤n sets [r(ω) · ∆i]j ←si,j + s′′
+i,j.
+8. For each ω ∈T and 1 ≤χ ≤n/ℓ:
+9.
+Each Pi distributes (s(i)
+1 , . . . , s(i)
+n )
+$
+←−Share(([r(ω) · ∆1+(χ−1)ℓ]i, . . . , [r(ω) · ∆χℓ]i)).
+10.
+Each Pi interprets (s(1)
+i
+, . . . , s(n)
+i
+) as a PSS and reconstructs the secret vector u ∈Fℓ. Pi stores uj
+(1 ≤j ≤ℓ) as its share [∆(χ) · r(ω)
+j
+]i of [∆(χ) · r(ω)
+j
+] = [∆(χ) · r(j+(ω−1)ℓ)] where
+∆(χ) = (∆(1+(χ−1)ℓ), . . . , ∆(χℓ)).
+11. For each ω ∈T :
+12.
+Each Pi sends a(i)
+j
+$
+←−F to Pj, j̸ = i and sets a(i)
+i
+= [r(ω)]i −P
+j̸=i a(i)
+j .
+13.
+Each Pi interprets (a(1)
+i
+, . . . , a(n)
+i
+) as a PSS and reconstructs the secret vector u ∈Fℓ. Pi stores uj as
+its additive share in ⟨r(ω)
+j
+⟩= ⟨r(j+(ω−1)ℓ)⟩for each 1 ≤j ≤ℓ.
+14. For each 1 ≤ω′ ≤⌈|(I| + |O|)/ℓ⌉:
+15.
+Each Pi shares [o(ω′,i)]
+$
+←−Share(0ℓ).
+16.
+Define [o(ω′)] = Pn
+i=1[o(ω′,i)]. Each Pi distributes additive secret sharing ⟨[o(ω′)]i⟩.
+17.
+Each Pi interprets (⟨[o(ω′)]1⟩i, . . . , ⟨[o(ω′)]n⟩i) as a PSS, reconstructs the shared vector as
+(⟨o(1+(ω′−1)ℓ)⟩i, . . . , ⟨o(ω′ℓ)⟩i).
+18. For 1 ≤w′′ ≤|W∧|: parties invoke Frv. Each Pi receives X(w′′)
+i
+and their share of [X(w′′,χ)] for each
+1 ≤χ ≤n/ℓ.
+Fig. 4.3: Protocol ΠGBC-Pre
+13
+
+// Description of ΠMAC continued...
+19. Each Pi broadcasts abort if err received in step 1 is non-zero.
+20. Each Pi broadcasts λi and ϕi, and sends ⟨Ψj · λi⟩{i,j}
+i
+and ⟨Ψj · ϕi⟩{i,j}
+i
+to each Pj, j̸ = i.
+21. Each Pi checks if, for each j̸ = i, ⟨Ψj · λi⟩{i,j}
+i
++ ⟨Ψj · λi⟩{i,j}
+j
+= λj · Ψi and
+⟨Ψj · ϕi⟩{i,j}
+i
++ ⟨Ψj · ϕi⟩{i,j}
+j
+= ϕj · Ψi. If check fails for any j, Pi broadcasts abort; else sets λ = Pn
+j=1 λj
+and ϕ = Pn
+j=1 ϕj.
+22. Each Pi broadcasts [u]i = λ|T |+1 · [x]i + P
+ω∈T λω · [r(ω)]i, and
+[ϕ · u]i = λ|T |+1 · [ϕ · x]i + P
+ω∈T λω · [ϕ · r(ω)]i. We stress that, here, λω is “λ raised to the power of ω”.
+23. Each Pi sends to Pj, 1 ≤j ≤n, ⟨Ψj · [u]i⟩{i,j}
+i
+= λ|T |+1 · ⟨Ψj · [x]i⟩{i,j}
+i
++ P
+ω∈T λω · ⟨Ψj · [r(ω)]i⟩{i,j}
+i
+,
+and ⟨Ψj · [ϕ · u]i⟩{i,j}
+i
+= λ|T |+1 · ⟨Ψj · [ϕ · x]i⟩{i,j}
+i
++ P
+ω∈T λω · ⟨Ψj · [ϕ · r(ω)]i⟩{i,j}
+i
+.
+24. Each Pi holding Ψi, [x]i and ⟨Ψj · [r(ω)]i⟩{i,j}
+i
+validate uj by checking if
+Ψi · [u]j = ⟨Ψi · [u]j⟩{i,j}
+j
++ λ|T |+1 · ⟨Ψi · [x]j⟩{i,j}
+i
++ P
+ω∈T λω · ⟨Ψi · [r(ω)]j⟩{i,j}
+i
+and similarly checks the
+validity of [Ψi · u]j for each j̸ = i. If any check fails Pi broadcasts abort; else Pi reconstructs the vectors ˆu
+and ˆv shared by [u] and [ψ · u], respectively. If ϕ · ˆu̸ = ˆv, Pi broadcasts abort.
+25. Each Pi broadcasts ∆i + λ · αi, and sends ⟨Ψj · ∆i⟩{i,j}
+i
++ λ · ⟨Ψj · αi⟩{i,j}
+i
+to each Pj, j̸ = i.
+26. Each Pi checks if, for each j̸ = i,
+⟨Ψi · ∆j⟩{i,j}
+i
++ ⟨Ψi · ∆j⟩{i,j}
+j
++ λ · ⟨Ψi · αj⟩{i,j}
+i
++ λ · ⟨Ψi · αj⟩{i,j}
+j
+= Ψi(∆j + λ · αj). If check fails for any
+j, Pi broadcasts abort.
+27. Each Pi outputs ∆i; its share in ⟨r(w)⟩and [r(w) · ∆(w,χ)] for each 1 ≤w ≤|G∧∪W \ W⊕| and χ; its
+share in ⟨o(w′)⟩for 1 ≤w′ ≤|I ∪O|. X(w′′)
+i
+and its share in [X(w′′,χ)] for each 1 ≤w′′ ≤|G∧|; Define
+t = |G⊕∪W \ W⊕| + 1. Since r(t) = 1; Pi stores [r(t) · ∆(χ)] as [∆(χ)] for each χ.
+Fig. 4.4: Protocol ΠGBC-Pre (Continued)
+Theorem 4. The protocol ΠGBC-Pre realizes FGBC-Pre with statistical t ≤(n −ℓ)-security in the
+(Fmpc, F2pc, Frv)-hybrid model, where ℓ= nϵ and ϵ > 0.
+Proof Sketch. We will first establish that the protocol realizes FGBC-Pre with perfect t-security in the
+semi-honest setting, and then argue that the protocol continues to be statistically secure in the presence
+of a malicious adversary.
+It is easily verified that, at the end of step 7, the parties hold securely sampled PSS [∆i · r(ω)] for
+each ω and 1 ≤i ≤n. We claim, the vector u computed by Pi in step 10 of iteration ω and χ is such
+that uj is Pi’s share of a fresh t-secure PSS of r(ω)
+j
+· ∆(χ). Let {l(j)
+k
+∈F}1≤k≤n be the linear operator
+reconstructing coordinate j of the ℓ-length vector secret shared using PSS. Then,
+uj = P
+k l(j)
+k
+· s(k)
+i
+= P
+k l(j)
+k
+· [([r(ω) · ∆1+(χ−1)ℓ]k, . . . , [r(ω) · ∆χℓ]k)]i
+= [(P
+k l(j)
+k
+· [r(ω) · ∆1+(χ−1)ℓ]k, . . . , P
+k l(j)
+k
+· [r(ω) · ∆χℓ]k)]i.
+But, P
+k l(j)
+k
+· [r(ω) · ∆1+(χ−1)ℓ]k = r(ω)
+j
+· ∆1+(χ−1)ℓand so on. Hence, uj is the the i-th share of a fresh
+secret sharing of (r(ω)
+j
+· ∆1+(χ−1)ℓ, . . . , r(ω)
+j
+· ∆χℓ). Correctness is ensured by the fact that the bit masks
+are sampled according to D and, when k = |G∧∪W \ W⊕| + 1, r(k) = 1 and hence r(k) · ∆(χ) = ∆(χ).
+Steps 11-13 additively secret share r(ω)
+j
+for 1 ≤j ≤ℓin iteration ω, and steps 14-17 sample ℓadditive
+secret shares of 0 in each iteration. This can be proved along the lines of the previous argument.
+We next argue that the protocol is statistically t-secure against malicious adversary with abort.
+Maliciously corrupt parties can sabotage the protocol by (i). providing invalid inputs to CD during
+the Fmpc invocation in step 1; (ii). providing incorrect value of [r(ω)]i or inconsistent values for ∆i in
+F2pc invocations involving honest parties; and (iii). distributing secret shares of incorrect values in the
+subsequent steps.
+In step 1.a, the parties sample packed secret sharing of a random bit vector, to which the adversary
+may add an additive error. But, in this setting, Lemma 1 guarantees that the output of Fmpc is correctly
+14
+
+distributed with overwhelming probability conditioned on err (received by all parties) is zero; and parties
+abort otherwise. Hence, attacks of type (i) can be ignored. Since all the steps after step 3 are linear, type
+(iii) attack only applies an additive error to the output computed by the protocol, but the garbling and
+evaluation steps are robust to such errors since all the wire masks are authenticated with every party’s
+global MAC. Type (ii) attack is prevented by the consistency checks in steps 20-26. We elaborate:
+We will show that the parties abort if a corrupt Pj uses inconsistent values for {[r(ω)]j}ω and [xj]
+across invocations of F2pc involving honest parties. Let s(ω)
+j,i be the purported value of [r(ω)]j for each ω,
+and let s′
+j,i be the purported value of [x]j that Pj uses in the invocation of F2pc with honest Pi. Define
+u = s′
+j,i + P
+ω λω · s(ω)
+j,i . Suppose Pj broadcasts ˜u and sends ˜v to Pi as purported values of [u]j and
+⟨Ψi · [u]j⟩{i,j}
+j
+, respectively. If ˜u̸ = u, the check by Pi fails with probability 1/|F|. To see this, suppose
+v′ = ⟨Ψi·s′
+j,i⟩{i,j}
+j
++P
+ω λω·⟨s(ω)
+j,i ⟩{i,j}
+j
++δ for some δ ∈F. Pi’s check succeeds only if Ψi·˜u = Ψi·u+Ψi·(˜u−u)
+coincides with v′ + ⟨Ψi · s′
+j,i⟩{i,j}
+i
++ P
+ω λω · ⟨s(ω)
+j,i ⟩{i,j}
+i
+= δ + Ψi · (s′
+j,i + P
+ω λω · s(ω)
+j,i ) = δ + Ψi · u. Here, we
+used homomorphism of additive secret sharing under addition and scalar multiplication. These values
+coincide with probability 1/|F| for any δ over the randomness of Ψi.
+Using simpler variants of the same argument, it can be shown that each Pj uses consistent values
+for ϕj, λj and ∆j across invocations of F2pc involving honest parties. Consequently, each corrupt Pj is
+prevented from changing their choice of ϕj and λj. Thus ϕ and λ are uniformly random in F over the
+random choices of honest parties.
+Next, we argue that Pj sends the same purported value of {[r(ω)]j}ω and [xj] to all honest parties.
+The computation of [u]i as a function of λ is a polynomial of degree T . Hence, if Pj provides distinct
+values as purported shares to honest Pi and Pi′, the probability with which the corresponding values of
+[u]i agree exaclty the probability with which the two polynomials agree on the randomly chosen point
+λ; i.e., |T |/|F| = O(|C|)/|F|.
+The above checks do not eliminate the possibility that the corrupt parties used incorrect (albeit
+consistent) values for their shares in ({[r(ω)]j}ω, [x]j). This is ensured by checking that ϕ· ˆu = ˆv. Since ϕ
+is random, the above check fails with overwhelming probability unless [r(ω)] defined by purported shares
+that corrupt parties use in all F2pc invocations involving honest parties and shares of honest parties
+indeed form a secret sharing of r(ω) for all ω. Finally, note that revealing {[u]i} reveal no information
+about r(ω) since x is a purely random vector. Similarly, ∆i + λ · αi reveals no information about ∆i.
+5
+Garbling Boolean Circuits
+Figures 5.1 and 5.2 present the garbling scheme ΠGBC for any n-party circuit C that provides output only
+to P1. In Appendix E.2, we discuss a straightforward extension of the construction to general circuits.
+In Πgbc, P1 acts as the evaluator and P2, . . . , Pn act as garblers. The parties invoke the preprocessing
+functionality FGBC-Pre (steps 1 of Figure 5.1). For each wire w ∈W ∪W⊕, the parties receive an additive
+secret sharing of the bit mask r(w) and its authentication using each party’s global MAC ∆i (also
+provided by FGBC-Pre) packed together as [r(w) · ∆(χ)] for 1 ≤χ ≤n/ℓ. Each Pi will refer to their
+authenticated share of r(w) comprising ⟨r(w)⟩i and {[r(w) · ∆(χ)]i}χ as pack(r(w))i. The preprocessing
+also provides authenticated bit masks pack(r(g) associated with each AND gate g.
+During evaluation, the protocol maintains the invariant that for an evaluated wire w holding logical
+value x(w), evaluator can verifiably receive the masked value ρ(w) = x(w) ⊕r(w), and all garblers’ MACs
+(X(w)
+i
+⊕ρ(w) · ∆i)i̸=1 authenticating ρ(w). In the input phase of the protocol (discussed later), this
+invariant is induced on all the input wires. The garbling phase prepares multi-party garbling for each
+gate so that the invariant can be propagated from the input wires to the output wire of each gate,
+allowing the evaluator to propogate the invariant to the output wire. We now go over how the garbling
+phase of ΠGBC:
+15
+
+XOR Gates. For an XOR gate (α, β, γ, ⊕) with input wires α and β and output wire γ, we require
+r(γ) = r(α) ⊕r(β). To ensure this, in the garbling phase, the parties locally set
+pack(r(γ)) ←pack(r(α)) ⊕pack(r(β)) = bdoz(r(α) ⊕r(β)).
+In addition, each garbler Pi sets X(γ)
+i
+←X(α)
+i
+⊕X(β)
+i
+.
+The evaluator P1 holds ρ(θ) = x(θ) ⊕r(θ) and (X(θ)
+i
+⊕ρ(θ) · ∆i)i̸=1 for each input wire θ ∈{α, β} by
+the protocol’s invariant during the evaluation. P1 computes the output encoding simply as the XOR of
+input encodings. I.e.,
+ρ(γ) ←ρ(α) ⊕ρ(β)
+e
+X(γ)
+i
+←(X(α)
+i
+⊕ρ(α) · ∆i ⊕X(β)
+i
+⊕ρ(β) · ∆i)i̸=1.
+Thus, ρ(γ) = (x(α) ⊕x(β)) ⊕(r(α) ⊕r(β)) = x(γ) ⊕r(γ), and e
+X(γ)
+i
+= X(γ)
+i
+⊕ρ(γ) · ∆i, propagating the
+invariant across XOR gates without any communication.
+AND Gates. Consider an AND gate (α, β, γ, ∧). Let ⊔be a fixed additive secret sharing of 1 along with
+its authentication using all global MACs. That is, ⊔= (⟨1⟩, [∆(χ)]χ) where ⟨1⟩is a fixed additive secret
+sharing of 1. For all (m0, m1) ∈{0, 1}2, the garblers locally prepare as
+pack(r(γ,m0,m1))
+←pack(r(σ)) ⊕pack(r(γ)) ⊕m1 · pack(r(α)) ⊕m0 · pack(r(β)) ⊕(m0 ∧m1) · ⊔
+= pack((r(α) ∧r(β)) ⊕r(γ) ⊕(m1 · r(α)) ⊕(m0 · r(β)) ⊕(m0 ∧m1))
+= pack(r(γ) ⊕(r(α) ⊕m0) ∧(r(β) ⊕m1)).
+(1)
+Using their share of pack(r(γ,m0,m1)) and {[X(w,χ)]}n/ℓ
+χ=1 (provided by preprocessing), each garbler locally
+computes their share of ⟨r(γ,m0,m1)⟩and [X(w,χ) ⊕∆(χ) · r(γ,m0,m1)] for each χ. Then, each garbler Pi
+prepares the garbling
+G(γ,m0,m1)
+i
+= H(X(α)
+i
+⊕m0 · ∆i, X(β)
+i
+⊕m1 · ∆i)
+⊕
+
+⟨r(γ,m0,m1)⟩i, {[X(w,χ) ⊕∆(χ) · r(γ,m0,m1)]i}n/ℓ
+χ=1
+
+,
+and sends it to the evaluator for each (m0, m1) ∈{0, 1}2.
+By eq. (5), pack(r(γ),ρ(β),ρ(α)) = pack(r(γ) ⊕(x(α) ∧x(β))) = pack(ρ(γ)). This allows P1 to decrypt
+G(γ,ρ(β),ρ(α))
+i
+to obtain each garbler Pi’s share ⟨ρ(γ)⟩i and [X(γ,χ)⊕∆(χ)·ρ(γ)]i for each χ. After computing
+its own shares of these secret sharings, P1 can recover ρ(γ), and X(γ)
+i
+⊕ρ(γ) · ∆i for each i̸ = 1, verify
+the validity of ρ(γ) using ρ(γ) · ∆1 and then propogate the protocol invariant.
+We next go over the input phase of ΠGBC in which the parties induce the invariant for each input
+wire before the circuit evaluation begins. For each input wire w, each garbler Pi sets X(w)
+i
+uniformly
+at random. If w takes input from Pi, parties use pack(r(w)) to reveal r(w) and r(w) · ∆i to Pi. Since,
+r(w) · ∆i is packed with the authentication of r(w) by other ℓ−1 parties, it is revealed after adding an
+additive secret sharing of zero, which hides the other secrets in the PSS. Pi checks the validity of r(w)
+using r(w) · ∆i and then broadcasts ρ(w) = r(w) ⊕x(w) where x(w) is Pi’s input for wire w. Subsequently,
+each garbler Pi computes and sends X(w)
+i
+⊕∆i · ρ(w) to P1, establishing the invariant for the input wire.
+In the output phase, the parties reveal r(w) and r(w) · ∆1 for each output wire w to Pi, who checks
+their authenticity and output recover x(w) using ρ(w) it holds, and r(w). In fact, we will refrain from
+sampling the labels altogether but for the output wires of AND gates forseeing this reassignment.
+We give a formal proof of Theorem 5 in Appendix E.
+We prove below Theorem in Appendix E. The proof closely follows the proof of security of the WRK
+protocol.
+16
+
+Preprocessing Phase
+1. The parties invoke FGBC-Pre. Each Pi receives:
+- (i) ∆i and their share of {[∆(χ)]}⌈n/ℓ⌉
+χ=1 ;
+- (ii) Their share of ⟨r(w)⟩and {[r(w) · ∆(χ)]}⌈n/ℓ⌉
+χ=1 , for each 1 ≤w ≤|G∧∪W \ W⊕|;
+- (iii) Their share of ⟨o(w′)⟩for each 1 ≤w′ ≤|O ∪I|;
+- (iv) X(w′′)
+i
+and their share of {[X(χ)]}⌈n/ℓ⌉
+χ=1 , for each 1 ≤w′′ ≤|G∧|.
+2. For each 1 ≤h ≤|(W \ W⊕) ∪G∧|, each Pi defines
+pack(r(h))i =
+
+⟨r(h)⟩i, {[∆(χ) · r(h)]i}[⌈n/ℓ⌉]
+χ=1
+
+.
+Garbling Phase.
+3. For each input wire w ∈I, each Pi assigns X(w)
+i
+uniformly from F.
+// Process each g ∈G following a topological ordering:
+4. If g = (α, β, ⊕, γ), each Pi sets pack(r(γ))i ←pack(r(α))i + pack(r(β))i, and X(γ)
+i
+←X(α)
+i
++ X(β)
+i
+.
+5. If g = (α, β, ∧, γ), for each (m0, m1) ∈{0, 1}2, each Pi locally defines
+pack(r(γ,m0,m1))i
+←pack(r(g))i + pack(r(γ))i +
+
+⟨0⟩i, {[X(γ,j)]i}⌈n/ℓ⌉
+j=1
+
++ m1 · pack(r(α))i + m0 · pack(r(β))i + (m0 ∧m1)
+
+⟨1⟩i, {[∆(j)]i}⌈n/ℓ⌉
+j=1
+
+where ⟨0⟩and ⟨1⟩are, respectively, fixed (non-random) publicly agreed secret sharing of 0 and 1; ⟨0⟩can
+simply be the all zero vector.
+6. Each garbler i prepares a garbled table comprising of four ciphertexts G(γ,m0,m1)
+i
+, for (m0, m1) ∈{0, 1}2,
+using random oracle H as:
+G(γ,m0,m1)
+i
+= H(X(α)
+i
++ m0 · ∆i, X(β)
+i
++ m1 · ∆i) ⊕pack(rγ,m0,m1)i.
+(2)
+Each Pi sends each (G(γ,m0,m1)
+i
+) to P1.
+Fig. 5.1: Protocol ΠGBC
+17
+
+Evaluation Phase.
+Input Processing.
+7. For each input wire w ∈Ii of Pi, every Pj sends ⟨r(w)⟩j and ⟨o(w)⟩j ⊕α(l,j) · [∆(k) · r(w)]j to Pi, where
+l, k such that ∆(i) · r(w) = (∆(k) · r(w))l and (α(l,1), . . . , α(l,n)) is the reconstruction vector for
+reconstructing ∆(i) · r(w) from [∆(k) · r(w)].
+8. Pi reconstructs the purported values of r(w) and ∆(i) · r(w), and checks if they are consistent. If the check
+passes, they broadcasts ρ(w) ←r(w) ⊕x(w) to all parties, where x(w) is the input value. Otherwise, Pi
+broadcasts abort.
+9. Each garbler Pj sends X(w)
+j
+⊕ρ(w) · ∆j to P1.
+Circuit Evaluation.
+// P1 evaluates the circuit according to a topological order. This ensures that, when
+evaluating any gate σ = (α, β, T, γ) ∈C, P1 holds ρ(w) and {X(w)
+i
+⊕(ρ(w)) · ∆i}i∈[2,n]
+corresponding to input wires w ∈{α, β}.
+10. If T = ⊕, assign ρ(γ) ←ρ(α) ⊕ρ(β) and, for each i ∈[2, n],
+(X(γ)
+i
+⊕ρ(γ) · ∆i) ←(X(α)
+i
+⊕ρ(α) · ∆i) ⊕(X(β)
+i
+⊕ρ(β) · ∆i).
+11. If T = ∧, for each i ∈[2, n], recover
+pack(r(γ,ρ(α),ρ(β)))i = H(X(α,i) ⊕ρ(α) · ∆i, X(β,i) ⊕ρ(β) · ∆i) ⊕G(γ,ρ(α),ρ(β))
+i
+.
+Interpret the result as
+
+⟨ρ(γ)⟩, {[X(γ,j) + ∆(j) · ρ(γ)]}⌈n/ℓ⌉
+i=1
+
+. Reconstruct ρ(γ) and X(γ)
+j
++ ∆j · ρ(γ) for
+each 1 ≤j ≤n.
+12. Using the known X(γ)
+1
+and ∆1, check the consistency of the obtained ρ(γ), and X(γ)
+1
++ ∆1 · ρ(γ). If the
+check fails, abort; else store ρ(γ) and X(γ)
+i
+⊕∆i · ρ(γ) for each 2 ≤i ≤n.
+Output Processing.
+13. For each output wire w, every Pi sends to P1 the values ⟨r(w)⟩i and ⟨o(w)⟩i ⊕α(1,i) · [∆(1) · r(w)]i, when
+∆(1)
+1
+= ∆1.
+14. For each output wire w, using the received shares, P1 reconstructs purported values of r(w) and r(w) · ∆1,
+and checks their consistency. If check fails, P1 aborts; else outputs x(w) = ρ(w) ⊕r(w).
+Fig. 5.2: Protocol ΠGBC (continued)
+18
+
+Theorem 5. Let f be an n-party function with output only for P1, and let C be a Boolean circuit
+computing f. The protocol ΠGBC described in fig. 5.1 and fig. 5.2 securely computes f in the FGBC-Pre-
+hybrid and random oracle model with statistical t-security with abort, where t ≤n −ℓand ℓ≥ϵ · n for
+any ϵ > 0.
+The concrete communication cost of ΠGBC, during the preprocessing phase and the garbling phase
+are computed in Appendix H and compared with state-of-the-art MPC protocols in Section 7.
+Remark 1 (Use of Broadcast.). In the preprocessing and the garbling protocol, we have used broadcast
+at several steps. These uses can be classified into two sets: use of broadcast by parties to report abort
+just before premature termination as in steps 19, 21, 24 and 26 of ΠGBC-Pre, and steps 8, 12 and 14 of
+ΠGBC; and use of broadcast to send the same message to all parties as part of the computation as in
+steps 20, 22 and 25 of ΠGBC-Pre and step 8 of ΠGBC. The user may convince themselves that the former
+type of broadcast can be replaced with the semi-honest broadcast: the party sending the message to
+be broadcast separately to each party. However, the security of our constructions require that there is
+consensus with abort even for messages from corrupt parties. In this case, we employ the two round
+broadcast with abort which involves the sender sending the message separately to all parties, and all
+parties echoing the message they received, incurring n2 communication per broadcast. We avoid the high
+communication this demands by the echoing only a digest of a batch of broadcasts after hashing all the
+broadcast message.
+6
+Garbling Tri-state Circuits
+In this section, we construct a garbling scheme, called ΠGTSC-Pre, to garble (oblivious) tri-state circuits.
+Formally, we achieve the following:
+Theorem 6. Let (C, D) be an oblivious tri-state circuit, and D be an ensemble of beaver triples and uni-
+form independent bits. The protocol ΠGTSC instantiated with C, D securely realizes (C, D) in the random
+oracle model with computational t-security and selective abort, where t ≤n −ℓand ℓ≥ϵ · n, for any
+ϵ > 0.
+Theorem 6, combined with the result of [HKO23], implies the following:
+Theorem 7 (Multi-party Garbled RAM). There exists a multi-party Garbled RAM scheme with
+communication cost O(n · T log3 T log log T · κ) that achieves computational t-security with abort for
+t ≤n −ℓ, where ℓ≥ϵn, for any ϵ > 0 in the random oracle model.
+Now, we describe our garbling of oblivious tri-state circuits. Section F.1 defines our preprocessing
+functionality FGTSC-Pre, and Section F.2 presents our formal garbling scheme. We first start by porting
+the handling of TSC gates to the multiparty setting, without PSS. Then, we show how to optimize
+communication by applying PSS.
+[HKO23] introduced a two-party authenticated garbling scheme for tri-state circuits. The garbler G
+and evaluator E possess global MAC keys ∆1 and ∆2 respectively. Similar to [WRK17a], their construc-
+tion maintains the invariant that, for a wire w carrying true value x(w), both G and E hold additive
+secret shares of x(w) along with its authentication with the MAC keys of both parties. Specifically, G
+and E maintain secret shares of x(w) · (1 ∥∆1 ∥∆2).
+We generalize that invariant. Namely, as in our approach to Boolean circuits, each party Pi holds a
+global MAC Key ∆i. For a wire w carrying a true value x(w), parties hold additive secret shares of x(w)
+and its authentication with each party’s MAC key ∆i. That is, at runtime parties maintain an additive
+secret-sharing of x(w) ·(1∥∆1 ∥· · ·∥∆n). Let X(w)
+i
+= (X(w)
+i,0 , X(w)
+i,1 . . . , X(w)
+i,n ) denote the share of party Pi.
+Thus, ⊕iX(w)
+i,0 = x(w), and ⊕iX(w)
+i,j = x(w) ·∆j, ∀j ∈{1, . . . , n}. Moreover, the share X(w)
+i
+of each garbler
+19
+
+Pi̸=1 is fixed statically. Whereas, the share X(w)
+1
+of evaluator is decided at runtime. We next show how
+we garble each of the tri-state circuit gates: XOR (⊕), buffer (/), and join (▷◁). The procedures closely
+follow the 2-party garbling procedures of respective gates proposed in [HKO23]. We use ∆to denote
+(1 ∥∆1 ∥· · · ∥∆n).
+XOR Gate. For an XOR gate (α, β, γ, ⊕), each party Pi holds X(α)
+i
+and X(β)
+i
+. Owing to linear homo-
+morphism property of shares, to obtain X(γ)
+i
+, parties locally XOR shares X(α)
+i
+and X(β)
+i
+.
+Buffer Gate. Consider a buffer gate γ ←β/α, where β is the data wire, α is the control wire, and γ is
+the output wire. Based on the invariant, each party Pi holds shares X(α)
+i
+and X(β)
+i
+s.t. ⊕iX(α)
+i
+= x(α) ·∆
+and ⊕iX(β)
+i
+= x(β) · ∆.
+Recall from Section 2.3 that to correctly implement TSC semantics, the evaluator must learn the
+order of execution of gates, which requires that the evaluator learn the cleartext value of each control
+wire α. In the authenticated setting, we should be aware of two aspects: 1) The privacy of inputs of
+party Pi̸=1 is not compromised. Data privacy is maintained due to obliviousness of TSCs (see Section
+2.3). 2) Malicious garblers should not be able to reveal incorrect value to evaluator P1 which is ensured
+using MAC key ∆1.
+As a first attempt to reveal a control bit to the evaluator (P1), each garbler Pi sends its XOR share of
+x(α) and {X(α)
+i,j }i̸=j to P1. P1 computes2 Y (α)
+i
+= ⊕j /∈{1,i}X(α)
+j,i , for each i. P1 computes bit x(α) = ⊕ix(α)
+i
+and x · ∆1 = X(α)
+1,1 ⊕Y (α)
+1
+. Thus, P1 can verify the authenticity of the reconstructed value. For every
+i ∈{2, . . . , n}, P1 can also compute Z(α)
+i
+= X(α)
+i,i ⊕x(α) · ∆i = X(α)
+1,i ⊕Y (α)
+i
+. It is not difficult to
+confirm that revealing Z(α)
+i
+doesn’t compromise the security of the global MAC key ∆i of party Pi. But
+we already see an inefficiency issue with this approach. That is, revealing control bit α requires total
+communication of O(n2κ). Looking ahead, we address this concern via PSS.
+Now, we consider how to garble the buffer gate itself. We first lay out an approach inspired by the
+approach of [HKO23] in 2-party setting. Later in this section, we observe a concern that limits the
+efficient applicability of PSS to this approach, and thus, outline an alternative approach.
+Each garbler Pi sets X(γ)
+i
+←H(X(α)
+i,i ⊕∆i) ⊕X(β)
+i
+, where H : {0, 1}κ →{0, 1}nκ+1 is an RO. When
+x(α) = 1, P1 holds Z(α)
+i
+= X(α)
+i,i ⊕∆i, ∀i ∈{2, . . . , n}. P1 computes X(γ)
+1
+←⊕n
+i=2H(Z(α)
+i
+) ⊕X(β)
+1
+. This
+computation is correct:
+⊕n
+i=1X(γ)
+i
+= ⊕n
+i=2H(Z(α)
+i
+) ⊕X(β)
+1
+⊕n
+i=2 H(X(α)
+i,i ⊕∆i) ⊕X(β)
+i
+= ⊕n
+i=1X(β)
+i
+= x(β) · ∆= x(γ) · ∆.
+Thus, when the control wire is live, i.e., x(α) = 1, the invariant holds for authenticated shares of the
+output wire. Critically, P1 can compute its correct share X(γ)
+1
+only when the output wire is live because
+if x(α) = 0, Z(α)
+i̸
+= Xα
+i,i + ∆i.
+Join Gate. Consider a join gate g = {γ ←α ▷◁β}. We construct the garbling of a join gate assuming
+the evaluated tri-state circuit is total (see Section 2.3). For a wire w, this ensures that evaluator P1 never
+obtains two shares consistent with both possible boolean values. I.e., P1 never holds two shares e
+X(α)
+1,0
+and e
+X(α)
+1,1 such that e
+X(α)
+1,0 ⊕n
+i=2 X(α)
+i
+= 0 · ∆and e
+X(α)
+1,1 ⊕n
+i=2 X(α)
+i
+= 1 · ∆.
+The join gate fires even when only one of its input wires is defined. All garblers Pi set X(γ)
+i
+←X(α)
+i
+.
+The evaluator’s share X(γ)
+1
+can only be determined during runtime. Depending on the active input wire,
+we have two cases:
+– If wire α is active, i.e., x(α)̸ = Z, Evaluator simply sets X(γ)
+1
+←X(α). Thus, the invariant holds for
+the output shares, i.e., ⊕n
+i=1X(γ)
+i
+= x(α) · ∆= x(γ) · ∆.
+2 While not essential to this approach, it is useful to abstract the value Y (α)
+i
+to apply optimization using PSS.
+20
+
+– If wire β is active and α is not (i.e., x(β)̸ = Z and x(α) = Z), evaluator holds X(β)
+1
+= ⊕n
+i=2X(β)
+i
+⊕
+x(β) · ∆. Each garbler Pi sends X(g)
+i
+= X(α)
+i
+⊕X(β)
+i
+to P1. P1 computes X(γ)
+1
+←X(β)
+1
+⊕n
+2=1 X(g)
+i
+,
+resulting in a correct share:
+⊕i∈[n]X(γ)
+i
+= X(β)
+1
+⊕n
+i=2 X(g)
+i
+⊕n
+i=2 X(α)
+i
+= X(β)
+1
+⊕n
+i=2
+
+X(α)
+i
+⊕X(β)
+i
+
+⊕n
+i=2 X(α)
+i
+= ⊕n
+i=1X(β)
+i
+= x(β) · ∆= x(γ) · ∆.
+Thus, garbling a join gate requires O(n2κ) communication.
+Optimization using PSS. As mentioned above, the main inefficiencies of our TSC handling come
+from (1) the need to reveal control bits to the evaluator and (2) the handling of join gates. In short, we
+optimize both inefficiencies by compressing the representation of authentications via PSS.
+However, the switch to PSS introduces nuance with the handling of buffers: The shares held by
+garblers at the output of buffers are not compatible with PSS, because those shares are computed by a
+random oracle H. Thus, we design alternative buffer gate handling where each garbler sends a translation
+table of length O(κ). With this change, the asymptotic gate complexity remains linear in n. We now
+present our handling of PSS-based TSC handling in more detail.
+For a wire w, for each i̸ = 1, Pi holds:
+t-pack(x(w))i =
+
+⟨x(w)⟩i, K(w)
+i
+, {[Y(w,χ)]i}c=⌈n/ℓ⌉
+χ=1
+
+,
+and P1 holds:
+t-pack(x(w))1 =
+
+⟨x(w)⟩1, K(w)
+1
+, {M (w)
+j
+}n
+j=1, {[Y(w,χ)]1}c=⌈n/ℓ⌉
+χ=1
+
+,
+where Y(w,χ) = (Y (w)
+1+(χ−1)ℓ, . . . , Y (w)
+χℓ), ∀χ ∈{1, · · · , c}. The construction maintains the invariant that,
+x(w) = ⊕n
+i=1⟨x(w)⟩i and K(w)
+i
+⊕Y (w)
+i
+⊕M (w)
+i
+= x(w) · ∆i, for each i ∈{2, . . . , n}.
+XOR. Due to PSS’s linear homomorphism, XOR gates remain free.
+Buffers. To garble buffer gate g = {γ ←β/α}, each garbler Pi sends ⟨x(α)⟩i and shares {[Y(α,χ)]i}c
+χ=1
+to P1. P1 reconstructs x(α) and each Y(α,χ), then verifies that x(α) · ∆1 = K(α)
+1
+⊕Y (α)
+1
+⊕M (α)
+1
+. It can
+also compute Z(α)
+i
+= K(α)
+i
+⊕x(α) · ∆i = M (α)
+i
+⊕Y (α)
+i
+.
+Each garbler Pi samples K(γ)
+i
+and sets:
+t-pack(x(γ))i ←t-pack(x(β))i ⊕(0, K(β)
+i
+⊕K(γ)
+i
+, {0}c
+k=1).
+Additionally, each Pi sends G(g)
+i
+= H(K(α)
+i
+⊕∆i)⊕K(β)
+i
+⊕K(γ)
+i
+, where H : {0, 1}κ →{0, 1}κ is a random
+oracle.
+When x(α) = 1, P1 computes K(β)
+i
+⊕K(γ)
+i
+←H(Z(α)
+i
+) ⊕G(g)
+i
+, for each i ∈{2, . . . , n} and sets:
+t-pack(x(γ))1 ←t-pack(x(β))1 ⊕(0, 0κ, {0}i=1 ∥(K(β)
+i
+⊕K(γ)
+i
+)n
+i=2, {0}c
+k=0).
+One can observe that {t-pack(x(γ))i}i∈{1,...,n} is set such that x(γ) = x(β), and for each i ∈{2, . . . , n},
+K(γ)
+i
+⊕Y (γ)
+i
+⊕M (γ)
+i
+= K(γ)
+i
+⊕Y (β)
+i
+⊕
+
+M (β)
+i
+⊕(K(β)
+i
+⊕K(γ)
+i
+)
+
+= K(β)
+i
+⊕Y (β)
+i
+⊕M (β)
+i
+= x(β) · ∆i = x(γ) · ∆i.
+21
+
+For i = 1,
+K(γ)
+1
+⊕Y γ
+1 ⊕M (γ)
+1
+= K(β)
+1
+⊕Y β
+1 ⊕M (β)
+1
+= x(β) · ∆1 = x(γ) · ∆1.
+(3)
+Thus, the invariant is maintained for the output wire γ. P1 can compute its correct share t-pack(x(γ))1
+only when the output wire is live because if x(α) = 0, Z(α)
+i̸
+= Kα
+i + ∆i.
+Joins. For a join gate g = {γ ←α ▷◁β}, parties invoke preprocessing functionality such that each party
+Pi obtains t-pack(xg)i for a random x(g). Each garbler Pi sets t-pack(x(γ))i ←t-pack(x(g))i. Each garbler
+sends G(g,0)
+i
+←t-pack(x(g))i ⊕t-pack(x(α))i and G(g,1)
+i
+←t-pack(x(g))i ⊕t-pack(x(β))i to P1.
+If wire α is fired (if wire β is fired the protocol proceeds analogously), i.e., x(α)̸ = Z, P1 parses
+each G(g,0)
+i
+as (⟨x(µ)⟩i, K(µ)
+i
+, {[Y(µ,χ)]i}n
+χ=1). For each χ ∈{1, . . . , c}, P1 computes [Y(µ,χ)]1 ←[Y(g)]1 +
+[Y(α,χ)]1. P1 reconstructs Y(µ,χ), ∀χ, where Y(µ,χ) = (Y (µ)
+1+(χ−1)·ℓ= Y (g)
+1+(χ−1)·ℓ+ Y (α)
+1+(χ−1)·ℓ, . . . , Y (µ)
+χℓ
+=
+Y (g)
+χℓ+ Y (α)
+χℓ). P1 sets its share as:
+t-pack(x(γ))1 ←t-pack(x(α))1 ⊕(⊕n
+i=2⟨x(µ)⟩i, 0κ, {K(µ)
+i
+⊕Y (µ)
+i
+}n
+i=1, {[Y(g,χ)]1}c
+k=1),
+where K(µ)
+1
+= 0κ. Now, let us verify that the invariant holds for shares {t-pack(xγ)i}i.
+x(γ) = ⊕i⟨x(γ)⟩i = (⟨xα⟩1 ⊕n
+i=2 (⟨xg⟩i ⊕⟨xα⟩i)) ⊕n
+i=2 ⟨x(g)⟩i = ⊕n
+i=1⟨x(α)⟩i = x(α).
+For i ∈[2, n],
+K(γ)
+i
+⊕Y (γ)
+i
+⊕M (γ)
+i
+= K(g)
+i
+⊕Y (g)
+i
+⊕
+
+M (α)
+i
+⊕K(µ)
+i
+⊕Y (µ)
+i
+
+= K(g)
+i
+⊕Y (g)
+i
+⊕
+
+M (α)
+i
+⊕
+
+K(g)
+i
+⊕K(α)
+i
+
+⊕
+
+Y (g)
+i
+⊕Y (α)
+i
+
+= K(α)
+i
+⊕Y (α)
+i
+⊕M (α)
+i
+= x(α) · ∆i = x(γ) · ∆i.
+For P1,
+K(γ)
+1
+⊕Y (γ)
+1
+⊕M (γ)
+1
+= K(α)
+1
+⊕Y (g)
+1
+⊕
+
+M (α)
+1
+⊕Y (µ)
+1
+
+= K(α)
+1
+⊕Y (g)
+1
+⊕
+
+M (α)
+1
+⊕
+
+Y (g)
+1
+⊕Y (α)
+1
+
+= K(α)
+1
+⊕Y (α)
+1
+⊕M (α)
+1
+= x(α) · ∆1 = x(γ) · ∆1.
+In the formal presentation of the protocol in appendix F.2, we will apply further optimizations on the
+approach sketched above.
+7
+Communication Cost Comparison with Prior Works
+Garbling of Boolean Circuits. In this section, we compare the concrete communication cost of our
+proposed multiparty authenticated garbling scheme ΠGBC (see Section 5) with protocols proposed in
+[WRK17b,BGH+23,GLM+24]. We compare the total communication cost and size of garbled circuits of
+ΠGBC in Table 2 with prior works for garbling of AES-128 circuit that comprises 6400 AND Gates and
+28176 XOR Gates. The works of [WRK17b] and [GLM+24] are in the strict dishonest majority setting,
+i.e., they support for t ≤n −1 corruptions. Whereas, [BGH+23] is in the honest majority setting and
+we set t = (n −1)/4 for their construction. Recall that our construction is in the dishonest majority
+setting and we set the corruption threshold t = 2n/3 for our construction in the comparison. Also note,
+we report the communication cost of [BGH+23] assuming broadcast channel.
+22
+
+#Parties
+Total Communication
+Size of Garbled Circuits
+[WRK17b] [BGH+23] [GLM+24] Ours
+[WRK17b] [BGH+23] [GLM+24]
+Ours
+8
+0.16
+254.5
+0.47
+0.89
+23.44
+1375
+12.5
+168.83
+16
+0.68
+254.5
+0.94
+1.16
+93.75
+1375
+25
+337.66
+32
+2.75
+254.5
+1.89
+1.69
+375
+1375
+50
+675.31
+64
+11
+254.5
+3.78
+2.75
+1500
+1375
+100
+1350.62
+128
+44
+254.5
+7.57
+4.87
+6000
+1375
+200
+2701.25
+256
+176
+254.5
+15.14
+9.11
+24000
+1375
+400
+5402.5
+512
+704
+254.5
+30.27
+17.61
+96000
+1375
+800
+10805
+1024
+2816
+254.5
+60.54
+34.72
+384000
+1375
+1600
+21610
+2048
+11264
+254.5
+121.08
+69.33
+1536000
+1375
+3200
+43220
+4096
+45056
+254.5
+242.17
+140.07
+6144000
+1375
+6400
+86440
+Table 2: Comparison of Total Communication (reported in GB) and Size of Garbled Circuits (reported
+in MB) for varying values of n for garbling of AES-128 circuits.
+Total Communication. From the table it can be observed that for small values of n, [WRK17b] is
+the most performant among all the schemes. But as the value of n increases, we can see the impact
+of quadratic factor in the performance of [WRK17b]. As expected the total communication cost of
+[BGH+23] is independent of the number of parties. While it is evident that the performance of [GLM+24]
+scales linearly in n. From n = 32 to n = 4096, our scheme has the least communication cost. For
+instance, our scheme is 1.76×, 7.3×, and 81× more efficient than [GLM+24], [BGH+23], and [WRK17b],
+respectively, for n = 512.
+Size of Garbled Circuit. The table illustrates the quadratic, independency, and linear overhead of
+number of parties in size of the garbled circuits of schemes [WRK17b], [BGH+23], and ([GLM+24] and
+Ours), respectively. For n = 8 to n = 512, our scheme has the smallest garbled circuit. For instance, for
+n = 128, the total size of our garbled circuit is 30×, 6.9× and 13.5× smaller than [WRK17b], [BGH+23]
+and [GLM+24], respectively. From n = 1024 onwards, [BGH+23] is the most performant.
+Break-even point with [BGH+23]. We observe that our scheme outperforms [BGH+23] in terms of
+total communication for up to n > 7000 and in terms of size of garbled circuit for up to n ≈880. Despite
+our construction scaling linearly in n, it outperforms [BGH+23] for a large range of n which further
+demonstrates the practicality of our construction.
+Acknowledgements. D. Heath was supported in part by NSF grant CNS-2246353. V. Kolesnikov was
+supported in part by a Visa research award and NSF awards CNS-2246354, and CCF-2217070. R.
+Ostrovsky was supported in part by NSF grants CNS-2246355, CCF-2220450, US-Israel BSF grant
+2022370, and by Sunday Group. V. Narayanan was supported by NSF grants CNS-2246355, CCF-
+2220450, CNS-2001096.
+References
+[BCG+20]
+Elette Boyle, Geoffroy Couteau, Niv Gilboa, Yuval Ishai, Lisa Kohl, and Peter Scholl.
+Efficient
+pseudorandom correlation generators from ring-LPN. In Daniele Micciancio and Thomas Ristenpart,
+editors, CRYPTO 2020, Part II, volume 12171 of LNCS, pages 387–416, August 2020.
+[BCO+21]
+Aner Ben-Efraim, Kelong Cong, Eran Omri, Emmanuela Orsini, Nigel P. Smart, and Eduardo Soria-
+Vazquez. Large scale, actively secure computation from LPN and free-XOR garbled circuits. In
+Anne Canteaut and Fran¸cois-Xavier Standaert, editors, EUROCRYPT 2021, Part III, volume 12698
+of LNCS, pages 33–63, October 2021.
+[BDOZ11]
+Rikke Bendlin, Ivan Damg˚ard, Claudio Orlandi, and Sarah Zakarias. Semi-homomorphic encryption
+and multiparty computation. In Kenneth G. Paterson, editor, EUROCRYPT 2011, volume 6632 of
+LNCS, pages 169–188, May 2011.
+[BEBB+24] Aner Ben-Efraim, Lior Breitman, Jonathan Bronshtein, Olga Nissenbaum, and Eran Omri. MYao:
+Multiparty “yao” garbled circuits with row reduction, half gates, and efficient online computation.
+Cryptology ePrint Archive, Paper 2024/1430, 2024.
+[BGH+23]
+Gabrielle Beck, Aarushi Goel, Aditya Hegde, Abhishek Jain, Zhengzhong Jin, and Gabriel Kaptchuk.
+Scalable multiparty garbling. In Weizhi Meng, Christian Damsgaard Jensen, Cas Cremers, and Engin
+23
+
+Kirda, editors, Proceedings of the 2023 ACM SIGSAC Conference on Computer and Communications
+Security, CCS 2023, Copenhagen, Denmark, November 26-30, 2023, pages 2158–2172. ACM, 2023.
+[BMR90]
+Donald Beaver, Silvio Micali, and Phillip Rogaway. The round complexity of secure protocols (ex-
+tended abstract). In 22nd ACM STOC, pages 503–513. ACM Press, May 1990.
+[CCHR16]
+Ran Canetti, Yilei Chen, Justin Holmgren, and Mariana Raykova. Adaptive succinct garbled RAM
+or: How to delegate your database.
+In Martin Hirt and Adam D. Smith, editors, TCC 2016-B,
+Part II, volume 9986 of LNCS, pages 61–90, October / November 2016.
+[CH16]
+Ran Canetti and Justin Holmgren. Fully succinct garbled RAM. In Madhu Sudan, editor, ITCS
+2016, pages 169–178. ACM, January 2016.
+[DGH+21] Itai Dinur, Steven Goldfeder, Tzipora Halevi, Yuval Ishai, Mahimna Kelkar, Vivek Sharma, and Greg
+Zaverucha. MPC-friendly symmetric cryptography from alternating moduli: Candidates, protocols,
+and applications. In Tal Malkin and Chris Peikert, editors, CRYPTO 2021, Part IV, volume 12828
+of LNCS, pages 517–547, Virtual Event, August 2021.
+[EGP+23]
+Daniel Escudero, Vipul Goyal, Antigoni Polychroniadou, Yifan Song, and Chenkai Weng. Superpack:
+Dishonest majority MPC with constant online communication. In Carmit Hazay and Martijn Stam,
+editors, Advances in Cryptology - EUROCRYPT 2023 - 42nd Annual International Conference on the
+Theory and Applications of Cryptographic Techniques, Lyon, France, April 23-27, 2023, Proceedings,
+Part II, volume 14005 of Lecture Notes in Computer Science, pages 220–250. Springer, 2023.
+[FY92]
+Matthew K. Franklin and Moti Yung. Communication complexity of secure computation (extended
+abstract). In 24th ACM STOC, pages 699–710. ACM Press, May 1992.
+[GGMP16] Sanjam Garg, Divya Gupta, Peihan Miao, and Omkant Pandey. Secure multiparty RAM computation
+in constant rounds. In Martin Hirt and Adam D. Smith, editors, TCC 2016-B, Part I, volume 9985
+of LNCS, pages 491–520, October / November 2016.
+[GHL+14]
+Craig Gentry, Shai Halevi, Steve Lu, Rafail Ostrovsky, Mariana Raykova, and Daniel Wichs. Garbled
+RAM revisited. In Phong Q. Nguyen and Elisabeth Oswald, editors, EUROCRYPT 2014, volume
+8441 of LNCS, pages 405–422, May 2014.
+[GLM+24] Vipul Goyal, Junru Li, Ankit Kumar Misra, Rafail Ostrovsky, Yifan Song, and Chenkai Weng.
+Dishonest majority constant-round MPC with linear communication from DDH. LNCS, pages 167–
+199, December 2024.
+[GLO15]
+Sanjam Garg, Steve Lu, and Rafail Ostrovsky. Black-box garbled RAM. In Venkatesan Guruswami,
+editor, 56th FOCS, pages 210–229. IEEE Computer Society Press, October 2015.
+[GLOS15]
+Sanjam Garg, Steve Lu, Rafail Ostrovsky, and Alessandra Scafuro. Garbled RAM from one-way
+functions. In Rocco A. Servedio and Ronitt Rubinfeld, editors, 47th ACM STOC, pages 449–458.
+ACM Press, June 2015.
+[GMW87]
+Oded Goldreich, Silvio Micali, and Avi Wigderson. How to play any mental game or A completeness
+theorem for protocols with honest majority. In Alfred Aho, editor, 19th ACM STOC, pages 218–229.
+ACM Press, May 1987.
+[GPS22]
+Vipul Goyal, Antigoni Polychroniadou, and Yifan Song.
+Sharing transformation and dishonest
+majority MPC with packed secret sharing.
+In Yevgeniy Dodis and Thomas Shrimpton, editors,
+CRYPTO 2022, Part IV, volume 13510 of LNCS, pages 3–32, August 2022.
+[HKO22]
+David Heath, Vladimir Kolesnikov, and Rafail Ostrovsky. EpiGRAM: Practical garbled RAM. In Orr
+Dunkelman and Stefan Dziembowski, editors, EUROCRYPT 2022, Part I, volume 13275 of LNCS,
+pages 3–33, May / June 2022.
+[HKO23]
+David Heath, Vladimir Kolesnikov, and Rafail Ostrovsky. Tri-state circuits - A circuit model that
+captures RAM. In Helena Handschuh and Anna Lysyanskaya, editors, CRYPTO 2023, Part IV,
+volume 14084 of LNCS, pages 128–160, August 2023.
+[HSS20]
+Carmit Hazay, Peter Scholl, and Eduardo Soria-Vazquez. Low cost constant round MPC combining
+BMR and oblivious transfer. Journal of Cryptology, 33(4):1732–1786, October 2020.
+[KPR18]
+Marcel Keller, Valerio Pastro, and Dragos Rotaru. Overdrive: Making SPDZ great again. In Jes-
+per Buus Nielsen and Vincent Rijmen, editors, EUROCRYPT 2018, Part III, volume 10822 of LNCS,
+pages 158–189, April / May 2018.
+[KS08]
+Vladimir Kolesnikov and Thomas Schneider. Improved garbled circuit: Free XOR gates and ap-
+plications.
+In Luca Aceto, Ivan Damg˚ard, Leslie Ann Goldberg, Magn´us M. Halld´orsson, Anna
+Ing´olfsd´ottir, and Igor Walukiewicz, editors, ICALP 2008, Part II, volume 5126 of LNCS, pages
+486–498. Springer, Heidelberg, July 2008.
+[LO13]
+Steve Lu and Rafail Ostrovsky. How to garble RAM programs. In Thomas Johansson and Phong Q.
+Nguyen, editors, EUROCRYPT 2013, volume 7881 of LNCS, pages 719–734, May 2013.
+[LO17]
+Steve Lu and Rafail Ostrovsky. Black-box parallel garbled RAM. In Jonathan Katz and Hovav
+Shacham, editors, CRYPTO 2017, Part II, volume 10402 of LNCS, pages 66–92, August 2017.
+24
+
+[LPSY15]
+Yehuda Lindell, Benny Pinkas, Nigel P. Smart, and Avishay Yanai. Efficient constant round multi-
+party computation combining BMR and SPDZ. In Rosario Gennaro and Matthew J. B. Robshaw,
+editors, CRYPTO 2015, Part II, volume 9216 of LNCS, pages 319–338, August 2015.
+[LSS16]
+Yehuda Lindell, Nigel P. Smart, and Eduardo Soria-Vazquez. More efficient constant-round multi-
+party computation from BMR and SHE. In Martin Hirt and Adam D. Smith, editors, TCC 2016-B,
+Part I, volume 9985 of LNCS, pages 554–581, October / November 2016.
+[Ode09]
+Goldreich Oded. Foundations of Cryptography: Volume 2, Basic Applications. Cambridge University
+Press, USA, 1st edition, 2009.
+[PLS23]
+Andrew Park, Wei-Kai Lin, and Elaine Shi. NanoGRAM: Garbled RAM with eO(log N) overhead.
+In Carmit Hazay and Martijn Stam, editors, EUROCRYPT 2023, Part I, volume 14004 of LNCS,
+pages 456–486, April 2023.
+[RS22]
+Rahul Rachuri and Peter Scholl.
+Le mans: Dynamic and fluid MPC for dishonest majority.
+In
+Yevgeniy Dodis and Thomas Shrimpton, editors, CRYPTO 2022, Part I, volume 13507 of LNCS,
+pages 719–749, August 2022.
+[WRK17a] Xiao Wang, Samuel Ranellucci, and Jonathan Katz.
+Authenticated garbling and efficient mali-
+ciously secure two-party computation. In Bhavani M. Thuraisingham, David Evans, Tal Malkin, and
+Dongyan Xu, editors, ACM CCS 2017, pages 21–37. ACM Press, October / November 2017.
+[WRK17b] Xiao Wang, Samuel Ranellucci, and Jonathan Katz. Global-scale secure multiparty computation. In
+Bhavani M. Thuraisingham, David Evans, Tal Malkin, and Dongyan Xu, editors, ACM CCS 2017,
+pages 39–56. ACM Press, October / November 2017.
+[Yao86]
+Andrew Chi-Chih Yao. How to generate and exchange secrets (extended abstract). In 27th FOCS,
+pages 162–167. IEEE Computer Society Press, October 1986.
+[YWZ20]
+Kang Yang, Xiao Wang, and Jiang Zhang. More efficient MPC from improved triple generation and
+authenticated garbling. In Jay Ligatti, Xinming Ou, Jonathan Katz, and Giovanni Vigna, editors,
+ACM CCS 2020, pages 1627–1646. ACM Press, November 2020.
+A
+Detailed Security Model
+In this work, we consider security with abort against a non-adaptive (static) computationally bounded
+adversary. The security is defined in the real/ideal paradigm [Ode09], wherein security against an adver-
+sary A is proved by producing an ideal adversary Sim (simulator) that can influence an ideal computation
+carried out using a trusted third party (ideal functionality) as much as the influence of the adversary in
+the real computation using the protocol.
+Let Π be an n-party communication protocol computing an n-party function f. Let A be a non-
+adaptive (static) computationally bounded adversary. In the following discussion, we define security of
+Π against A with abort in the real/ideal paradigm. We first formally describe the real/ideal world, and
+the trusted functionality modelling computation with abort:
+Real World. In the real world, an adversary A chooses a set of parties M to corrupt in the onset of Π.
+The protocol is then executed after handing over the control of the corrupt parties to A and initializing
+the uncorrupt (honest) parties H = [n] \ M with their respective inputs and random tapes. If Π uses
+a random oracle as resource, the parties and adversary are given access to the random oracle as well.
+In each round of Π, an honest party computes their message using their input, random tape, messages
+received in all the previous rounds, by potentially making multiple queries to the random oracles. The
+adversary controlling the corrupt parties can choose the messages of each corrupt parties according its
+strategy (deviating arbitrarily from the protocol instructions) based on the messages received by all
+corrupt parties in all the previous rounds and the current round (as the adversary is rushing) from the
+honest parties, private randomness of A, making oracle calls to the random oracle. When the protocol
+terminates, the honest parties output their respective outputs in the protocol and the adversary outputs
+a function of their view, which consists of the view of all corrupt parties and the private randomness
+of the adversary. In a joint execution of Π and A corrupting M, for a security parameter κ, auxilliary
+input z, and inputs {xi}i∈H to the honest parties, we denote the joint distribution of the outputs of
+honest parties and the adversary by REALΠ,A(z),M(1κ, {xi}i∈[n]\H.
+25
+
+Ideal World. In the ideal world, a simulator Sim chooses a set of parties M to corrupt and interacts
+with an ideal functionality F that computes f with abort. F, which is aware of the set M, behaves as
+follows:
+Collecting inputs from parties: For each i ∈H, the functionality receives input xi from honest party
+Pi. For each i ∈M, the functionality receives an input xi from Sim.
+Early abort: If F receives signal abort from Sim, the functionality sends ⊥as output to all honest
+parties and terminates.
+Computing function: The functionality computes y = f(x1, . . . , xn) and sends y to Sim.
+Late abort: Sim can deny the honest parties from receiving the output by sending abort to F, in which
+case, F sends ⊥as output to all honest parties and terminates.
+Function computation: If Sim sends continue to F, the functionality sends y to all honest parties
+and terminates.
+The honest parties output whatever they receive from F and Sim computes their output as a function
+of their own randomness, and all the messages they sent and received from F. In a joint execution of
+F and Sim corrupting M, for a security parameter κ, auxilliary input z, and inputs {xi}i∈H to the
+honest parties, we denote the joint distribution of the outputs of honest parties and the adversary by
+IDEALF,A(z),M(1κ, {xi}i∈[n]\H.
+Using the above definitions, security is defined as follows:
+Definition 7. An n-party communication protocol Π computes an n-party function f with computa-
+tional t-security with abort if for any M ⊂[n] of size at most t, and any PPT adversary A, there exists
+an ideal adversary (simulator) Sim such that, security parameter κ, for all {xi}i∈[n]\M, and auxiliary
+input z ∈{0, 1}∗,
+REALΠ,A(z),M(1κ, {xi}i∈[n]\M) ≈c IDEALF,Sim(z),M(1κ, {xi}i∈[n]\M).
+(4)
+Here, ≈c denotes computational indistinguishability with distinguishing advantage that is negligible in
+the security parameter κ.
+B
+Extended Review of the WRK Approach
+In Section 3.1 we explained the main invariant of the WRK approach to authenticated garbling. Here,
+we for completeness describe how WRK propagates its invariant across Boolean gates.
+XOR Gates. For an XOR gate (α, β, γ, ⊕) with input wires α and β and output wire γ, we require
+r(γ) = r(α) ⊕r(β). To ensure this, in the garbling phase, the parties locally set
+bdoz(r(γ)) ←bdoz(r(α)) ⊕bdoz(r(β)) = bdoz(r(α) ⊕r(β)).
+In addition, each garbler Pi sets X(γ)
+i
+←X(α)
+i
+⊕X(β)
+i
+.
+The evaluator P1 holds ρ(θ) = x(θ) ⊕r(θ) and (X(θ)
+i
+⊕ρ(θ) · ∆i)i̸=1 for each input wire θ ∈{α, β}
+by the WRK invariant during the evaluation. P1 computes the output encoding simply as the XOR of
+input encodings. I.e.,
+ρ(γ) ←ρ(α) ⊕ρ(β)
+e
+X(γ)
+i
+←(X(α)
+i
+⊕ρ(α) · ∆i ⊕X(β)
+i
+⊕ρ(β) · ∆i)i̸=1.
+Thus, ρ(γ) = (x(α) ⊕x(β)) ⊕(r(α) ⊕r(β)) = x(γ) ⊕r(γ), and e
+X(γ)
+i
+= X(γ)
+i
+⊕ρ(γ) · ∆i, propagating the
+invariant across XOR gates without any communication.
+26
+
+AND Gates. Consider an AND gate (α, β, γ, ∧). In the preprocessing phase, the parties engage in an MPC
+protocol which takes bdoz(r(α)) and bdoz(r(β)) as input and distributes bdoz(r(σ)) = bdoz(r(α) ∧r(β))
+as output.
+Let ⊔be a fixed BDOZ-style secret sharing of 1 in which the share of Pi is (bi, (Ki[bj])j̸=i, (Mj[bi])j̸=i),
+where, for each i, bi = 1 if i = 1 and 0 otherwise, Ki[bj] = ∆i if j = 1 and 0 otherwise, and Mj[bi] = 0
+for all j. For each (m0, m1) ∈{0, 1}2, the parties locally prepare
+bdoz(r(γ,m0,m1))
+←bdoz(r(σ)) ⊕bdoz(r(γ)) ⊕m1 · bdoz(r(α)) ⊕m0 · bdoz(r(β)) ⊕(m0 ∧m1) · ⊔
+= bdoz((r(α) ∧r(β)) ⊕r(γ) ⊕(m1 · r(α)) ⊕(m0 · r(β)) ⊕(m0 ∧m1))
+= bdoz(r(γ) ⊕(r(α) ⊕m0) ∧(r(β) ⊕m1)).
+(5)
+For each (m0, m1) ∈{0, 1}2, each garbler Pi computes X(γ,m0,m1)
+i
+= X(γ)
+i
+⊕j̸=i Ki[r(γ,m0,m1)
+j
+] ⊕
+r(γ,m0,m1)
+i
+· ∆i, and sends ciphertext G(γ,m0,m1)
+i
+to P1, computed using random oracle H.
+G(γ,m0,m1)
+i
+= H(X(α)
+i
+⊕m0 · ∆i, X(β)
+i
+⊕m1 · ∆i)
+⊕(r(γ,m0,m1)
+i
+, (Mj[r(γ,m0,m1)
+i
+])j̸=i, X(γ,m0,m1)
+i
+),
+where bdoz(r(γ,m0,m1))i = (r(γ,m0,m1)
+i
+, {Ki[r(γ,m0,m1)
+j
+]}j̸=i, {Mj[r(γ,m0,m1)
+i
+]}j̸=i). For each i̸ = 1, P1
+holding ρ(θ) = x(θ) ⊕r(θ) and (X(θ)
+i
+⊕ρ(θ) · ∆i)i̸=1 for input wires θ ∈{α, β} can decrypt G(γ,ρ(β),ρ(α))
+i
+to
+obtain (r(γ,ρ(α),ρ(β))
+i
+, (Mj[r(γ,ρ(α),ρ(β))
+i
+])j̸=i, X(γ,ρ(α),ρ(β))
+i
+). P1 verifies each share r(γ,ρ(α),ρ(β))
+i
+by checking if
+K1[r(γ,ρ(α),ρ(β))
+i
+]⊕M1[r(γ,ρ(α),ρ(β))
+i
+] equals r(γ,ρ(α),ρ(β))
+i
+.∆1. If all MAC checks are successful, P1 computes
+ρ(γ) ←⊕i∈[n]r(γ,ρ(α),ρ(β))
+i
+and labels e
+X(γ)
+i
+as:
+e
+X(γ)
+i
+= X(γ,ρ(α),ρ(β))
+i
+M
+j̸=i
+Mi[r(γ,ρ(α),ρ(β))
+j
+] = X(γ)
+i
+n
+M
+j=1
+r(γ,ρ(α),ρ(β))
+j
+· ∆i = X(γ)
+i
+⊕ρ(γ) · ∆i.
+ρ(γ) = r(γ,ρ(α),ρ(β)) = r(γ) ⊕
+
+r(α) ⊕ρ(α)
+∧
+
+r(β) ⊕ρ(β)
+= r(γ) ⊕(x(α) ∧x(β)).
+Thus, the invariant in evaluation holds for the output wires of AND gate.
+C
+Sub-functionalities
+In this section, we first provide a formal description of Oblivious Transfer functionality, FOT, and Oblivi-
+ous Linear Evaluation functionality, FOLE. FOT and FOLE are two-party functionalities executed between
+parties PA and PB.
+On receiving (m0, m1) from PA (sender), where |m0| = |m1| = p(κ) (where p(·) is a polynomial), and
+b ∈{0, 1} from PB (receiver), output mb to PB.
+Fig. C.1: Functionality FOT
+We recall two-party functionality FProg
+OLE and n-party functionality FnVOLE from [RS22] below.
+The construction ΠSP invokes the functionalities FProg
+OLE and FnVOLE with the parameter m = |C|/n,
+where C denotes the circuit. We observe that instead of using pseudorandom vectors in the functionalities,
+27
+
+On receiving u ∈F from PA and x ∈F from PB, sample v
+$
+←−F. Compute w ←u · x −v. Output w to PA
+and v to PB.
+Corrupted Party: If PB is corrupted, v may be chosen by A. If PA is corrupted, w can be chosen by A (and
+v is computed as u · x −w).
+Fig. C.2: Functionality FOLE
+Parameters: An expansion function Expand : S →Fm with seed space S and output length m. The
+functionality runs between parties PA and PB.
+On receiving sa from PA and sb from PB, where sa, sb ∈S:
+1. Compute u ←Expand(sa), x ←Expand(sb), and sample v ←Fm.
+2. Output w = u · x −v to PA and v to PB.
+Corrupted Party: If PB is corrupted, v may be chosen by A. If PA is corrupted, w can be chosen by A (and
+v is computed as u · x −w).
+Fig. C.3: Functionality FProg
+OLE
+Parameters: An expansion function Expand : S →Fm with seed space S and output length m. The
+functionality runs between parties P1, P2, . . . , Pn.
+Initialize: On receiving (Init, ∆i) from Pi for i ∈{1, . . . , n}, where ∆i ∈F, store (i, ∆i) and ignore all
+subsequent Init commands from Pi.
+Extend: On receiving Extend from every Pi ∈{P1, . . . , Pn}:
+1. Sample seed seedi ←S for all Pi.
+2. Compute ui = Expand(seedi).
+3. Sample vi
+j ←Fm for all Pi and j̸ = i. Retrieve ∆j and compute wi
+j = ui · ∆j −vi
+j.
+4. Output
+ seedi, (wi
+j, vj
+i )j̸=i
+
+to Pi for all Pi ∈{P1, . . . , Pn}.
+Corrupted Party: A corrupted party Pi can choose ∆i and seedi. It can also choose wi
+j (where vi
+j is
+computed as ui · ∆j −wi
+j) and vj
+i .
+Global Key Query: If Pi is corrupted, receive (query, ∆′) from A with ∆′ ∈Fn.
+1. If ∆′ = ∆, where ∆= (∆1, . . . , ∆n), send success to Pi and ignore any subsequent global key query.
+2. Otherwise, send (abort, ∆) to Pi, and abort to Pj and all other parties.
+Fig. C.4: Functionality FnVOLE
+28
+
+one can use random vectors. That is, ΠSP can invoke FOLE and FnVOLE instead. With this modification,
+we require O(n2 · m) = O(n|C|) OLE correlations. Consequently, the total communication complexity
+remains O(n|C|).
+Parameters: The functionality runs between parties P1, P2, . . . , Pn.
+Initialize: On receiving (Init, ∆i) from Pi for i ∈{1, . . . , n}, where ∆i ∈F, store (i, ∆i) and ignore all
+subsequent Init commands from Pi.
+Extend: On receiving Extend from every Pi ∈{P1, . . . , Pn}:
+1. Sample ui
+$
+←−Fm for all Pi.
+2. Sample vi
+j ←Fm for all Pi and j̸ = i. Retrieve ∆j and compute wi
+j = ui · ∆j −vi
+j.
+3. Output
+ ui, (wi
+j, vj
+i )j̸=i
+
+to Pi for all Pi ∈{P1, . . . , Pn}.
+Corrupted Party: A corrupted party Pi can choose ∆i and ui. It can also choose wi
+j (where vi
+j is computed
+as ui · ∆j −wi
+j) and vj
+i .
+Global Key Query: If Pi is corrupted, receive (query, ∆′) from A with ∆′ ∈Fn.
+1. If ∆′ = ∆, where ∆= (∆1, . . . , ∆n), send success to Pi and ignore any subsequent global key query.
+2. Otherwise, send (abort, ∆) to Pi, and abort to Pj and all other parties.
+Fig. C.5: Functionality FnVOLE
+D
+Proof Omitted From Section 4
+The proof of the below proposition is straightforward.
+Proposition 2. Suppose [r]
+$←−Share(r) where r ∈Fℓ. Further, let (s1, . . . , sn) be a valid packed secret
+sharing of e. Then, when ≡denotes equivalence of distributions,
+
+{si, [r]i + si}i∈M
+[r]
+$←−Share(r)
+
+≡
+
+{si, [r′]i}i∈M
+[r′]
+$←−Share(r + e)
+
+.
+D.1
+Proof of Lemma 1
+For each 1 ≤j ≤⌈|W \W⊕|/k⌉, let [b(j)]
+$←−Share(b(j)) where b(j)
+$←−{0, 1}ℓ⊂Fℓ. For each j, let ˆr(j)
+i
+be
+the input of Pi in step 1, where ˆr(j)
+i
+= [b(j)]i for each i /∈M. Let ei = b(j)
+i
+−ˆr(j)
+i
+for each 1 ≤i ≤n. Let
+e ∈Fℓbe the vector secret shared by (e1, . . . , en) when interpreted as a PSS. Then, by Proposition 2,
+(ˆr(j)
+1 , . . . , ˆr(j)
+n ) is distributed as Share(b(j) +e) conditioned on the view of Pi, i ∈M. For any e ∈{0, 1}ℓ,
+(r(1+(j−1)ℓ), . . . , r(jℓ)) = b(j) + e is uniformly distributed in {0, 1}ℓconditioned of this view. Whereas, if
+e /∈{0, 1}ℓ, then b(j) + e /∈{0, 1}ℓ.
+For each 1 ≤j ≤⌈|W \ W⊕|/ℓ⌉in step 3, (l(1+(j−1)ℓ), . . . , l(jℓ)) is uniformly distributed in Fℓby
+Proposition 1, since M is a super-invertible matrix, and ˆl(j)
+i
+is uniformly and independently distributed
+in F, for each i /∈M.
+In step 2, suppose r(j∗) /∈{0, 1} for some j∗. Since each l(j) is uniformly and independently distributed
+in F, P
+j l(j) · r(j)(r(j) −1) is uniformly distributed in F, and hence err̸ = 0 with probability 1 −1/|F|.
+For each 1 ≤j ≤⌈(2n + (n −ℓ) · T) /ℓ⌉, (a(1+(j−1)ℓ), . . . , a(jℓ)) is uniformly random because M is a
+super invertible matrix, and ˆa(j)
+i
+is uniformly and independently distributed in F, for each i /∈M. This
+guarantees generation of a random packed secret sharing, i.e., [r(ω)], of (r(1+(j−1)ℓ), . . . , r(jℓ)), for each
+1 ≤j ≤T in step 6 of the circuit. Similarly, step 8 generates a random packed secret sharing [ϕ · r(j)]
+for each 1 ≤j ≤T.
+29
+
+Definitions. M is the set of parties corrupted by ideal adversary Sim.
+1. For each 1 ≤i ≤n, receive ri ∈F from Sim if i ∈M; else, ri
+$
+←−F.
+2. For each 1 ≤i ≤n, receive δi ∈F from Sim if i ∈H; else δ(i) ←0.
+3. Receive (c(1)
+j , . . . , c(n/ℓ)) ∈Fℓfor each j ∈M from Sim.
+4. For 1 ≤χ ≤n/ℓ, when r(χ) = (r1+(χ−1)ℓ, . . . , rχℓ), uniformly sample a secret sharing [r(χ)] of r(χ)
+subject to [r(χ)]j = c(χ)
+j
+for each j ∈M.
+5. For each 1 ≤i ≤n, send ri + δi and [r(χ)]i for each 1 ≤χ ≤n/ℓto Pi.
+Fig. D.1: Frv.
+D.2
+Functionality Frv: Definition and Construction
+The functionality Frv effectively samples (r1, . . . , rn)
+$←−Fn, delivers ri to each Pi and distributes PSS
+[r(χ)] where r(χ) = (r(1+(χ−1)ℓ), . . . , r(χℓ)) for each 1 ≤χ ≤n/ℓ. The functionality it formally defined in
+Figure D.1. The protocol Πrv in Figure D.2 realizes ℓcopies of Frv using O(n2) total communication.
+Definition. For 1 ≤χ ≤n/ℓ, define Sχ = {1 + (χ −1)ℓ, . . . , min(n, χ · ℓ)}.
+1. for each 1 ≤χ ≤n/ℓdo (in parallel):
+2.
+Each Pi, 1 ≤i ≤n distributes [s(χ,i)]
+$
+←−Share(s(χ,i)) where s(χ,i)
+$
+←−Fℓ.
+3.
+Each Pi interprets ([s(χ,1)]i, . . . , [sχ,n]i) as a packed secret sharing and reconstructs the shared vector
+(t(χ,i)
+1
+, . . . , t(χ,i)
+ℓ
+). Pi sends t(χ,i)
+j
+to Pj+(χ−1)ℓfor 1 ≤j ≤ℓ.
+4.
+Each Pi, i ∈Sχ interprets (t(χ,1)
+i−(χ−1)ℓ, . . . , t(χ,n)
+i−(χ−1)ℓ) as a packed secret sharing and reconstructs the
+shared vector as (r(1)
+i
+, . . . , r(1)
+i
+).
+5.
+For each 1 ≤j ≤ℓ, Pi outputs [r(χ,j)]i = s(χ,i)
+j
+, and, if i ∈Sχ, also r(j)
+i
+.
+Fig. D.2: Protocol Πrv realizing ℓinvocations of Frv.
+Lemma 2. The protocol Πrv in Figure D.2 realizes ℓserial invocations of the functionality Frv with
+perfect (n −ℓ)-security.
+Proof. We first prove the security of the protocol against any adversary A that corrupts exactly n −ℓ
+parties using a simulation argument. Consider a simple simulator Sim that runs A as a subroutine and
+interacts with ℓserial invocations of Frv as follows:
+1. Sim executes emulates the honest parties Pi, i ∈M, and interacts with A. The simulator keeps track
+of all the messages exchanged between the emulated honest parties and the corrupt parties controlled
+by A. Let View be the view of A consisting of its private randomness, and all messages exchanged
+between emulated honest parties and corrupt parties controlled by A. Let ([r(1,i)]j, . . . , [r(n/ℓ,i)]j)
+be the shares and r(i)
+j
+be the secret output by each Pj, j ∈H for 1 ≤j ≤ℓ.
+2. For each 1 ≤χ ≤n/ℓand i ∈M, Sim chooses s(χ,i) ∈Fℓand private randomness for Pi subject to
+the constraint that [s(χ,i)]j for each j ∈H is consistent with that in View. Note that, such s(χ,i) and
+private randomness exist since the secret sharing is of degree (n −1). Consider an honest execution
+of Πrv with above mentioned initial state for each Pi, i ∈M and the same initial state as in step 1
+(i.e., Sim’s interaction with A) for each Pi, i ∈H. Let ([˜r(1,i)]j, . . . , [˜r(n/ℓ,i)]j) be the shares and ˜r(i)
+j
+be the secret output by each Pj, 1 ≤i ≤n for 1 ≤j ≤ℓ. Define δ(i)
+j
+= r(i)
+j
+−˜r(i)
+j
+for each 1 ≤i ≤ℓ
+and j ∈H.
+3. For each 1 ≤i ≤ℓ, Sim sends the following to the i-th parallel invocation of Frv:
+– (c(1)
+j , . . . , c(n/ℓ)
+j
+) = ([˜r(1,i)]j, . . . , [˜r(1,i)]j) for each j ∈M;
+30
+
+– rj = ˜r(i)
+j
+for each j ∈M;
+– δj = δ(i)
+j
+for each j ∈H.
+Sim terminates with whatever A outputs.
+We will now prove that the ideal and real world execution are identically distributed using a sequence
+of hybrids.
+Hybrid 1. Sim emulates all the honest parties and interacts with A. The output of emulated parties are
+routed to the output of the real honest parties.
+This hybrid is identical to the real world execution.
+Hybrid 2. Sim interacts with A as prescribed in steps 1 and 2 in the simulator. Finally, for each i ∈H,
+route [˜r(1,i)]j, . . . , [˜r(n/ℓ,i)]j and ˜r(i)
+j
++ δ(i)
+j
+as output of Pj.
+This hybrid is identical to the previous hybrid. This can be seen as follows: The shares output by Pj
+are the same in both hybrids since the same initial state, specifically same {s(χ,i)} (which dictate the
+shares in the output), are used by Pi in step 1 and step 2 of the simulation. Further, ˜r(i)
+j
++ δ(i)
+j
+= r(i)
+j .
+Hybrid 3. Sim interacts with A as prescribed in steps 1 and 2 in the simulator. For each 1 ≤i ≤ℓ: Sim
+plays Frv after corrupting the parties Pi, i ∈M. Sim sends (c(1)
+j , . . . , c(n/ℓ)
+j
+) = ([˜r(1,i)]j, . . . , [˜r(1,i)]j),
+rj = ˜r(i)
+j
+and δj = 0 for each j ∈M. Let ([˜r(1,i)]j, . . . , [˜r(n/ℓ,i)]j) and ˜r(i)
+j
+be the output of Frv to Pj
+for each j ∈H. Then, Sim routes ([˜r(1,i)]j, . . . , [˜r(n/ℓ,i)]j) and ˜r(i)
+j
++ δ(i)
+j
+as output of each honest Pj for
+each 1 ≤i ≤ℓ.
+Equivalence of Hybrid 2 and Hybrid 3 follow immediately from Lemma 3 since the only difference
+between the two hybrids is that the semi-honest execution of the protocol (for a fixed set of inputs to
+malicious parties) in the former is replaced by a call to the functionality.
+Hybrid 4. The ideal execution involving the interaction between Sim and Funcrv.
+The only difference between Hybrid 3 and Hybrid 4 is that the latter carries out the addition of ˜r(i)
+j
+and δ(i)
+j
+by passing it as an argument to Frv. Equivalence follows.
+Lemma 3. Πrv realizes Frv with semi-honest (n −ℓ)-security.
+Proof. Fix 1 ≤χ ≤ℓ. For each 1 ≤k ≤ℓ, let {l(k)
+i
+∈F}1≤i≤n be the linear operator for reconstructing
+coordinate k of the vector secret shared using PSS. I.e., when (s1, . . . , sn) is a PSS of (r1, . . . , rℓ),
+Pn
+i=1 l(k)
+i
+= rk.
+For each 1 ≤j ≤ℓ, let r(χ,j) be the secret defined when (s(χ,1)
+j
+, . . . , s(χ,n)
+j
+) is interpreted as a (n−1)-
+degree packed secret sharing of an ℓ-dimensional secret. Then, for any 1 ≤i ≤ℓ, Pi+(χ−1)ℓreceives
+Pn
+j=1 l(i)
+j
+· [s(χ,j)]k from each Pk, 1 ≤k ≤n. In other words, Pi+(χ−1)ℓreceives the shares
+n
+X
+j=1
+l(i)
+j
+· [s(χ,j)] =
+
+
+n
+X
+j=1
+l(i)
+j
+· (s(χ,j)
+1
+, . . . , s(χ,j)
+ℓ
+)
+
+
+=
+
+
+
+
+n
+X
+j=1
+l(i)
+j
+· s(χ,j)
+1
+, . . . ,
+n
+X
+j=1
+l(i)
+j
+· s(χ,j)
+ℓ
+
+
+
+
+=
+h
+r(χ,1)
+i
+, . . . , r(χ,ℓ)
+i
+i
+.
+31
+
+The final equality follows from the definition of {l(i)
+j }1≤j≤n. Since each Pi sets their shares
+(r(χ,1)
+i
+, . . . , s(χ,ℓ)i) to be (s(χ,i)
+1
+, . . . , s(χ,i)ℓ), the correctness of the protocol follows.
+Consider a semi-honest adversary A that corrupts Pi, i ∈M. We observe that Πrv is essentially
+a packed variant of BGW protocol with (n −ℓ)-private packed secret sharing for computing a linear
+functionality in which the input of each Pi is s(χ,i) and output of each Pi is s(χ,i) and, additionally,
+(r(χ,1)
+i−(χ−1)ℓ, . . . , r(χ,ℓ)
+i−(χ−1)ℓ) if i ∈Sχ. The privacy follows from that of BGW protocol. This functionality
+implies Frv in the semi-honest setting. We conclude that Πrv realizes Frv.
+D.3
+Proof of Theorem 4
+Let A be an adversary corrupting Pi, i ∈M. Let H = {1, . . . , n} \ M. We construct a simulator Sim
+that runs A as a subroutine while interacting with FGBC-Pre. Sim is described as follows:
+1. Throughout the protocol, Sim interacts with A by emulating the honest parties {Pi}i∈H, playing the
+functionalities Fmpc and F2pc, and recording the output of each of these functionalities. If the honest
+parties abort at any point, Sim signals FGBC-Pre to issue abort, and outputs whatever A outputs.
+2. Sim signals FGBC-Pre to issue unanimous abort, and terminates with the output of A at the end of
+the simulation in the following scenarios:
+(a) In step 1 of ΠGBC-Pre, while Sim interacts with A by playing the role of Fmpc. Fmpc expects A
+to provide the input of every corrupt Pi to the circuit CD on each of their input wires. If there
+exists some 1 ≤ω ≤W \ W⊕for which A provides r(ω)
+j
+/∈{0, 1} on behalf of some corrupt
+Pj, j ∈M, and the value of err is non-zero,
+(b) If there exists i ∈M for which A uses incorrect values of {[r(ω)]i}ω∈T , {[ϕ · r(ω)]i}ω∈T on behalf
+of Pi in the invocation of F2pc with some honest Pj,
+(c) If there exists i ∈M and j, j′ ∈H such that the purported value of ∆i, αi, λi used by A on
+behalf of Pi in the invocations of F2pc with Pj and Pj′ are inconsistent.
+3. Sim carries out the following computations. In all emulations carried out in the following computa-
+tions, each honest party is emulated with the same states as in the emulation in step 1.
+A. For each ω ∈T and i ∈M, Sim chooses (a(ω,i)
+1
+, . . . , a(ω,i)
+n
+) and a packed secret sharing
+(o(ω,i)
+1
+, . . . , o(ω,i)
+n
+) of 0 such that for each j ∈H, o(ω,i)
+j
++ ⟨r(ω) · ∆i⟩{i,j}
+i
++ a(ω,i)
+j
+= s′′
+j , where s′′
+j
+is the value sent by Pi in step 6 to Pj in iteration ω. Let e be the vector that is packed secret shared
+by (a(ω,i)
+1
+, . . . , a(ω,i)
+n
+). Define e(k+(ω−1)ℓ,i) = ek for 1 ≤k ≤ℓ. Next, arbitrarily fix the randomness
+used by each Pj and advance the protocol till 10. For each 1 ≤w ≤|G∧∪W \ W⊕| + 1 and χ,
+let t(w,χ)
+i
+be the share of Pi, 1 ≤i ≤n in the purported secret sharing of r(w) · ∆(χ). Whereas, let
+t(w,χ)
+i
+be the share of emulated Pi, i ∈H in the purported secret sharing of r(w) · ∆(χ) in Sim’s
+interaction with A in step 1 of the simulation. Let e′ to be the vector secret shared by (u1, . . . , un)
+where ui = 0 if i ∈M and ui = t(w,χ)
+i
+−t(w,χ)
+i
+if i ∈H. Define ˜e(w,k+(χ−1)ℓ) = e′
+k for 1 ≤k ≤ℓ.
+Define ν(w,χ) = (e(w,1+(χ−1)ℓ) + ˜e(w,1+(χ−1)ℓ), . . . , e(w,χℓ) + ˜e(w,χℓ)).
+B. For each iteration ω and i ∈M, let a(i)
+j
+for j ∈H be the message sent by corrupt Pi to emulated Pj
+in step 12. Choose a(i)
+j
+arbitrarily for each j ∈M such that Pn
+j=1 a(i)
+j
+= [r(ω)]i. Advance the protocol
+till step 13. Let s(w)
+i
+be the share of of each Pi, 1 ≤i ≤n in the purported additive secret sharing of
+r(w). Whereas, let s(w)
+i
+be the share of emulated Pi, i ∈H in the purported secret sharing of r(w) in
+Sim’s interaction with A in step 1 of the simulation. Define µ(w) = Pn
+i∈H(s(w)
+i
+−s(w)
+i
+) −P
+i∈M s(w)
+i
+.
+C. For each iteration ω′ and i ∈M, Sim chooses (a(ω′,i)
+1
+, . . . , a(ω′,i)
+n
+) and a packed secret sharing
+(o(ω′,i)
+1
+, . . . , o(ω′,i)
+n
+) of 0 such that for each j ∈H, a(ω′,i)
+j
++ o(ω′,i)
+j
+is the purported share of [o(w′,i)]
+that Pi sends to Pj in step 15 of iteration ω′. Let e be the vector that is packed secret shared
+by P
+i∈M(a(ω′,i)
+1
+, . . . , a(ω′,i)
+n
+). Define e(k+(ω′−1)ℓ) = ek for 1 ≤k ≤ℓ. Next, arbitrarily fix the
+32
+
+randomness used by each Pj, j ∈M and advance the protocol till step 17. Let z(w′)
+i
+be the share
+of of each Pi, 1 ≤i ≤n in the purported additive secret sharing of o(w′). Whereas, let z(w′)
+i
+be the
+corresponding share of emulated Pi, i ∈H in Sim’s interaction with A in step 1 of the simulation.
+Define ˜e(w′) to be the value additively secret shared by (u1, . . . , un) where ui = 0 if i ∈M and
+ui = z(ω,χ)
+i
+−z(ω,χ)
+i
+if i ∈H. Set δ(w′) = e(w′) + ˜e(w′).
+4. Sim chooses the outputs of corrupt parties and additive error to the secret sharings as follows:
+– Sample (r(w)
+w∈W\W⊕, r(g)
+g∈G∧)
+$←−D. Map w ∈G∧∪W \ W⊕to w ∈{1, . . . , |G∧∪W \ W⊕|} using
+Υ. Sample ∆i
+$←−F for each i ∈H; ∆i for each i ∈M remains unchanged.
+– For each i ∈H, ∆i used by A on behalf of Pi in all F2pc calls involving honest parties in step 1
+is chosen. Let k = |G∧∪W \ W⊕| + 1. For each χ, the share [∆(χ)]i of Pi, i ∈M is set to t(k,χ)
+i
+;
+and the error vector to be added to [∆(χ)] is the vector ν(k,χ).
+– For each 1 ≤w ≤|G∧∪W \ W⊕|, the share ⟨r(w)⟩i of Pi, i ∈M is set to s(w)
+i
+; and the additive
+error to ⟨r(w)⟩is µ(w).
+– For each 1 ≤w ≤|G∧∪W \ W⊕| and χ, the share [r(w,χ)]i of Pi, i ∈M is set to t(w,χ)
+i
+; and the
+error vector to be added to [r(w) · ∆(χ)] is the vector ν(w,χ).
+– For each 1 ≤w′ ≤|I ∪O|, the share ⟨o(w′)⟩i of Pi, i ∈M is set to z(w)
+i
+; and the additive error
+to ⟨o(w′)⟩is δ(w′).
+– For each 1 ≤w′′ ≤|G∧|, X(w′′)
+i
+and {[X(w′′,χ)]i}χ for i ∈M is set to those used by A in the
+w′′-th invocation of Frv on behalf of Pi; and the additive error vector to {[X(w′′,χ)]}χ is chosen
+as that used by A in the w′′-th invocation of Frv.
+We will now prove that the ideal and real world execution are identically distributed using a sequence
+of hybrids.
+Hybrid 1. After step 1 of the simulation where Sim interacts with A throughout the protocol by emulating
+all the honest parties and functionalities, the output of emulated parties are routed to the output of the
+real honest parties.
+This hybrid is identical to the real world execution.
+Hybrid 2. Same as Hybrid 1 with one caveat: Sim forces honest parties to abort if one of the following
+occurs:
+1. If there exists some 1 ≤ω ≤W \ W⊕for which A provides r(ω)
+j
+/∈{0, 1} on behalf of some corrupt
+Pj, j ∈M to Fmpc, and the value of err is non-zero,
+2. For some i ∈M, A uses incorrect values of {[r(ω)]i}ω∈T , {[ϕ · r(ω)]i}ω∈T on behalf of Pi in the
+invocation of F2pc with some honest Pj in step 3.
+3. For some i ∈M and j, j′ ∈H, A uses distinct values as purported values of (λi, ∆i, ϕi, αi) in the
+input of Pi to invocations of F2pc with Pj and Pj′.
+The view of the adversary in both hybrids are identically distributed. As argued in Lemma 1, CD
+outputs err̸ = 0 with probability 1/|mathbbF| whenever r(ω)
+j
+/∈{0, 1} for any 1 ≤ω ≤W \W⊕. Lemma 4
+establishes that all honest parties abort in hybrid 1 with probability 1 −O(|C|)/F if conditions 1 and 2
+above are met in Hybrid 1. Hence, the joint distribution of A’s view and output of honest parties are at
+most O(|C|)/F far in statistical distiance.
+Hybrid 3. In this hybrid, we modify the manner in which the output of honest parties is computed
+whenever they do not abort.
+1. As described in step 3.A. of the simulation compute t(w,χ) for each 1 ≤w ≤|G∧∪W \ W⊕| + 1 and
+χ. Route t(w,χ) + (t(w,χ) −t(w,χ)) as the share of each honest Pi in [r(w) · ∆(χ)] for each 1 ≤w ≤
+|G∧∪W \ W⊕|.
+33
+
+2. Let k = |G∧∪W \ W⊕| + 1 and χ. Route t(k,χ) + (t(k,χ) −t(k,χ)) as the share of each honest Pi in
+[∆(χ)].
+3. As described in step 3.B. of the simulation compute s(w) for each 1 ≤w ≤|G∧∪W \ W⊕|. Route
+s(w) + (s(w) −s(w)) as the share of each honest Pi in ⟨r(w)⟩.
+4. As described in step 3.C. of the simulation compute z(w′) for each w′. Route z(w′) + (z(w′) −z(w′))
+as the share of each honest Pi in [o(w′)].
+This hybrid is identical to the previous one by definitions of s(w), t(w,χ) and z(w′).
+Hybrid 4. In this hybrid, we again modify the manner in which the output of honest parties is computed
+whenever they do not abort.
+1. Define e(w,χ) = (e(w,1+(χ−1)ℓ), . . . , e(w,χ−ℓ)) for each 1 ≤w ≤|G∧∪W \ W⊕| + 1 and χ, when each
+e(w,i) is as defined in step 3.A. of the simulation. For each w and χ, sample (˜t(w,χ)
+1
+, . . . , ˜t(w,χ)
+n
+)
+$←−
+Share(r(w) · ∆(χ) + e(w,χ)) subject to constraints ˜t(w,χ) = t(w,χ) for each i ∈M. Route ˜t(w,χ) +
+(t(w,χ) −t(w,χ)) as the share of each honest Pi in [r(w) ·∆(χ)] for each 1 ≤w ≤|G∧∪W \W⊕| and χ.
+2. Let k = |G∧∪W \ W⊕| + 1. Route ˜t(k,χ) + (t(k,χ) −t(k,χ)) as the share of each honest Pi in [∆(χ)].
+3. For each w, sample (˜s(w)
+1
+, . . . , ˜s(ω)
+n )
+$←−Share(r(w)) subject to constraints ˜s(w) = s(w) for each i ∈M.
+Route ˜s(w) + (t(w) −t(w)) as the share of each honest Pi in ⟨r(w)⟩for each 1 ≤w ≤|G∧∪W \ W⊕|.
+4. For each w′, with e(w′) as defined in 3.C. sample (˜z(w′)
+1
+, . . . , ˜z(w′)
+n
+)
+$←−Share(e(w′)) subject to con-
+straints ˜z(w′) = z(w′) for each i ∈M. Route ˜z(w′) + (z(w′) −z(w′)) as the share of each honest Pi in
+o(w′) for each 1 ≤w′ ≤|G∧|.
+(t(w,χ), . . . , t(w,χ)) form the output of an honest execution of the steps 8 to 10 with each Pj holding
+o(χ,i) + a(ω,i) + [r(w)]j · ∆i for each ω and 1 ≤i ≤n. As in our security proof for Lemma 2, we observe
+that an honest execution of iteration ω, χ of steps 8-10 of ΠGBC-Pre is essentially a packed variant of
+BGW protocol with (n −ℓ)-private packed secret sharing for computing linear functionality that takes
+input
+([r(ω)]i · ∆1+(χ−1)ℓ+ o(ω,1+(χ−1)ℓ)
+i
++ a(ω,1+(χ−1)ℓ)
+i
+, . . . , [r(ω)]i · ∆χℓ+ o(ω,χℓ)
+i
++ a(ω,χℓ)
+i
+)
+from each Pi, and computes a fresh packed secret sharing of u(k) for each 1 ≤k ≤ℓ, where u(k) =
+(v(1)
+k , . . . , v(ℓ)
+k ) such that v(l) is the vector that is packed secret shared by the vector
+{[r(ω)]j · ∆l+(χ−1)ℓ+ o(ω,l+(χ−1)ℓ)
+j
++ a(ω,l+(χ−1)ℓ)
+j
+}1≤j≤n.
+Since {a(ω,l+(χ−1)ℓ)
+l
+}1≤l≤n is a packed secret sharing of (e(1+(ω−1)ℓ,l+(χ−1)ℓ), . . . , e(ωℓ,l+(χ−1)ℓ)) and
+{o(ω,l+(χ−1)ℓ)
+l
+}1≤l≤n is a packed secret sharing of 0,
+u(k) = (r(ω)
+k
+∆1+(χ−1)ℓ+ e(k+(ω−1)ℓ,1+(χ−1)ℓ), . . . , r(ω)
+k
+∆χℓ+ e(k+(ω−1)ℓ,χℓ))
+= r(k+(ω−1)ℓ) · ∆(χ) + (e(k+(ω−1)ℓ,1+(χ−1)ℓ), . . . , e(k+(ω−1)ℓ,χℓ)).
+Hence, for each 1 ≤w ≤|G∧∪W \ W⊕| + 1, conditioned on A’s view (which is the same in the
+honest execution and in the emulation in step 3.A.), (t(w,χ)
+1
+, . . . , t(ω,χ)
+n
+) is identically distributed as
+(˜t(w,χ)
+1
+, . . . , ˜t(ω,χ)
+n
+)
+$←−Share(r(w) · ∆(χ) + e(w,χ)) subject to constraints ˜t(w,χ) = t(w,χ) for each i ∈M.
+A similar analysis of steps 11-13 and 14-17 justifies the remaining changes made in the hybrid. We
+conclude that the joint distribution of view and outputs of honest parties are identically distributed in
+both hybrids.
+Hybrid 5. In this hybrid, we again modify the manner in which the output of honest parties is computed
+whenever they do not abort.
+34
+
+1. Let ν(w,χ) be as described in step 3.A. of the simulation for each 1 ≤w ≤|G∧∪W \ W⊕| + 1 and
+χ. For each w and χ, sample (˜t(w,χ)
+1
+, . . . , ˜t(ω,χ)
+n
+)
+$←−Share(r(w) · ∆(χ) + ν(w,χ)) subject to constraints
+˜t(w,χ) = t(w,χ) for each i ∈M. Route ˜t(w,χ) as the share of each honest Pi in [r(w) · ∆(χ)] for each
+1 ≤w ≤|G∧∪W \ W⊕| and χ.
+2. Let k = |G∧∪W \ W⊕| + 1. Route ˜t(k,χ) as the share of each honest Pi in [∆(χ)].
+3. Let µ(w) be as described in step 3.B. of the simulation for each 1 ≤w ≤|G∧∪W \ W⊕|. For each w,
+sample additive secret sharing (˜s(w)
+1
+, . . . , ˜s(ω)
+n )
+$←−Share(r(w)+µ(w)) subject to constraints ˜s(w) = s(w)
+for each i ∈M. Route ˜s(w) as the share of each honest Pi in ⟨r(w)⟩for each 1 ≤w ≤|G∧∪W \ W⊕|.
+4. Let δ(w′) be as described in step 3.B. of the simulation for each 1 ≤w′ ≤|O ∪I|. Route z(w′) as the
+share of each honest Pi in [o(w′)].
+The equivalence between Hybrid 4 and 5 follows from Proposition 2 definitions of ν(w,χ) for each 1 ≤
+w ≤|G∧∪W \ W⊕| + 1 and χ, µ(w) for each 1 ≤w ≤|G∧∪W \ W⊕|, and δ(w′) for each 1 ≤w′ ≤|G∧|.
+Hybrid 6. This is the ideal execution. The only difference between Hybrid 5 and 6 is the resampling of ∆i
+for each i ∈H and r(w) for 1 ≤w ≤|G∧∪W \ W⊕|. But, ∆i for each i ∈H is sampled uniformly in step
+1 (by emulated honest parties), and by Lemma 1, when each corrupt party chooses r(ω)
+i
+∈{0, 1}, r(w)
+for 1 ≤w ≤|G∧∪W \ W⊕| are distributed according to D, further r(k) = 1 when k = |G∧∪W \ W⊕| + 1
+hence [r(k) ·∆(χ)] is a secret sharing of ∆(χ). Hence, to show the equivalence, it suffices to show that the
+values of {∆i}i∈H and r(w) are not revealed during the protocol. The privacy of these values till step 17
+is guaranteed by the security of Fmpc, F2pc and the fact that adversary only sees at most |M| ≤n −ℓ
+shares of any values asociated with these quantities. It remains to show that the privacy is maintained in
+steps 19 onwards. Specifically, when [u] and [ϕ · u] are revealed. But, [u] = P
+ω∈T λω · [r(ω)] + λω+1 · [N]
+where [N] is a packed secret sharing of a random ℓ-dimensional vector. This ensures that [u] reveals no
+information about r(w). A similar condition holds for [ϕ · u] as well. We conclude that Hybrids 5 and 6
+are equivalent, concluding the proof.
+Lemma 4. Consider an execution of ΠGBC-Pre with A corrupting Pi, i ∈M. The honest parties abort
+the protocol with probability 1 −1/F if one of the following holds:
+1. There exists i ∈M for which A uses incorrect values of {[r(ω)]i}ω∈T , {[ϕ · r(ω)]i}ω∈T on behalf of
+Pi in the invocation of F2pc with some honest Pj in step 3.
+2. There exists i ∈M and j, j′ ∈H such that the purported value of ∆i used by A on behalf of Pi in
+the invocations of F2pc with Pj and Pj′ are inconsistent.
+Proof. Suppose a corrupt Pi broadcasts λi in step 15 but uses λi + δi,j while invoking F2pc with any
+honest Pj. Pj accepts λi only if ⟨Ψj · (λ + δi,j)⟩{i,j}
+j
+and purported value of ⟨Ψj · (λ + δi,j)⟩{i,j}
+i
+that Pi
+sends in step 16 add up to λi · Ψj. But, since Ψj is uniformly random and unknown to the adversary,
+the probability with which this check succeeds when δi,j̸ = 0 is 1/F. As a consequence, the adversary
+cannot adaptively choose λi for corrupt parties based on {λj}j∈H; we conclude λ = Pn
+i=1 λi is uniformly
+random. Using the same argument, we conclude that adversary cannot adaptively change the value ϕi
+that was used by corrupt Pi in step 3. Hence ϕ revealed in step 15 is necessarily uniformly random.
+Let s(ω)
+i,j
+for each ω and s′
+i,j be, respectively, the purported value of [r(w)]i for each ω and [x]i
+used by a corrupt Pi in the invocation of F2pc with an honest Pj. We will show that Pj will abort
+with high probability if [u]i̸ = s′
+i,j + P
+ω λω · s(ω)
+i,j . This follows from a similar line of argument as
+above but additionally uses the linear homomorphism of additive secret sharing. Pj accepts [u]i only
+if P
+ω λω · ⟨Ψj · s(ω)
+i,j ⟩{i,j}
+j
+computed by Pj and the purported value of P
+ω λω · ⟨Ψj · s(ω)
+i,j ⟩{i,j}
+i
+that Pi
+sends in step 16 add up to [u]i · Ψj. This check succeeds with probability 1/F since Ψj is unknown to the
+adversary. This further implies that, if s′
+i,j + P
+ω λω · s(ω)
+i,j̸ = s′
+i,j′ + P
+ω λω · s(ω)
+i,j′ for honest Pj and Pj′,
+then one of Pj and Pj′ will report abort with 1 −1/F probability.
+Suppose that there exists j, j′ ∈H such that, s(ω)
+i,j̸ = s(ω)
+i,j′ for some ω. The polynomial (s′
+i,j −s′
+i,j′) +
+P
+ω(s(ω)
+i,j −s(ω)
+i,j′)xω is non-zero of degree at most |T |. Since λ is uniformly random, the probability with
+35
+
+which the above polynomial evaluates to 0 at the value λ is at most |T |/F. Hence, we conclude that the
+protocol abort with |T |/F probability if a corrupt Pi uses inconsistent values for purported values of
+[r(w)]i in the invocations of F2pc with an honest parties. A similar condition holds for [r(w)]i for each ω.
+Let s′
+i and ˜s′
+i be the purported values of [x]i and [ϕ · x]i used by a corrupt Pi in the invocation of
+F2pc with all honest parties. Let s(ω)
+i
+and ˜s(ω)
+i
+be the purported values of [r(w)]i and [ϕ · r(w)]i used by
+a corrupt Pi in the invocation of F2pc with all honest parties. Suppose (s′
+1, . . . , s′
+n) defines the secret ˆu′
+and (˜s′
+1, . . . , ˜s′
+n) defines the secret ˆv′. Further, (s(ω)
+1
+, . . . , s(ω)
+n ) defines the secret ˆu(ω) and (˜s(ω)
+1
+, . . . , ˜s(ω)
+n )
+defines the secret ˆv(w). We will next argue that the protocol aborts if ˆu(ω)̸ = r(ω) or ˆv(w)̸ = ϕ · r(ω) for
+some ω. Consider the vector polynomial (ϕ · ˆu′ −ˆv′) + P
+ω(ϕ · ˆu(ω) −ˆv(w))xω. Step 19 dictates that the
+parties abort if the value of this polynomial at λ is non-zero. Hence, as argued before, the parties abort
+with probability at most |T |/F. This leaves out the possibility that ˆu(ω)̸ = r(ω) or ˆv(w)̸ = ϕ · r(ω) for
+some ω but ϕ · ˆu(ω) = ˆv(w) for all ω. Suppose this is true for some ω. To ensure this, A needs to choose
+ˆu(ω) −r(ω) and ˆv(w) −ϕ · r(ω) (at least one of them non-zero) such that ϕ times the former equals the
+latter. Since ϕ is uniformly random and unknown to A this occurs with 1/F probability.
+Finally, we need to show that the protocol abort with 2/F probability if a corrupt Pi uses inconsistent
+values of ∆i in the invocations of F2pc with an honest parties. This argument is similar to the ones
+discussed above. This concludes the proof.
+E
+Proof of theorem 5
+In the following exposition, we will argue the security of the protocol. We will use the notion of patching
+a (packed) secret sharing which we formalize below.
+Definition 8 (Patching). Let [r]
+$←−Share(r) where r ∈Fℓand H be a subset of {1, . . . , n} of size
+ℓ= n−t. For any r′, [r] is converted to PSS of r′ by patching shares of Pi, i ∈H as follows: Let p be the
+polynomial of degree at most n −1 such that p(i) = 0 for each i ∈{1, . . . , n} \ H, and p(n + i) = ri −r′
+i
+for each i ∈{1, . . . , |H|}. Since |H| = ℓ, this uniquely defines p. Define [r′] by assigning [r′]i = [r]i +p(i)
+for each i ∈{1, . . . , n}.
+The proof of the following proposition is straightforward, and follows from Proposition 2.
+Proposition 3. Let H be a subset of {1, . . . , n} of size ℓ. Let [r]
+$←−Share(r) and [r′]
+$←−Share(r′) where
+r, r′ ∈F. Suppose (s1, . . . , sn) is obtained by by patching shares of Pi, i ∈H to convert [r] to a PSS of
+r′. Then, (s1, . . . , sn) is identically distributed as [r′].
+E.1
+Proof of Security.
+Let A be an adversary corrupting Pi, i ∈M where |M| ≤t. Let H = {1, . . . , n} \ M and ℓ= n −t. Let
+Ff denote the functionality computing f with selective abort.
+We construct a simulator Sim that runs A as a subroutine while interacting with Ff. Sim is described
+as follows:
+1. In steps 1-6 (preprocessing and garbling phase) of ΠGBC, Sim interacts with A by emulating the
+honest parties {Pi}i∈H and playing the functionality FGBC-Pre. Sim records the outputs of FGBC-Pre.
+If any honest party reports abort in the process, Sim sends an early abort to F and outputs whatever
+A outputs.
+2. In step 7-9 (input processing phase), Sim interacts with A by emulating the honest parties {Pi}i∈H
+after initializing each honest Pi with default input x(w) = 0 for every input wire w ∈Ii. For each
+corrupt Pi, for each w ∈Ii, Sim receives ρ(w) from A and computes y(w) = ρ(w) ⊕r(w). If any honest
+party reports abort, Sim sends an early abort to F and outputs whatever A outputs.
+At this point, simulator separately considers two cases: P1 is honest and P1 is corrupt.
+36
+
+Case: P1 is honest.
+3. Sim emulates the honest parties and interacts with A in steps 10-14 (circuit evaluation and output
+processing phase). If P1 aborts in any step, Sim sends an early abort to F, and outputs whatever A
+outputs. Otherwise, for each i ∈M and w ∈Ii, Sim sends y(w) to F on behalf of Pi.
+Case: P1 is corrupt.
+3’. On behalf of each corrupt Pi (i ∈M), for each w ∈Ii, Sim sends y(w) to F. In response, Sim receives
+the true value z(w) on every output wire w from the functionality. Sim locally evaluates C with input
+y(w) for each w ∈Ii when i ∈M and default input 0 for each w ∈Ii when i ∈H. Let z′(w) be
+the resulting value on each output wire w. If z(w)̸ = z′(w), Sim converts ⟨r(w)⟩to a secret sharing
+⟨1 ⊕r(w)⟩of r(w) ⊕1 by patching the share of some honest Pi; and converts [r(w) · ∆(χ)] to PSS of
+[(1 ⊕r(w)) · ∆(χ)] for each 1 ≤χ ≤n/ℓby patching the shares of {Pi}H′ where H′ ⊆H of size ℓ. If
+z(w) = z′(w), Sim makes no changes to the shares.
+4’. In steps 14 (output processing phase), Sim interacts with A by emulating the honest parties but
+using updated shares of r(w) and {r(w) · ∆(i)} for each output wire w in step 14.
+We will now prove that the ideal execution and real world execution are statistically indistinguishable
+in the random oracle model.
+First, suppose P1 is uncorrupted. We show the indisinguishability using a sequence of hybrids.
+Hybrid1. Same as the real world execution of ΠGBC with A corrupting {Pi}i∈M.
+Hybrid2. Let y(w) be the actual input for each input wire w ∈I. Sim emulates all honest party Pi
+(where i ∈H) using x(w) = y(w) for each w ∈Ii, and plays the functionality FGBC-Pre, and interacts
+with A. The output of the honest P1 in the emulation is routed to the output of the real P1. Finally,
+Sim outputs whatever the subroutine A outputs.
+Hybrid2 is an equivalent way to describe Hybrid1.
+Hybrid3. Same as Hybrid2, but, if none of the honest parties abort the protocol, Sim sends {y(w)}w∈Ii
+to F on behalf of each corrupt Pi. The output of the F is routed to the output of real P1.
+The view of A produced in Hybrid2 and Hybrid3 are identical. By Lemma 5, the output of P1 is the
+same in both these hybrids with overwhelming probability.
+Hybrid4. Same as Hybrid3, except, for each input wire w of any honest party, Sim samples r(w)
+differently. Recall, in Hybrid3, r(w) is a sampled uniformly and indepedently. Instead, Sim samples u(w)
+uniformly and independently and sets r(w) = u(w) ⊕x(w) while playing FGBC-Pre.
+Hybrid4 is equivalent to Hybrid3.
+Hybrid5. Same as Hybrid4, except, Sim emulates each honest Pi using default input x(w) ←0 for every
+wire w ∈Ii.
+For each input wire w of any honest Pi, until the circuit evaluation phase, the view of the adversary
+is decided by x(w) ⊕r(w) = ρ(w) for each such wire, and a set of random variables that are identically
+distributed independent of the values of x(w) and r(w).
+Thus, it suffices to show that probability with which P1 reports an abort in steps 2-5 in the evaluation
+phase is the same conditioned on the same view in both hybrids.
+37
+
+Clearly, the event in which P1 aborts in step 15 depends only on mask correlation sampled for the
+output wires, and hence is independent of x(w). Hence, we focus on step 13. Observe that P1 aborts while
+processing gate (α, β, γ, ∧) if and only if the verification fails for the row (m0, m1) = (ρ(α), ρ(β)). The
+indistinguishability now follows from our previous observation that ρ(w) for each input wire of honest
+party is identically distributed in both hybrids. Security follows since Hybrid4 is identical to the ideal
+execution.
+We next consider the case where P1 is corrupted. We show the indisinguishability using a sequence
+of hybrids.
+Hybrid1. Same as the real world execution of ΠGBC in FGBC-Pre-hybrid model with A corrupting {Pi}i∈M.
+Hybrid2. Sim emulates every honest party Pi using their actual inputs {y(w)}w∈Ii and plays the
+functionality FGBC-Pre, and interacts with A. In step 7-9, Sim learns y(w) = ρ(w) ⊕r(w) for each input
+wire w taking input from any malicious party. For each i ∈M, Sim sends {y(w)}w∈Ii to F on behalf of
+each corrupt Pi. Finally, Sim outputs whatever the subroutine A outputs.
+No honest party receives any output from the functionality. The view of A is the same in both hybrids.
+Hybrid3. Same as Hybrid2, but, Sim uses a default input 0 for all input wires of every honest party. In
+steps 14-15 (output processing), simulator behaves as described in 4′.
+Similar to our analysis for the case where P1 is honest, the view of the adversary till step 9 is decided
+by x(w) ⊕r(w) for each such wire, and a set of random variables that are independent of the values of
+x(w) and r(w). This is argued along the lines of the previous case, however, since P1 is corrupt, the view
+of the adversary also contains X(w,i) ⊕ρ(w) · ∆i, which is also independent of all other random variables
+since X(w,i) is sampled uniformly independent by honest Pi for each of its input wire w.
+For any output wire w, when z(w)̸ = z′(w), the shares obtained by patching ⟨r(w)⟩as described in
+3’ of the simulator is a random secret sharing of 1 + r(w) by Proposition 3. Similarly, shares obtained
+by patching [r(w) · ∆(χ)] is a random secret sharing of [(1 ⊕r(w))∆(χ)] for each 1 ≤χ ≤n/ℓ. Since the
+adversary has no knowledge of r(w) and {r(w) ·∆i}i∈{1,...,n}, they are indistinguishable from 1⊕r(w) and
+{(1 ⊕r(w))∆i}i∈{1,...,n}.
+The inputs used by Sim for honest parties are different in both hybrids. Hence, we also need to show
+that the rows that can be decrypted by A are identically distributed in both hybrids. Lemma 6 shows
+that a corrupt P1 can only decrypt one of the rows in each honest party’s garbled table. Since r(w) for
+all w ∈W \ (∪i∈MIi) are unknown to A, masked values and garbled keys obtained by recovering one
+row of the garbled table (across all parties) is indistinguishable in both hybrids.
+Lemma 5. Consider an adversary A corrupting parties {Pi}i∈M such that 1 /∈M. For each i ∈M
+and w ∈Ii, let y(w) be as defined in the simulation; for each i ∈H and w ∈Ii, let y(w) be the true input
+of Pi for input wire w. Then, with all but negligible probability, P1 either aborts or learns the evaluation
+of f with {y(w)}w∈I as inputs.
+Proof. For each wire w ∈W \ I, let y(w) be the value on wire w when the circuit is evaluated with
+{y(w)}w∈I as inputs. We will prove by induction that, if the protocol is not aborted, P1 holds ρ(w) =
+r(w) ⊕y(w) for each wire w.
+Base Case. We show that the statement holds for each w ∈I. If w is an input wire of a malicious Pi, the
+statement holds by the definition of y(w). When w is an input wire of an honest Pi, ρ(w)̸ = r(w) ⊕y(w)
+only if A chooses the purported value δj of ⟨o(w)⟩j + α(l,j) · [r(w) · ∆(k)]j (where k, l are such that
+i = l + (k −1)ℓ) for each j ∈M such that
+X
+j∈M
+δj +
+X
+j∈H
+⟨o(w)⟩j + α(l,j) · [r(w) · ∆(k)]j = (1 ⊕r(w)) · ∆i.
+38
+
+We will argue that this can occur only when A correctly forges the MAC which occurs with probability
+at most 1/|F|.
+The adversary learns at most n−ℓshares (corresponding to corrupt parties) of [r(w)·∆(k)] for masking
+bit r(w) and (k −1)ℓ< i ≤k ·ℓ. Since the secret sharings are (n−ℓ)-secure, these shares are independent
+of the real value ∆i. Additionally, for each j ∈M and w′ ∈Ij, A learns ⟨o(w′)⟩c ⊕α(l,c) · [r(w′) · ∆(k)]c
+for all c ∈{1, . . . , n} when ∆(k)
+l
+= j. However, since ⟨o(w′)⟩is an additive secret sharing of 0, this only
+reveals
+n
+X
+c=1
+α(l,c) · [r(w′) · ∆(k)]c = r(w′) · ∆(k)
+l
+= r(w′) · ∆j.
+The remaining components of the view are independent of ∆i. Thus, A suceeds in inducing ρ(w)̸ =
+r(w) ⊕y(w) only if it sucessfully forges the MAC without any information about ∆i which is chosen
+uniformly and independently. This establishes the claim.
+Induction Step. For each gate, we will show that the statements hold for the output wire if they hold
+for the input wires.
+For any XOR gate (α, β, γ, ⊕), this follows from facts ρ(γ) = ρ(α) ⊕ˆρ(β) (step 11), r(γ) = r(α) ⊕r(β)
+(by FGBC-Pre) and y(γ) = y(α) ⊕y(β) (by definition of XOR).
+For any AND gate σ = (α, β, γ, ∧), P1 decrypts the garbled row (ρ(α), ρ(β)) of the gate in garbled
+circuit provided by each garbler. Thus ,P1 decrypts the purported values of
+pack(r(σ)) + pack(r(γ)) +
+
+⟨0⟩, {[X(γ,χ)]}n/ℓ
+χ=1
+
++ ρ(β) · pack(r(α)) + ρ(β) · pack(r(γ)) + (ρ(α) ∧ρ(β))
+
+⟨1⟩, {[∆(χ)]}n/ℓ
+j=1
+
+= pack(r(σ)) +
+
+⟨0⟩, {[X(γ,χ)]}n/ℓ
+χ=1
+
++ pack((r(α) + ρ(α)) ∧(r(β) ⊕ρ(β)))
+=
+
+⟨(r(σ) ⊕(y(α) ∧y(β)))⟩, {[X(i) ⊕(r(σ) ⊕(y(α) ∧y(β))) · ∆(χ)]}n/ℓ
+χ=1
+
+.
+Here, the first equality used the linear homomorphism of pack, and the fact that r(σ) = r(α) ∧r(β). The
+second equality used the assumption that ρ(w) = r(w) ⊕y(w) for w ∈{α, β}, and the definition of pack.
+P1 recovers purported values of r(σ) ⊕(y(α) ∧y(β)) and X(γ,1) ⊕(r(σ) ⊕(y(α) ∧y(β))) · ∆1 and checks if
+they are consistent using X(γ,1) available locally. P1 sets the former as ρ(γ) if the check succeeds. As we
+established earlier, the view of A is independent ∆i chosen by any honest party Pi. Hence, to force P1
+to set ρ(w)̸ = r(σ) ⊕(y(α) ∧y(β)), the adversary needs to forge the MAC without any information about
+uniformly chosen ∆1 which occurs with 1/F probability.
+We have established that, for every output wire w, ρ(w) = ˆρ(w) = y(w) ⊕r(w). Finally, in step 15, if
+P1 does not abort, it learns the correct value for r(w) by unforgeability of MAC. Thus, for each output
+wire w, P1 outputs y(w) if it does not abort.
+Lemma 6. The adversary learns both garbled labels generated by an honest party for a gate with negli-
+gible probability.
+Proof. For each wire w ∈W \ I, let y(w) be the value on wire w when the circuit is evaluated with
+{y(w)}w∈I as inputs, and let ρ(w) = y(w) ⊕r(w).
+We will prove by induction that, a corrupt P1 cannot learn the value of X(w)
+i
+⊕(ˆρ(w) ⊕1)∆i for any
+i ∈H.
+Base Case. The statement holds any input wire w of any honest party Pi. Similar to the proof of
+Lemma 5, we can argue that the adversary’s view is independent of ∆i. Since P1 is also corrupt in this
+case, the view additionally contains X(w,i) ⊕ρ(w) · ∆i. But, since X(w,i) is chosen uniformly by Pi, the
+view continues to be independent of ∆i. This directly implies that X(w,i) ⊕(ρ(w) ⊕1)∆i is indepedent
+of A’s view.
+39
+
+Induction Step. Since any gate (α, β, γ, ⊕) is processed silently, it is clear that P1 does not learn X(w)
+i
+⊕
+(ˆρ(γ) ⊕1)∆i if it does not learn X(w)
+i
+⊕(ˆρ(w) ⊕1)∆i for both w ∈{α, β}: the induction assumption.
+We focus on gates of the kind (α, β, γ, ∧). The row (m0, m1) of the garbling of the gate is masked by
+H(X(α)
+i
+⊕m0 · ∆i, X(β)
+i
+⊕m1 · ∆i). Since the adversary knows these values exactly for one value of m0
+and m1 (for ρ(α) and ρ(β) respectively) by the assumption, the lemma follows.
+This concludes the proof of security of ΠGBC.
+E.2
+Dealing with circuits that provide outputs to all parties
+We extend the construction to accomodate n-party circuits that deliver (potentially distinct) outputs
+to all parties with security with selective abort. The protocol follows the protocol in Figure 5.1 and
+Figure 5.2 until the output processing phase (until step 13). The output processing phase is modified as
+described in Figure E.1.
+// Follow the protocol ΠGBC as described in Figure 5.1 and Figure 5.2 until step 13;
+output processing phase is modified as follows.
+Output Processing Phase.
+13. For the output wire w ∈O, if w belongs to Pi (i could be 1), P1 sends ρ(w) and X(w)
+i
+⊕ρ(w) · ∆i to Pi.
+14. For each output wire w, if w belongs to Pi, every Pj sends to Pi the values ⟨r(w)⟩j and
+⟨o(w)⟩j ⊕α(k,l) · ⟨∆(k) · r(w)⟩j, where k, l are such that ∆(k)
+l
+= ∆i.
+15. For each output wire w, if w belongs to Pi, each Pi reconstructs purported values of r(w) and r(w) · ∆i
+using the purported shares, and checks their consistency. Further, Pi checks the consistency of ρ(w) and
+X(w)
+i
+⊕ρ(w) · ∆i (note, Pi knows X(w)
+i
+). If both check succeed, Pi outputs x(w) = ρ(w) ⊕r(w); else aborts.
+Fig. E.1: Protocol for securely evaluating n-party circuits with outputs at all parties with (n−ℓ)-security.
+Theorem 8. Let f be an n-party function with output to all parties, and let C be a Boolean circuit
+computing f. The protocol described in Figure E.1 securely computes f in the FGBC-Pre-hybrid and random
+oracle model with statistical t-security and selective abort, where t ≤n −ℓand ℓ≥ϵ · n for any ϵ > 0.
+Proof. Let w be an input wire of an honest Pi. Let y(w) be the true value on w when f is evaluated with
+the actual inputs of honest parties and input on any input wire w of a malicious Pj being set to ρ(w)⊕r(w),
+where ρ(w) is the value broadcasted by Pj in step 8 during input processing. Pi outputs 1⊕y(w) without
+aborting only if P1 sends ˜ρ(w) = y(w) ⊕r(w) ⊕1 and its valid MAC of the form X(w)
+i
+⊕˜ρ(w) · ∆i in step
+14, or the adversary forces Pi to reconstruct 1 ⊕r(w) and (1 ⊕r(w)) · ∆i in step 16 by forging the MAC.
+The latter occurs with negligible probability if the adversary’s view is independent of ∆i.
+While proving security of ΠGBC in Theorem 5, we established that an honest evaluator P1 learns
+ρ(w) = y(w) ⊕r(w) or aborts. On the other hand, we argued in the proof of Theorem 5 that an adversary
+A corrupting P1 only learns X(w)
+i
+⊕ρ(w)·∆i and A’s view is independent of ∆i until the output processing
+phase (step 13). We now argue that this continues to hold after steps 14-16. The only addition to A’s
+view are effectively r(w′) and {⟨0(w′)⟩(add)
+c
+⊕α(k,l) · ⟨∆(k) · r(w′)⟩c}c∈[n] where ∆(k)
+l
+= ∆j for all output
+wires w′ ∈Oj for each corrupt Pj. But, since ⟨0(w′)⟩(add) is a secret sharing of 0, this only reveals
+Pn
+c=1 α(k,l) · ⟨∆(k) · r(w′)⟩c = ∆j. Hence, A can successfully guess X(w)
+i
+⊕˜ρ(w) · ∆i with negligible
+probability.
+40
+
+Inputs. Bit r, MAC Keys ∆1, . . . , ∆n.
+1. Sample {Ki
+$
+←−F}n
+i=1.
+2. Sample additive sharing ⟨r⟩of r.
+3. For each χ ∈{1, . . . , c = ⌈n/ℓ⌉}, compute packed secret sharing [Y(χ)], where
+Y(χ) = (K1+(χ−1)ℓ⊕r · ∆1+(χ−1)ℓ, . . . , K(χℓ) ⊕r · ∆(χℓ)).
+4. Set Mj ←0, ∀j ∈{1, . . . , n}.
+5. return t-pack(r) = (t-pack(r)1, . . . , t-pack(r)n), where t-pack(r)1 = (⟨r⟩1, K1, {Mj}n
+j=1, {[Y(χ)]1}c
+χ=1)
+and t-pack(r)i = (⟨r⟩i, Ki, {[Y(χ)]i}c
+χ=1), ∀i ∈{2, . . . , n}.
+Fig. F.1: compute-tpack(·) algorithm in Garbling of TSCs
+F
+Garbled Tri-State Circuits, Extended
+F.1
+Preprocessing Functionality
+The preprocessing functionality is described in Figure F.2. It is parameterized by (W, N, V ). W denotes
+the number of random bits that are authenticated, as described in Section 6 and formalized in Figure F.1.
+Step 2 of FGTSC-Pre generates these authenticated random bits. N denotes the number of authenticated
+multiplication triples that are computed in step 3 of FGTSC-Pre. Finally, V denotes the number of packed
+secret sharing of random vectors that are generated in step 4 of the protocol.
+The correlations computed in FGTSC-Pre are similar to those in FGBC-Pre (see Figure 4.1), with two key
+differences. First, in FGBC-Pre, the bit masks in the multiplication triple associated with an AND gate
+depend on the bit masks associated with its input wires, while in FGTSC-Pre, the multiplication triples
+are sampled independently. This difference can be addressed by plugging in a simpler circuit than CD in
+the construction, without affecting its O(n|C|) complexity, where (C, D) denotes the oblivious TSC. The
+second difference is that in FGBC-Pre, the shares of labels {[X(w,χ)]}⌈n/ℓ⌉
+χ=1 and the shares of authentication
+of the random bit r(w), i.e., {[r(w)∆(χ)]}⌈n/ℓ⌉
+χ=1 , are distributed separately by the functionality. In contrast,
+FGTSC-Pre distributes shares of authentication of the random bit masked with the label, i.e., {[K(w,χ) +
+r(w)∆(χ)]}⌈n/ℓ⌉
+χ=1 . This difference can be addressed by parties locally adding the two shares. Thus, a
+protocol to instantiate FGTSC-Pre with O(n|C|) communication complexity can be constructed following
+the same approach as protocol ΠGBC-Pre.
+Public Input. Number of required authenticated random bits, W, number of required beaver triples, N,
+and number of random bit vectors, V .
+1. Sample {∆i
+$
+←−F}i∈[n].
+2. For w ∈{1, . . . , W}, sample r(w)
+$
+←−{0, 1} and compute
+t-pack(r(w))
+$
+←−compute-tpack(r(w), ∆1, . . . , ∆n) (see Figure F.1).
+3. For g ∈{1, . . . , N}, sample r(gα), r(gβ)
+$
+←−{0, 1}. Compute r(g) ←r(gα) ∧r(gβ). Compute
+t-pack(r(gα))
+$
+←−compute-tpack(r(gα), ∆1, . . . , ∆n). Similarly, compute t-pack(r(gβ)) and t-pack(r(g)).
+4. For v ∈{1, . . . , V }, compute packed secret sharing of {[Y(v,χ)]}c=⌈n/ℓ⌉
+χ=1
+, where
+Y(v,χ) = (Y (v)
+1+(χ−1)ℓ, · · · , Y (v)
+χℓ) is a uniformly random vector in Fℓ.
+5. If Sim sends abort, send abort to all the parties. Else, send {∆i, {t-pack(r(w))i}W
+w=1,
+{t-pack(r(gα))i, t-pack(r(gβ))i, t-pack(r(g))i}N
+g=1, {{[Y(v,χ)]i}c
+χ=1}V
+v=1} to Pi.
+Corrupt Parties:
+Corrupt parties can choose their outputs and add an additive error to every secret sharing.
+Fig. F.2: Functionality FGTSC-Pre
+41
+
+Inputs. Oblivious Tri-state Circuit (C, D).
+Circuit-Independent Phase.
+1. Determine the number of required authenticated random bits, W, number of required beaver triples, N,
+and number of random bit vectors, V , from the description of circuit C (see Section F.2).
+2. Parties invoke FGTSC-Pre with parameters (W, N, V ). Each party Pi receives {∆i, {t-pack(r(w))i}W
+w=1,
+{t-pack(r(gα))i, t-pack(r(gβ))i, t-pack(r(g))i}N
+g=1, {{[Y(v,χ)]i}c=⌈n/ℓ⌉
+χ=1
+}V
+v=1} from FGTSC-Pre.
+Garbling Phase.
+Random Input Wire.
+3. For a random input wire w, each party Pi associates wire w with sharing t-pack(w)
+i
+= t-pack(r(w))i.
+Input Wire.
+4. Each input wire w is associated with t-pack(r(w)).
+5. Each garbler Pi samples ⟨ˆx(w)⟩i
+$
+←−{0, 1} and ˆK(w)
+i
+$
+←−F and sets
+t-pack(w)
+i
+←(⟨ˆx(w)⟩i, ˆK(w)
+i
+, {[Y(w,χ)]i}c
+χ=1}).
+XOR Gate.
+6. For XOR Gate (α, β, γ, ⊕), each garbler Pi sets t-pack(γ)
+i
+←t-pack(α)
+i
+⊕t-pack(β)
+i
+.
+Buffer Gate.
+7. For buffer gate g = (α, β, γ, /), each garbler Pi samples K(γ)
+i
+uniformly at random and sets:
+t-pack(γ)
+i
+←t-pack(β)
+i
+⊕(0, K(β)
+i
+⊕K(γ)
+i
+, {0}c
+χ=1).
+8. Each garbler Pi parses t-pack(α)
+i
+as (⟨x(α)⟩i, K(α)
+i
+, {[Y(α,χ)
+i
+}c
+χ=1). Pi sends ⟨x(α)⟩i, shares
+{[Y(α,χ)]i}c
+χ=1), and G(σ)
+i
+= H(K(α)
+i
+⊕∆i) ⊕K(β)
+i
+⊕K(γ)
+i
+to P1, where H : {0, 1}κ →{0, 1}κ is a
+random oracle.
+Join Gate.
+9. For join gate g = (α, β, γ, ▷◁), each garbler Pi samples ⟨x(γ)⟩i
+$
+←−{0, 1}, K(γ)
+i
+$
+←−F. Each garbler Pi sets:
+t-pack(γ)
+i
+←(⟨x(γ)⟩i, K(γ)
+i
+, {[Y(g,χ)]i}c
+χ=1).
+10. Each garbler sends G(g,0)
+i
+←t-pack(γ)
+i
+⊕t-pack(α)
+i
+and G(g,1)
+i
+←t-pack(γ)
+i
+⊕t-pack(β)
+i
+to P1.
+Fig. F.3: Protocol ΠGTSC
+42
+
+F.2
+Garbling Scheme
+The garbling scheme is presented in Figures F.3 and F.4. In step 1, W is equal to the number of wires
+in the circuit (except the ones accounted in multiplication triples), N is determined from distribution
+D, and V is equal to the number of Join Gates in the circuit. The parties then invoke the preprocessing
+functionality FGTSC-Pre (steps 2 in Figure F.3) to obtain their respective global key ∆i, a list of packed
+authenticated sharing t-pack(r(w)) of a random bit r(w), a list of packed authenticated multiplication
+triples (t-pack(r(gα)), t-pack(r(gβ)), t-pack(r(g))) such that r(g) ←r(gα) ∧r(gβ). Recall, t-pack(r) provides
+each party Pi with an additive share of r, a MAC key Ki, and share of packed secret sharing of {Yi}i∈[n]
+over c = ⌈n/ℓ⌉polynomials, each packing ℓsuch values. P1’s share of t-pack(r) additionally contains
+{Mj}j∈[n] such that Mi ⊕Ki ⊕Yi = r · ∆i. Additionally, with each Join Gate g = (α, β, γ, ▷◁), parties
+receive packed sharing of random values Y (g)
+1
+, . . . , Y (g)
+n
+.
+Evaluation Phase.
+Input Processing.
+11. For an input wire w of party Pi, each party Pj sends (⟨r(w)⟩j, {[Y(w,χ)]i}), where χ = ⌈i/ℓ⌉to Pi. Pi
+computes r(w) ←⊕n
+j=1⟨r(w)⟩j. Pi reconstructs Y(w,χ) to determine Y (w)
+i
+. Pi checks if
+r(w) · ∆i = K(w)
+i
+⊕Y (w)
+i
+. If the check passes, Pi broadcasts ρ(w) ←r(w) ⊕x(w) to all parties, where x(w)
+is the input value. Each garbler Pi computes
+t-pack
+(w)
+i
+= (ex(w)
+i
+, e
+K(w)
+i
+, {0}c
+k=1) ←t-pack(w)
+i
+⊕t-pack(r(w))i ⊕(0, ρ(w) · ∆i, {0}c
+k=1) and sends it to P1.
+P1 computes t-pack(w)
+1
+←t-pack(r(w))1 ⊕
+
+ρ(w) ⊕n
+i=2 ex(w)
+i
+, ρ(w) · ∆1, { e
+K(w)
+i
+}n
+i=1, {0}c
+χ=1
+
+, where
+e
+K(w)
+1
+= 0.
+Circuit Evaluation.
+12. P1 evaluates the circuit in the order prescribed by tri-state semantics as described in Definition 2.
+13. For g = (α, β, γ, ⊕), P1 simply sets t-pack(γ)
+1
+←t-pack(α)
+1
+⊕t-pack(β)
+1 .
+14. For g = (α, β, γ, /), P1 holds ⟨x(α)⟩i, shares {[Y(α,χ)]i}c
+χ=1 and garbled table G(g)
+i
+from each garbler Pi.
+P1 reconstructs x(α) and {Y(α,χ)}c
+χ=1. P1 verifies if x(α) · ∆1 = K(α)
+1
+⊕Y (α)
+1
+⊕M (α)
+1
+. P1 computes
+Z(α)
+i
+←M (α)
+i
+⊕Y (α)
+i
+, ∀i ∈{2, . . . , n}. P1 computes K(β)
+i
+⊕K(γ)
+i
+←H(Z(α)
+i
+) ⊕G(g)
+i
+, for each
+i ∈{2, . . . , n}. P1 sets t-pack(x(γ))1 to
+t-pack(x(β))1 ⊕(0, 0κ, {0}i=1 ∥(K(β)
+i
+⊕K(γ)
+i
+)n
+i=2, {0}c
+k=0).
+15. For g = (α, β, γ, ▷◁):
+If wire α is fired, P1 considers m = 0th entry, else if wire β is fired P1 considers m = 1th entry. P1 parses
+each G(g,m)
+i
+as (x(µ)
+i
+, K(µ)
+i
+, {[Y(µ,χ)]i}c
+χ=1). For each χ ∈{1, . . . , c}, P1 computes
+[Y(µ,χ)]1 ←[Y(g,χ)]1 + [Y(α,χ)]1. P1 reconstructs Y(µ,χ), ∀χ, where Y(µ,χ) = (Y (µ)
+1+(χ−1)ℓ, . . . , Y (µ)
+χℓ). P1
+sets its share as:
+t-pack(x(γ))1 ←t-pack(x(α))1 ⊕(0, 0κ, {K(µ)
+i
+⊕Y (µ)
+i
+}n
+i=1, {[Y(g,χ)]1}c
+χ=1),
+where K(µ)
+1
+= 0κ.
+Output Processing.
+16. For each output wire w, each garbler Pi sends (⟨x(w)⟩i, {[Y(w,χ)]i}c
+χ=1) to P1. P1 computes
+x(w) ←⊕n
+i=1⟨x(w)⟩i and reconstructs {Y(w,χ)}c
+k=1. P1 verifies if x(w)∆1 = K(w)
+1
+⊕Y (w)
+1
+⊕M (w)
+1
+.
+Fig. F.4: Protocol ΠGTSC (continued)
+Using these correlations, the parties then locally compute the garbling of XOR, buffer and join gates.
+The garbling is carried out with the objective of arranging for the following invariant for each evaluated
+wire w: M (w)
+i
+⊕K(w)
+i
+⊕Y (w)
+i
+= x(w) · ∆i, where x(w) is the true value on the wire, further each garble
+circuit and the evaluator holds an XOR share of x. XOR gates are free, owing to linear homomorphism
+of packed secret sharing and the use of ∆i as the free XOR correlation. To evaluate the buffer gate
+g = (α, β, γ, /), the output of the control wire α is verifiably revealed to the evaluator. Each garbler Pi
+uses the same state for the data wire and output wire but with a freshly sampled label K(γ)
+i
+. Then, it
+writes out a translation from the label of β to that of γ that the evaluator can decrypt (only) when the
+control wire takes the value 1. Each garbler processes the join gate g = (α, β, γ, ▷◁) by simply adopting
+43
+
+the same state as the α wire for γ wire. Recall, the output of join gate is the same as any of its inputs. To
+aid the evaluator in greedily evaluating g when only β wire fires, each garbler shares a translation between
+the states of α and β wires. The size of garbling of buffers (/) and joins (▷◁) is nκ and 2n((c + 1)κ + 1)
+respectively.
+This is followed by the evaluation phase which begins with an input processing phase. At the end
+of this phase, similar to our previous construction, the parties help the evaluator to set up the above
+mentioned invariant on the input wires. The evaluator processes the circuit, maintaining this invariant,
+according to a topological ordering. Finally, the output of the circuit is verifiably recovered by P1 and
+revealed to the garblers along similar lines as in our previous construction.
+Theorem 9. Let (C, D) be an oblivious tri-state circuit, and D be an ensemble of beaver triples and uni-
+form independent bits. The protocol ΠGTSC instantiated with C, D securely realizes (C, D) in the FGTSC-Pre-
+hybrid and random oracle model with computational t-security and selective abort, where t ≤n −ℓand
+ℓ≥ϵ · n, for any ϵ > 0.
+We prove the Theorem in the next section.
+G
+Proof of theorem 9
+Let A be an adversary corrupting Pi, i ∈M where |M| ≤t. Let H = {1, . . . , n} \ M and ℓ= n −t. Let
+Ff denote the functionality computing f with selective abort.
+We construct a simulator Sim that runs A as a subroutine while interacting with Ff. Sim is described
+as follows:
+1. In steps 1-10 (preprocessing and garbling phase) of ΠGBC, Sim interacts with A by emulating the
+honest parties {Pi}i∈H and playing the functionality FGTSC-Pre. Sim records the outputs of FGTSC-Pre.
+If any honest party reports abort in the process, Sim sends an early abort to F and outputs whatever
+A outputs.
+2. In step 11 (input processing phase), Sim interacts with A by emulating the honest parties {Pi}i∈H
+after initializing each honest Pi with default input x(w) = 0 for every input wire w ∈Ii. For each
+corrupt Pi, for each w ∈Ii, Sim receives ρ(w) from A and computes y(w) = ρ(w) ⊕r(w). If any honest
+party reports abort, Sim sends an early abort to F and outputs whatever A outputs.
+At this point, simulator separately considers two cases: P1 is honest and P1 is corrupt.
+Case: P1 is honest.
+3. Sim emulates the honest parties and interacts with A in steps 12-16 (circuit evaluation and output
+processing phase). If P1 aborts in any step, Sim sends an early abort to F, and outputs whatever A
+outputs. Otherwise, for each i ∈M and w ∈Ii, Sim sends y(w) to F on behalf of Pi.
+Case: P1 is corrupt.
+3’. On behalf of each corrupt Pi (i ∈M), for each w ∈Ii, Sim sends y(w) to F. In response, Sim
+receives the true value z(w) on every output wire w from the functionality. Sim locally evaluates C
+with input y(w) for each w ∈Ii when i ∈M and default input 0 for each w ∈Ii when i ∈H. Let
+z′(w) be the resulting value on each output wire w. If z(w)̸ = z′(w), Sim converts ⟨x(w)⟩to a secret
+sharing ⟨1 ⊕x(w)⟩of x(w) ⊕1 by patching the share of some honest Pi; and converts [Y(w,χ)] to PSS
+of [Y(w,χ) ⊕∆(χ)] for each 1 ≤χ ≤n/ℓby patching the shares of {Pi}H′ where H′ ⊆H of size ℓ. If
+z(w) = z′(w), Sim makes no changes to the shares.
+4’. In steps 16 (output processing phase), Sim interacts with A by emulating the honest parties but
+using updated shares of x(w) and (Y(w,χ))χ∈n/ℓfor each output wire w.
+44
+
+We will now prove that the ideal execution and real world execution are statistically indistinguishable
+in the random oracle model.
+First, suppose P1 is uncorrupted. We show the indisinguishability using a sequence of hybrids.
+Hybrid1. Same as the real world execution of ΠGTSC with A corrupting {Pi}i∈M.
+Hybrid2. Let y(w) be the actual input for each input wire w ∈I. Sim emulates all honest party Pi
+(where i ∈H) using x(w) = y(w) for each w ∈Ii, and plays the functionality FGTSC-Pre, and interacts
+with A. The output of the honest P1 in the emulation is routed to the output of the real P1. Finally,
+Sim outputs whatever the subroutine A outputs.
+Hybrid2 is an equivalent way to describe Hybrid1.
+Hybrid3. Same as Hybrid2, but, if none of the honest parties abort the protocol, Sim sends {y(w)}w∈Ii
+to F on behalf of each corrupt Pi. The output of the F is routed to the output of real P1.
+The view of A produced in Hybrid2 and Hybrid3 are identical. By Lemma 7, the output of P1 is the
+same in both these hybrids with overwhelming probability.
+Hybrid4. Same as Hybrid3, except, for each input wire w that takes input from an honest Pi, the
+simulator uses the default input 0 instead of x(w).
+For each w that takes input from an honest Pi, until the circuit evaluation phase, the view of the
+adversary is decided by x(w) ⊕r(w) = ρw) for each such wire, and a set of random variables that are
+identically distributed independent of the values of x(w) and r(w). But, ρ(w) is identically distributed in
+both hybrids. Thus, it suffices to show that probability with which P1 reports an abort in the subsequent
+steps is the same conditioned on the same view in both hybrids.
+During the circuit evaluation–steps 12-15 in the circuit evaluation phase–P1 aborts only if the MAC
+check in step 14 for evaluating the control wire in any of the buffer gates fails. At this point we invoke
+the obliviousness of the tristate circuit which states that, over the randomness of the random inputs to
+the tri-state circuit, the distribution on the values on the buffer wires is identically distributed for any
+distinct pair of inputs. Since the values on the random wires are not revealed during the garbling, the
+probability of abort is independent of the input of the honest parties.
+Security follows since Hybrid4 is identical to the ideal execution.
+We next consider the case where P1 is corrupted. We show the indisinguishability using a sequence
+of hybrids.
+Hybrid1. Same as the real world execution of ΠGTSC in FGTSC-Pre-hybrid model with A corrupting
+{Pi}i∈M.
+Hybrid2. Sim emulates every honest party Pi using their actual inputs {y(w)}w∈Ii and plays the
+functionality FGTSC-Pre, and interacts with A. In step 11, Sim learns y(w) = ρ(w) ⊕r(w) for each input
+wire w taking input from any malicious party. For each i ∈M, Sim sends {y(w)}w∈Ii to F on behalf of
+each corrupt Pi. Finally, Sim outputs whatever the subroutine A outputs.
+No honest party receives any output from the functionality. The view of A is the same in both hybrids.
+Hybrid3. Same as Hybrid2, but, Sim uses a default input 0 for all input wires of every honest party. In
+steps 16 (output processing), simulator behaves as described in 4′.
+Similar to our analysis for the case where P1 is honest, here also, for each w that takes input from an
+honest Pi, until the circuit evaluation phase, the view of the adversary is decided by x(w)⊕r(w) = ρ(w) for
+45
+
+each such wire, and a set of random variables that are identically distributed independent of the values
+of x(w) and r(w). This is argued along the lines of the previous case, however, since P1 is corrupt, the
+view of the adversary contains ˜K(w)
+i
+. However, the value of ∆i of any honest party is still unknown to the
+adversary since ˜K(w)
+i
+is obtained by masking with uniformly random string unknown to the adversary.
+Finally, ρ(w) is identically distributed in both hybrids.
+For any output wire w, when z(w)̸ = z′(w), the shares obtained by patching ⟨x(w)⟩as described in 3’
+of the simulator is a random secret sharing of 1 + x(w) by Proposition 3. Similarly, shares obtained by
+patching [Y(w,χ)] is a random secret sharing of [Y(w,χ) +∆(χ)] for each 1 ≤χ ≤n/ℓ. Since the adversary
+has no knowledge of x(w) and {Y(w,χ)}n/ℓ
+χ=1, they are indistinguishable from 1⊕x(w) and [Y(w,χ) +∆(χ)].
+This concludes the proof of security of ΠGTSC.
+Lemma 7. Consider an adversary A corrupting parties {Pi}i∈M such that 1 /∈M. For each i ∈M
+and w ∈Ii, let y(w) be as defined in the simulation; for each i ∈H and w ∈Ii, let y(w) be the true input
+of Pi for input wire w. Then, with all but negligible probability, P1 either aborts or learns the evaluation
+of f with {y(w)}w∈I as inputs.
+Proof. For each wire w ∈W \ I, let y(w) be the value on wire w when the circuit is evaluated with
+{y(w)}w∈I as inputs.
+We will prove using induction that, with all but negligible probability, if the protocol is not aborted,
+for each output wire w, P1 holds K(w)
+1
+, M (w)
+1
+(as part of t-pack(w)
+1
+), and parties hold shares [Y(w,1)]
+(consisting Y (w)
+1
+) such that
+K(w)
+1
+⊕M (w)
+1
+⊕Y (w)
+1
+= y(w) · ∆1,
+where y(w) is the actual value on the wire.
+Base Case. We show that the statement holds for each w ∈I.
+For each input wire w from party Pi, where i ∈M, y(w) = ρ(w) ⊕r(w) by definition. In
+this case, after the garbling phase each garbler Pj̸=1 holds t-pack(w)
+j
+. P1 holds t-pack(r(w))
+=
+(⟨r(w)⟩1, K1(r(w)), {0}⌈n/ℓ⌉
+χ=1 , ([Y(w,χ)]1)⌈n/ℓ⌉
+χ=1 ). P1 sets t-pack(w)
+1
+in such a way that K(w)
+1
+= K1(r(w)) +
+ρ(w) · ∆1 and M1 = 0. Let (s1, . . . , sn) denote the shares of [Y(w,1)] obtained from FGTSC-Pre. There
+exist coefficients (α(1,j))n
+j=1 such that the linear combination Pn
+j=1 α1,j · sj = Y (w)
+1
+, where Y (w)
+1
+=
+K1(r(w)) + r(w) · ∆1. One can observe that, K(w)
+1
++ M (w)
+1
++ Y (w)
+1
+= ρ(w) · ∆1 + r(w) · ∆1 = y(w)∆1.
+Adversary A holds (t-pack(w)
+j
+)j∈M. Thus, A learns atmost n −ℓshares of [Y(w,1)]. Since, the secret
+sharings are (n −ℓ) secure, these shares are independent of the real value ∆1. Moreover, the remaining
+components of (t-pack(w)
+j
+)j∈M are clearly independent of ∆1.
+For K(w)
+1
++ M (w)
+1
++ Y (w)
+1̸
+= y(w) · ∆1, A needs to transform shares of [Y(w,1)] corresponding to
+corrupt parties, i.e., (sj)j∈M to shares (s′
+j)j∈M such that P
+j∈H α1,j · sj + P
+j∈M α1,j · s′
+j = Y (w)
+1
++ ∆1.
+The probability that A succeeds is atmost 1/F.
+For each input wire w from party Pi, where i ∈H, Pi receives ⟨r(w)⟩j and [Y(w,χ)]j, where χ =
+⌈i/ℓ⌉from each party Pj̸=i. Let the shares of [Y(w,χ)]j be denoted by (sj)n
+j=1. There exist coefficients
+(α(l,j))n
+j=1, where i = l + (χ −1)ℓ, such that Pn
+j=1 α(l,j) · sj = Y (w)
+i
+.
+Adversary A holds (t-pack(w)
+j
+)j∈M. Thus, A learns atmost n −ℓshares of [Y(w,χ)]. Since, the secret
+sharings are (n −ℓ) secure, these shares are independent of the real value ∆i. Moreover, the remaining
+components of (t-pack(w)
+j
+)j∈M are clearly independent of ∆i.
+In this case, ρ(w)̸ = r(w) ⊕y(w) only if A can come up with shares (s′
+j)j∈M such that P
+j∈H αl,j ·
+sj + P
+j∈M αl,j · s′
+j = Y (w)
+i
++ ∆i. The probability that A succeeds is atmost 1/F. Thus, except with
+46
+
+negligible probability ρ(w) = r(w) ⊕y(w). By following the proof for the case when input belonged to a
+corrupt party, we conclude that except with probability at most 1/F, K(w)
+1
++ M (w)
+1
++ Y (w)
+1
+= y(w) · ∆1.
+Induction Step. For a gate (α, β, γ, T) such that T ∈{⊕, /, ▷◁}, we will show that this property holds
+for the output wire assuming it holds for the input wires.
+When T = ⊕, each garbler Pi̸=1 computes t-pack(γ)
+i
+= t-pack(β)
+i
+⊕t-pack(α)
+i
+. In the evaluation phase,
+evaluator P1 computes t-pack(γ)
+1
+= t-pack(β)
+1
+⊕t-pack(α)
+1 . Observe that y(γ) = y(α) ⊕y(β) and K(γ)
+1
+⊕
+M (γ)
+1
+⊕Y (γ)
+1
+= y(γ) · ∆1 due to linear homomorphism of PSS and additive secret sharing.
+A holds t-pack(γ)
+i
+, for each i ∈M. These comprise of n −ℓshares of [Y(γ,1)]. Since, the sharings
+are n −ℓsecure, these shares are independent of ∆1. The remaining components of (t-pack(γ)
+i
+)iınM
+are independent of ∆1. Due to same argument as above, the probability that A transforms shares of
+[Y(γ,1)] held by corrupt parties such that K(γ)
+1
+⊕M (γ)
+1
+⊕Y (γ)
+1̸
+= y(γ) · ∆1 is 1/F, i.e., negligible.
+When T = /, P1 processes the output wire only if the control wire α carries the value 1. By our
+invariant, if P1 does not abort, then it evaluates the buffer gate if and only if the control wire is live;
+this follows from the same reasoning as above, i.e., the adversary cannot flip the value on α given our
+invariant since the adversary cannot reveal incorrect shares of [Y(α,1)] without making P1 abort (except
+with probability 1/F). Further, when control wire is live, observe that K(γ)
+1
+= K(β)
+1
+, M (γ)
+1
+= M (β)
+1
+, and
+Y (γ)
+1
+= Y (β)
+1
+. The property holds since γ = β when α = 1.
+Suppose T =▷◁. We will w.l.o.g. consider the case where α fires; the other case can be handled simi-
+larly. Once again, we exploit the fact that the adversary cannot change except with negligible probability
+the shares on [Y(µ)] to argue that P1 correctly receives Y (µ)
+1
+= Y (g)
+1
+⊕Y (α). Hence,
+K(γ)
+1
+⊕Y (γ)
+1
+⊕M (γ)
+1
+= K(α)
+1
+⊕Y (g)
+1
+⊕
+
+M (α)
+1
+⊕Y (µ)
+1
+
+= K(α)
+1
+⊕Y (g)
+1
+⊕
+
+M (α)
+1
+⊕
+
+Y (g)
+1
+⊕Y (α)
+1
+
+= K(α)
+1
+⊕Y (α)
+1
+⊕M (α)
+1
+= y(α) · ∆1 = y(γ) · ∆1.
+We have established that the invariant holds for every wire. Finally, in the output processing, if P1
+does not abort, it learns the correct value for x(w) = y(w) by the same line of argument we used above.
+Thus, for each output wire w, P1 outputs x(w) if it does not abort.
+H
+Concrete Communication Analysis of Our Protocol ΠGBC
+In this section, we determine the total communication cost of our construction with FGBC-Pre instantiated
+with ΠGBC-Pre.
+H.1
+Size of circuit CD
+Let C denote the base circuit, i.e., the circuit we would like to securely evaluate using our garbling scheme.
+Let Winp, Wout and G∧denote the number of input wires, output wires, and AND gates, respectively in
+C.
+As a first step, we determine the communication cost of securely evaluating circuit CD described
+in Figure 4.2. We use Superpack protocol ΠSP [EGP+23] to securely evaluate the circuit CD. In ΠSP
+communication is incurred in processing of input wires, output wires, and multiplication gates. Due to
+linear homomorphism of additive and packed secret sharings used in their construction, addition gates
+are supported for free. Thus, let us determine the number of input wires (Winp), output wires (Wout), and
+47
+
+multiplication gates in CD (G×), in order to determine the communication cost of securely evaluating it
+using ΠSP.
+Step 1 of CD takes n many inputs in total from the parties. Step 2 takes n · (Winp + G∧)/ℓmany
+inputs in total. Step 3 takes n · (Winp + G∧)/ℓinputs in total and comprises 2(Winp + G∧) multiplication
+gates. Step 4 comprises G∧many multiplication gates. Step 5 and 8 in total have 2n(2n + (n −ℓ) · T)/ℓ
+many inputs, where T = (Winp + 2G∧+ 1)/ℓ. Step 6 and 7 are local operations. Step 8 has (T + 1)ℓ
+multiplication gates. Step 9 has n(2T + 4) many output wires in total. Let k = δn and ℓ= ϵn. Thus,
+Winp = n + n · (Winp + G∧)/ℓ+ n · (Winp + G∧)/ℓ+ 2n(2n + (n −ℓ) · T)/ℓ
+= n + 2 · (Winp + G∧)/ϵ + 2(2n + (1 −ϵ) · (Winp + 2G∧+ 1)/ϵ)/ϵ
+≈Winp ·
+2
+ϵ + 2(1 −ϵ)
+ϵ2
+
++ G∧·
+2
+ϵ + 4(1 −ϵ)
+ϵ2
+
+.
+(6)
+Wout = n(2T + 4)
+= n(2(Winp + 2G∧+ 1)/ℓ+ 4)
+≈Winp ·
+2
+ϵ
+
++ G∧·
+4
+ϵ
+
+.
+(7)
+G× = 2(Winp + G∧) + G∧+ (T + 1)ℓ
+= 2(Winp + G∧) + G∧+ ((Winp + 2G∧+ 1)/ℓ+ 1)ℓ
+≈Winp · (2) + G∧· (5)
+(8)
+H.2
+Communication Analysis of ΠGBC-Pre Protocol
+Below, we discuss the communication cost in terms of the number of field elements unless stated explicitly
+otherwise. For an input wire, the communication cost of preprocessing and online phase in ΠSP is
+(6n + 33/ϵ) and 10/ϵ, respectively. For an output wire, the communication cost of preprocessing and
+online phase in ΠSP is (4n+31/ϵ) and 24/ϵ, respectively. For each mulitplication gate, the communication
+cost incurred in the preprocessing and online phase in ΠSP is 6n + 39/ϵ and 6/ϵ respectively.
+Now, let us analyze the communication cost of ΠGBC-Pre protocol (see Figure 4.3). Step 1.(a) incurs
+a communication cost of n(n −1)(Winp + G∧)/ℓ. Having determined the size of the circuit CD, we can
+now evaluate the communication cost of step 1.(b) (Cost1) of ΠGBC-Pre as shown below.
+Cost1 = Winp · (6n + 43/ϵ) + Wout (4n + 55/ϵ) + G× (6n + 45/ϵ) .
+(9)
+Step 3 requires n(n −1) · (3T + 6) many 2PC multiplications. Input of one party is same in several
+instances of such 2PC multiplications which allows for efficient instantiation using Vector OLE. In step
+6, the total communication cost is n · (n −1) · T. The communication cost of step 9 is n · (n −1) · (T) · n
+ℓ.
+The communication cost of step 12 of the protocol is n · (n −1) · T. Communication cost of step 15-
+16 is 2n · (n −1) · (Winp + Wout)/ℓ. In step 18, parties invoke G∧many instances of Frv functionality.
+Communication cost of an instance of Frv when instantiated with Πrv protocol is n2(n −1 + ℓ)/ℓ2.
+Step 19 has n(n −1) bits as communication cost. The communication cost of step 20 of the protocol is
+4n(n −1). Communication cost of step 21, 22, 23, 24, 25 and 26 is n(n −1) bits, 2n(n −1), 2n(n −1),
+n(n −1) bits, 2n(n −1) and n(n −1) bits, respectively. The total communication cost of preprocessing
+protocol ΠGBC-Pre denoted as CostGBC-Pre ignoring low-order terms is
+CostGBC-Pre =n(n −1)(Winp + G∧)/ℓ+ Cost1 + n · (n −1) · (3T)Cost2P C + n · (n −1) · T
++ n · (n −1) · (T) · n
+ℓ+ n · (n −1) · T
++ 2n · (n −1) · (Winp + Wout)/ℓ+ G∧· n2 · (n −1 + ℓ)/ℓ2 + 16n(n −1).
+48
+
+We can use FnVOLE functionality to instantiate the 2PC multiplications. In more detail, parties first
+invoke FnVOLE functionality. Each party Pi then sends correction to party Pj holding ∆j based on its
+random vector and pseudorandom expansion of the seed held by it. Thus, the amortized communication
+cost of a 2PC multiplication is κ bits or one field element.
+Thus, the total communication cost is
+CostGBC-Pre =Winp
+ 2
+ϵ + 2(1 −ϵ)
+ϵ2
+
+· (6n + 43/ϵ) +
+2
+ϵ
+
+· (4n + 55/ϵ)
++ 2 · (6n + 45/ϵ) + 8
+n −1
+ϵ
+
++ n −1
+ϵ2
+
++ G∧
+ 2
+ϵ + 4(1 −ϵ)
+ϵ2
+
+(6n + 43/ϵ) +
+4
+ϵ
+
+· (4n + 55/ϵ)
++ 4 · (6n + 45/ϵ) + 11
+n −1
+ϵ
+
++ 3(n −1) + ϵn
+ϵ2
+
++ Wout
+2(n −1)
+ϵ
+
++ 16n(n −1).
+(10)
+H.3
+Communication Analysis of ΠGBC
+Now, we determine the concrete communication cost of ΠGBC described in Figure 5.1. The first 5 steps
+incur no communication in the FGBC-Pre-hybrid. In step 6, each garbler Pi̸=1 sends G∧many garbled
+tables each of size 4(⌈n/ℓ⌉+ 1). I.e., each garbler sends total garbled material of size 4 · G∧· (⌈n/ℓ⌉+ 1).
+The total communication cost is 4 · n · G∧· (⌈n/ℓ⌉+ 1). In bits, the total communication in garbling is
+4 · n · G∧· (⌈n/ℓ⌉+ 1)κ.
+In the evaluation, for processing each input wire, the total communication is 2(n −1)κ + 2(n −1) +
+(n −1)κ bits. Thus, the total communication is Winp · (3(n −1)κ + 2(n −1)) bits. For an output wire,
+the communication cost is 2(n −1)κ bits. Thus, the total communication is Wout · (2(n −1)κ) bits.
+The total cost of our protocol (in bits) is:
+Costtotal =CostGBC-Pre · κ + 4 · n · G∧· (⌈n/ℓ⌉+ 1)κ + Winp · (3(n −1)κ + 2(n −1))
++ Wout · (2(n −1)κ).
+(11)
+49

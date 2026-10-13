@@ -1,0 +1,71 @@
+
+\clearpage
+\section{Scaling the interactive MPC service to \texorpdfstring{$2^{32}$}{2 to the 32} records}
+\label{sec:scale}
+The larger proposal case retains 32-byte keys, 32-byte values, ten parties,
+four malicious corruptions with abort, and 10,000 logical reads/s. We repeat the
+complete parameter sweep and its CPU/exchange sensitivities. Both cases use two
+cuckoo arrays whose combined capacity is $4N$ at the rounded 40\% load ceiling;
+the actual occupancy is 25\%. These estimates cover flat key/value lookups, not
+Merkle-proof retrieval. The $2^{28}$ case is a power-of-two planning size, not the
+proposal's exact 206.8-million-account count.
+
+\begin{center}\small\begin{tabular}{lrr}\toprule
+Selected central reference & Smaller database & Larger database\\\midrule
+Logical records & $2^{28}$ & $2^{32}$ \\
+Raw key/value database & 16 GiB & 256 GiB \\
+Batch / map packing fanout & 128 / 128 & 512 / 256 \\
+Actual flat base (labels/table) & 32,768 & 131,072 \\
+Recursive ORAM trees/table & 3 & 3 \\
+Secure outputs/read & 3.36M & 6.10M \\
+Sent MB/read/party & 629.2 & 1,085.8 \\
+State TiB/party/replica & 1.88 & 30.05 \\
+Nodes/party/replica & 6 & 96 \\
+Independent replicas & 530 & 110 \\
+All-party EC2 instances & 31,800 & 105,600 \\
+Modeled mean latency & 4.77 s & 3.97 s \\
+Conditional EC2 USD/year & \$2.33B & \$5.16B \\
+\bottomrule\end{tabular}\end{center}
+The smaller selection uses \texttt{r6in.24xlarge}; the larger uses
+\texttt{r6in.16xlarge}. Prices, throughput assumptions and the 5-second mean
+limit are unchanged. The full search includes batches 64--2048, fanouts 4--256,
+both metadata representations and both sorting templates. The larger selection is on the upper fanout boundary; it is the best point in this grid, not a global optimum.
+The flat base contains 131,072 labels despite a nominal cutoff of 256, because the next tree would have fewer than $2B$ leaves. The model stops recursion there.
+The complete sensitivity runs are saved in \texttt{results/size\_2p32/}.
+
+\textbf{The bottleneck changes with size.} For the $2^{32}$ selection, CPU demand
+is 2.180 s/batch, network demand is 1.595 s and dependent exchanges
+add 1.742 s. CPU still controls the resource term, but RAM capacity also
+constrains provisioning: the state plus modeled scratch/buffer requires 34.57
+TiB per party per replica. Each selected 512-GiB instance provides 384 GiB of
+usable RAM, requiring at least 93 nodes; the grid selects 96. At the same fixed
+circuit and instance type, removing only the memory constraint gives 66 nodes,
+138 replicas and approximately \$4.45 B/year. Thus the earlier statement
+that storage does not affect the chosen fleet applies to the $2^{28}$ reference.
+
+Per $2^{32}$ logical read and party, preprocessing accounts for 192.1 MB and
+168.1 million weighted CPU operations; online work accounts for 893.7 MB and
+404.2 million operations. These are the same source-derived phase allocations
+as Section~\ref{sec:bottleneck}, not new measured rates. The selected mean is lower than in the
+smaller case because memory capacity forces a larger parallel allocation, not
+because larger databases inherently have lower latency.
+
+\subsection{Scan comparison at both sizes}
+\begin{center}\small\begin{tabular}{llrrr}\toprule
+Records & Construction & Weighted Gops/read & GB sent/read & USD B/year\\
+&&\multicolumn{2}{c}{per party}&all parties\\\midrule
+$2^{28}$ & OPRAM & 0.34 & 0.629 & 1.69 \\
+$2^{28}$ & Full-key scan & 3,058.82 & 6,075.355 & 15,252.97 \\
+$2^{28}$ & Indexed 2D scan & 25.79 & 0.041 & 128.61 \\
+$2^{32}$ & OPRAM & 0.57 & 1.086 & 2.85 \\
+$2^{32}$ & Full-key scan & 48,941.15 & 97,205.683 & 244,047.48 \\
+$2^{32}$ & Indexed 2D scan & 412.40 & 0.163 & 2,056.45 \\
+\bottomrule\end{tabular}\end{center}
+The last column uses the common aggregate resource-capacity model from Section~\ref{sec:bottleneck};
+it does not include a latency-feasible replica schedule. In particular, its ORAM
+figures differ from the dedicated-replica costs above. Scan state remains shared
+across concurrent read workers: at $2^{32}$, it is 768 GiB/party for full-key
+scanning and 3,072 GiB/party for the indexed two-array scan. Full scanning grows
+almost exactly 16-fold in computation and traffic. Indexed scanning grows about
+16-fold in local work and fourfold in transmitted data because of the balanced
+two-dimensional layout. All figures still depend on unmeasured CPU rates.

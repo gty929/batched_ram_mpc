@@ -1,0 +1,128 @@
+[
+  {
+    "scenario": "central",
+    "placement": "same_AZ",
+    "transfer_usd_year": 0.0,
+    "total_usd_year": 5160480399.36
+  },
+  {
+    "scenario": "central",
+    "placement": "three_AZ_4_3_3_all_to_all_proxy",
+    "transfer_usd_year": 50222751248.98301,
+    "total_usd_year": 55383231648.34301
+  },
+  {
+    "scenario": "central",
+    "placement": "all_cross_AZ",
+    "transfer_usd_year": 68485569884.97684,
+    "total_usd_year": 73646050284.33684
+  },
+  {
+    "scenario": "faster_cpu",
+    "placement": "same_AZ",
+    "transfer_usd_year": 0.0,
+    "total_usd_year": 3940730486.7840004
+  },
+  {
+    "scenario": "faster_cpu",
+    "placement": "three_AZ_4_3_3_all_to_all_proxy",
+    "transfer_usd_year": 42503889084.53689,
+    "total_usd_year": 46444619571.32089
+  },
+  {
+    "scenario": "faster_cpu",
+    "placement": "all_cross_AZ",
+    "transfer_usd_year": 57959848751.64122,
+    "total_usd_year": 61900579238.42522
+  },
+  {
+    "scenario": "slower_cpu",
+    "placement": "same_AZ",
+    "transfer_usd_year": 0.0,
+    "total_usd_year": 12710229073.92
+  },
+  {
+    "scenario": "slower_cpu",
+    "placement": "three_AZ_4_3_3_all_to_all_proxy",
+    "transfer_usd_year": 37686794581.50453,
+    "total_usd_year": 50397023655.42453
+  },
+  {
+    "scenario": "slower_cpu",
+    "placement": "all_cross_AZ",
+    "transfer_usd_year": 51391083520.23345,
+    "total_usd_year": 64101312594.15345
+  },
+  {
+    "scenario": "low_exchange",
+    "placement": "same_AZ",
+    "transfer_usd_year": 0.0,
+    "total_usd_year": 2814807490.56
+  },
+  {
+    "scenario": "low_exchange",
+    "placement": "three_AZ_4_3_3_all_to_all_proxy",
+    "transfer_usd_year": 40532973935.13848,
+    "total_usd_year": 43347781425.69848
+  },
+  {
+    "scenario": "low_exchange",
+    "placement": "all_cross_AZ",
+    "transfer_usd_year": 55272237184.27975,
+    "total_usd_year": 58087044674.839745
+  },
+  {
+    "scenario": "slow_exchange",
+    "placement": "same_AZ",
+    "transfer_usd_year": 0.0,
+    "total_usd_year": 24770305916.927998
+  },
+  {
+    "scenario": "slow_exchange",
+    "placement": "three_AZ_4_3_3_all_to_all_proxy",
+    "transfer_usd_year": 35935692064.86797,
+    "total_usd_year": 60705997981.795975
+  },
+  {
+    "scenario": "slow_exchange",
+    "placement": "all_cross_AZ",
+    "transfer_usd_year": 49003216452.0927,
+    "total_usd_year": 73773522369.02069
+  },
+  {
+    "scenario": "two_second_target",
+    "placement": "same_AZ",
+    "transfer_usd_year": 0.0,
+    "total_usd_year": 18577729437.696
+  },
+  {
+    "scenario": "two_second_target",
+    "placement": "three_AZ_4_3_3_all_to_all_proxy",
+    "transfer_usd_year": 38598532633.88893,
+    "total_usd_year": 57176262071.58493
+  },
+  {
+    "scenario": "two_second_target",
+    "placement": "all_cross_AZ",
+    "transfer_usd_year": 52634362682.57582,
+    "total_usd_year": 71212092120.27182
+  },
+  {
+    "scenario": "no_overlap",
+    "placement": "same_AZ",
+    "transfer_usd_year": 0.0,
+    "total_usd_year": 7881460973.568001
+  },
+  {
+    "scenario": "no_overlap",
+    "placement": "three_AZ_4_3_3_all_to_all_proxy",
+    "transfer_usd_year": 39876339376.62145,
+    "total_usd_year": 47757800350.18945
+  },
+  {
+    "scenario": "no_overlap",
+    "placement": "all_cross_AZ",
+    "transfer_usd_year": 54376826422.66562,
+    "total_usd_year": 62258287396.23362
+  }
+]

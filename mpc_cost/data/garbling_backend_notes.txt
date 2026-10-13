@@ -1,0 +1,236 @@
+Multiparty garbling backend audit, 2026-10-13
+===========================================
+
+Primary sources
+---------------
+G: Heath, Kolesnikov, Narayanan, Ostrovsky, Shah, "Multiparty Garbling
+   from OT with Linear Scaling and RAM Support", ePrint 2025/444,
+   https://eprint.iacr.org/2025/444.pdf
+   https://eprint.iacr.org/2025/444
+   CRYPTO 2025, DOI 10.1007/978-3-032-01884-7_18.
+   Page references below are the 49-page ePrint version, not proceedings.
+   Verified against user-supplied multiparty_ot.pdf (785128 bytes), SHA256:
+   9ff42aa43d9679d73e689293f1660465e9fcae0efb1f9f24041f62cbea2bd7cd.
+S: Escudero, Goyal, Polychroniadou, Song, Weng, "SUPERPACK: Dishonest
+   Majority MPC with Constant Online Communication", ePrint 2023/307,
+   https://eprint.iacr.org/2023/307.pdf
+   Code linked by S: https://github.com/ckweng/SuperPack
+   No benchmark of these compositions was run. In particular, S Section 7
+   explicitly says its implementation omits F_progOLE and F_nVOLE calls.
+
+Security and finite parameters
+------------------------------
+G provides malicious security with abort against static corruptions and
+uses OT and random-oracle assumptions. Its linear asymptotic gate cost is
+for a constant honest fraction. Table 1 is an asymptotic table, not a
+128-bit finite-party cost table. This is not a t<n/3 active protocol.
+
+Use n=10, actual t=4, field/label width kappa=128 bits, F=GF(2^128).
+These are Boolean garbling fields, unrelated to the p=2^127-1 arithmetic
+MPC field used in the interactive model.
+
+Outer packed sharing: ell=5, c=ceil(n/ell)=2. G Sec.3.2 pp7-8 allows
+privacy n-ell=5, so this covers actual t=4. ell divides n, as assumed
+in the simplified preprocessing derivation.
+
+The inner SuperPack parameter is DISTINCT from outer ell/n. S p12 sets
+k=(n-t_SP+1)/2 and, when t_SP+1=(1-e_SP)n, k=e_SP*n/2+1.
+Choose t_SP=5, k=3, e_SP=.4. This covers actual t=4, gives integral k,
+and respects the stated 0<e_SP<1/2 range. Substituting e_SP=.5 would
+give k=3.5 under the paper's equality convention, not an exact finite
+instantiation. G App.H uses one epsilon for both parameters; retaining
+outer e=.5 while using inner e_SP=.4 is the conservative finite choice.
+All formulas below still ignore small circuit padding and epoch setup.
+
+Gate table communication, excluding preprocessing
+-------------------------------------------------
+IMPORTANT: G Sec.3.2 explicitly defines angle-bracket additive shares
+over F. A share of a Boolean secret is generally a full field element,
+not a one-bit value. Treating that share as a bit undercounts messages.
+
+Boolean XOR: free communication, local XOR of packs/labels; no hash call.
+Boolean AND (G Fig.5.1 step6 p17, App.H.3 p49): each non-evaluator
+garbler sends four rows, each containing c+1 field elements.
+  per garbler = 4(c+1)kappa/8 = 192 bytes
+  evaluator receives = (n-1)*192 = 1728 bytes
+  physical global table delivery = 1728 bytes per AND.
+G Eq.(11) writes 4*n*(c+1)*kappa = 1920 bytes. The same paragraph
+explicitly sends tables only from i != 1, so preserve this n versus n-1
+discrepancy as a paper-literal versus role-corrected convention.
+
+Tri-state XOR: local pack XOR, no communication (G Fig.F.3 p42).
+Tri-state buffer: each non-evaluator sends the control share, c packed
+shares, and one field-length ciphertext: (c+2)*16 = 64 bytes.
+Tri-state join: two generic t-packs: 2(c+2)*16 = 128 bytes per garbler.
+These give evaluator receipts 576 and 1152 bytes respectively.
+Some freshly sampled input/join masks are explicitly bit-shared in
+Fig.F.3; generic preprocessing t-packs use additive FIELD shares. A
+specialized bit-packed representation needs a separate type/protocol
+argument. Do not apply 48.125/96.25-byte messages to all TSC gates.
+
+Boolean circuit preprocessing: paper formulas
+----------------------------------------------
+I = number of external input bits of the BASE circuit.
+O = number of external output bits of the BASE circuit.
+A = number of Boolean AND gates. XOR contributes no separate term.
+Inputting one KV query gives I=key width plus any client-supplied private
+indices (+operation/value inputs if writes); initializing a private database adds its external input bits
+once per epoch. An internal state wire is not a new external input.
+For a 256-bit value and hit flag, O=257 per KV query, not per recursive
+RAM call. Amortize initial database inputs by the epoch query count.
+
+G App.H.1 pp47-48 uses T=(I+2A+1)/ell and derives CD dimensions:
+  I_CD = n + 2n(I+A)/ell + 2n(2n+(n-ell)T)/ell
+  O_CD = n(2T+4)
+  M_CD = 2(I+A)+A+(T+1)ell = 3I+5A+1+ell.
+The printed approximation in Eq.(8) instead says 2I+5A. Eq.(10)
+subsequently uses 2I+4A coefficients for the SuperPack multiplication
+term. These disagree with the displayed exact count. Both paper-literal
+Eq.(10) and a repaired 3I+5A sensitivity should remain explicit.
+
+G App.H.2 Eq.(9) assigns global field-word costs for inner SuperPack:
+  qI = 6n + 43/e_SP
+  qO = 4n + 55/e_SP
+  qM = 6n + 45/e_SP.
+These include the inner protocol's online and offline traffic, but omit
+the cost of realizing its ideal VOLE/OLE correlations; see caveat below.
+
+Let e=ell/n be OUTER packing. Generalizing printed Eq.(10) to distinguish
+the two packing parameters gives leading global field-word coefficients:
+  aI = (2/e+2(1-e)/e^2)*qI + (2/e)*qO + 2*qM
+       + 8(n-1)/e + (n-1)/e^2
+  aA = (2/e+4(1-e)/e^2)*qI + (4/e)*qO + 4*qM
+       + 11(n-1)/e + (3(n-1)+e*n)/e^2
+  aO = 2(n-1)/e
+  P = aI*I+aA*A+aO*O+16*n*(n-1).
+P is preprocessing only. The constant is amortized once per epoch.
+
+Numerical coefficient ledger, n=10, all entries GLOBAL field words:
+  outer e  inner e_SP  convention              aI      aA       aO
+  .5       .5          printed Eq.(10)         2248    3878     36
+  .5       .5          repaired M_CD           2398    4028     36
+  .5       .4          finite, literal algebra 2575    4446     36
+  .5       .4          finite, repaired M_CD    2747.5  4618.5   36
+Multiply by 16 for bytes; divide by n only for average party SEND.
+Finite/literal preprocessing AND: 71,136 bytes global, 7,113.6 average.
+Finite/repaired preprocessing AND: 73,896 bytes global, 7,389.6 average.
+The table-delivery traffic must then be added; do not count it twice.
+
+G Eq.(11) total (bits), paper-literal table convention:
+  kappa*P + 4*n*A*(c+1)*kappa
+  + I*(3*(n-1)*kappa+2*(n-1)) + O*2*(n-1)*kappa.
+External input traffic is 434.25 bytes/input bit globally at n10;
+external output traffic is 288 bytes/output bit globally.
+The input/output terms are circuit-input dependent; P and gate table
+delivery can precede inputs. This does not make their sustainable cost
+zero at 10,000 queries/s.
+
+What the paper's preprocessing number omits
+-------------------------------------------
+G Sec.4.1 p12 states SuperPack is in the F_progOLE/F_nVOLE hybrid.
+The cited Le Mans constructions use Ring-LPN/LPN assumptions to make
+the correlation communication sublinear in the expansion length.
+G Theorem 3 says replacing these with standard OLE/OT still gives
+O(n|C|) communication AND O(n|C|) OLE correlations. It does not give a
+finite byte price for realizing those correlations.
+G Appendix C pp28-29 defines the ideal field OLE explicitly and replaces
+seed-expanded vectors by uniformly random vectors for the OT-based
+variant. Thus that variant need not preserve programmable seed relations,
+but it must still realize consistent field OLE and fixed-key nVOLE.
+G App.H.3's one-field-element price for each two-party multiplication
+is the correction AFTER invoking F_nVOLE, not a concrete full generator.
+S App.F p58 explicitly excludes F_progOLE/F_nVOLE calls from its
+6n+39/epsilon offline coefficient. S p21 says the implementation also
+excludes those calls and does not quantify their concrete effects.
+
+Therefore P is a useful authored leading-cost estimate under very large
+PCG expansion, not a complete measured OT-only implementation. A model
+may add a clearly exposed extra correlation traffic term, or a 0/25/100%
+PCG communication overhead sensitivity. Those are assumptions, not
+numbers claimed by the paper. In particular, kappa COTs at 16B each
+does NOT automatically establish a malicious OLE implementation: one
+must enforce consistent field inputs/correlations and the programmable
+seed relationships. No exact such instantiated byte coefficient was
+verified in this audit. Do not silently call P a complete OT price.
+
+S pp10,20-21 describes two raw packed triples per verified packed triple
+(one sacrificed), with two ordered-pair OLE products and six nVOLE
+random/authentication vectors across those two triples. Each packed
+triple serves k arithmetic multiplications. Additional authenticated
+wire masks and input/output gates require more correlation material;
+this partial triple count alone is not a total correlation count.
+
+TSC preprocessing is not Eq.(10)
+--------------------------------
+G Fig.F.1 pp41-43 requires W authenticated random bits, N independent
+triples, and V packed random vectors for joins. The correlated bit
+distribution D is prescribed by the RAM construction. The text says
+the same preprocessing approach applies with a simpler CD, but supplies
+no exact finite TSC counterpart of Appendix H. Charging every TSC join
+as one Boolean AND including P is an explicit surrogate, not a theorem.
+
+Persistent labels, ciphertext storage, and role bottlenecks
+-----------------------------------------------------------
+PSS compresses each garbler's ciphertext contribution, NOT all evaluator
+active labels to c field elements. Boolean Section5 evaluator live labels
+are one rho bit plus n-1 active labels: 144.125 bytes per live bit n10.
+That excludes garbling metadata that may be retired after generation.
+
+TSC Fig.F.1 literal evaluator t-pack:
+  own additive field share r, own K1, n labels Mj, c packed Y shares.
+This is (n+c+2)*16 = 224 bytes per encoded state bit, c2.
+Each other party's literal t-pack is (c+2)*16 = 64 bytes per bit.
+The n-label M component alone is 160B/bit. M plus own fieldshare is
+176B/bit, but dropping K1/Y state requires a liveness/retirement argument;
+160B is not the full literal persistent evaluator state.
+
+Garbled tables can be retained as ONE aggregate evaluator copy, not n
+copies of the full circuit. Each garbler's table share is different;
+summing/XORing them prematurely generally loses the separately keyed
+decryptions. Retain all nine contributions in the aggregate copy. A
+garbler need not keep another full copy after acknowledged delivery,
+unless operational durability requires replication.
+
+Never price every party as if it receives all evaluator traffic. A
+proposed load-balanced preprocessing schedule can distribute average
+P/n sends/receives among parties, but G's exact construction has named
+P1/dealer roles. An average is not proof of its maximum party NIC load.
+Expose role imbalance and within-party scaling assumptions separately.
+
+One-time garbling cannot be reused for indefinitely many queries. The
+RAM state and precomputed program have an access horizon. Full-horizon
+tables require bytes/read * horizon_reads; a rolling buffer needs an
+explicit secure incremental-garbling/state-handoff argument. A 60-second
+rolling SSD buffer is an engineering scenario, not a supported theorem
+from G. The 2PC garbled-stack migration assumption does not itself
+establish multiparty rolling epochs or remove data-label storage.
+
+The security statement is standalone for a fixed n-ary function (G p4,
+Appendix A pp25-26). Its ideal functionality collects inputs and then
+returns outputs. No explicit theorem for reactive/adaptive query inputs
+across a long pregarbled epoch was located in the full PDF. Static
+corruption and adaptive query selection are different issues. Supporting
+a live service that injects later inputs based on earlier answers is an
+additional protocol-integration assumption, not established by treating
+one fixed-input circuit as an indefinitely interactive database.
+
+At sustained throughput, both offline production and table delivery
+must keep up. Once tables are prefetched, online query communication is
+mostly input/output, and evaluation is local; offline network cost does
+not disappear. NIC sizing should compare per-role SEND and RECEIVE
+according to the AWS bandwidth accounting actually used. If that limit
+is combined bidirectional, sum TX+RX rather than taking only max(TX,RX).
+
+An aggregate fleet bound avoids guessing party imbalance. Let V be
+global wire bytes/query, counting every transmission once; let tx_i and
+rx_i be party i's transmitted/received bytes/query. Then sum(tx_i)=
+sum(rx_i)=V, and for full-duplex per-direction node capacity C:
+  sum_i max(tx_i,rx_i) = V + (1/2)sum_i abs(tx_i-rx_i) in [V,2V].
+At query rate R, homogeneous network-only fleet demand therefore lies
+between ceil(R*V/C) and ceil(2*R*V/C)+n-1 nodes. The n-1 term bounds
+rounding separately within each party. This assumes fungible horizontal
+capacity within each party and no additional network bottleneck. Memory,
+storage, baseline per-party nodes and topology constraints are separate.
+If C instead limits combined TX+RX, aggregate demand is exactly2*R*V/C
+before integer ceilings. The full-duplex bound needs no role-balance
+claim and never charges every party for the evaluator's individual load.

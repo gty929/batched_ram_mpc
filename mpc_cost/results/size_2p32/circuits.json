@@ -1,0 +1,1886 @@
+{
+  "central": {
+    "design": {
+      "records": 4294967296,
+      "key_bytes": 32,
+      "value_bytes": 32,
+      "parties": 10,
+      "threshold": 4,
+      "rate": 10000,
+      "batch": 512,
+      "fanout": 256,
+      "base_cutoff": 256,
+      "cuckoo_load_ceiling": 0.4,
+      "cuckoo_stash": 8,
+      "cuckoo_tables": 2,
+      "bucket_z": 3,
+      "pool_slack": 128,
+      "field_bits": 127,
+      "field_bytes": 16,
+      "share_words": 2,
+      "metadata": "compact",
+      "conversion": "canonical",
+      "sort_cost_scale": 1.0,
+      "eviction_work_scale": 1.0,
+      "sort_method": "bitonic",
+      "quicksort_depth_factor": 4.5
+    },
+    "actual_cuckoo_load": 0.25,
+    "dense_cells": 17179869184,
+    "levels": [
+      {
+        "records": 8589934592,
+        "payload_words": 6,
+        "height": 33,
+        "lower_path_levels": 24,
+        "pool_records": 3197,
+        "tree_bytes": 14843406090240,
+        "pool_bytes": 7468192,
+        "work": {
+          "reductions": 298286706.0,
+          "dot_outputs": 4608.0,
+          "local_products": 597900516.0,
+          "random_bits": 24237574.0,
+          "openings": 381940.0,
+          "phases": 2913,
+          "ram_bytes": 5191545472.0,
+          "direct_words": 0,
+          "canonical_masks": 190714.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 35604422,
+            "dot_outputs": 0,
+            "local_products": 71208844,
+            "random_bits": 406019,
+            "openings": 6394,
+            "phases": 785,
+            "ram_bytes": 1308622848,
+            "direct_words": 0,
+            "canonical_masks": 3197
+          },
+          "eviction_select": {
+            "reductions": 56353150,
+            "dot_outputs": 0,
+            "local_products": 112706300,
+            "random_bits": 406019,
+            "openings": 6394,
+            "phases": 813,
+            "ram_bytes": 2480930816,
+            "direct_words": 0,
+            "canonical_masks": 3197
+          },
+          "pool_cleanup": {
+            "reductions": 24355630,
+            "dot_outputs": 0,
+            "local_products": 48711260,
+            "random_bits": 0,
+            "openings": 0,
+            "phases": 599,
+            "ram_bytes": 1192755200,
+            "direct_words": 0,
+            "canonical_masks": 0
+          }
+        }
+      },
+      {
+        "records": 33554432,
+        "payload_words": 256,
+        "height": 25,
+        "lower_path_levels": 16,
+        "pool_records": 3197,
+        "tree_bytes": 1668569333760,
+        "pool_bytes": 31407328,
+        "work": {
+          "reductions": 639439134.0,
+          "dot_outputs": 132608.0,
+          "local_products": 1304339004.0,
+          "random_bits": 16430598.0,
+          "openings": 259060.0,
+          "phases": 2874,
+          "ram_bytes": 53762505600.0,
+          "direct_words": 0,
+          "canonical_masks": 129274.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 112159786,
+            "dot_outputs": 0,
+            "local_products": 224319572,
+            "random_bits": 406019,
+            "openings": 6394,
+            "phases": 784,
+            "ram_bytes": 11368660992,
+            "direct_words": 0,
+            "canonical_masks": 3197
+          },
+          "eviction_select": {
+            "reductions": 243596706,
+            "dot_outputs": 0,
+            "local_products": 487193412,
+            "random_bits": 406019,
+            "openings": 6394,
+            "phases": 813,
+            "ram_bytes": 26288324608,
+            "direct_words": 0,
+            "canonical_masks": 3197
+          },
+          "pool_cleanup": {
+            "reductions": 119906130,
+            "dot_outputs": 0,
+            "local_products": 239812260,
+            "random_bits": 0,
+            "openings": 0,
+            "phases": 599,
+            "ram_bytes": 13120307200,
+            "direct_words": 0,
+            "canonical_masks": 0
+          }
+        }
+      },
+      {
+        "records": 131072,
+        "payload_words": 256,
+        "height": 17,
+        "lower_path_levels": 8,
+        "pool_records": 3197,
+        "tree_bytes": 6492487680,
+        "pool_bytes": 29770464,
+        "work": {
+          "reductions": 553785694.0,
+          "dot_outputs": 132608.0,
+          "local_products": 1120301756.0,
+          "random_bits": 8623622.0,
+          "openings": 136180.0,
+          "phases": 2717,
+          "ram_bytes": 52365015936.0,
+          "direct_words": 0,
+          "canonical_masks": 67834.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 106988650,
+            "dot_outputs": 0,
+            "local_products": 213977300,
+            "random_bits": 406019,
+            "openings": 6394,
+            "phases": 706,
+            "ram_bytes": 11205083136,
+            "direct_words": 0,
+            "canonical_masks": 3197
+          },
+          "eviction_select": {
+            "reductions": 243596706,
+            "dot_outputs": 0,
+            "local_products": 487193412,
+            "random_bits": 406019,
+            "openings": 6394,
+            "phases": 813,
+            "ram_bytes": 26288324608,
+            "direct_words": 0,
+            "canonical_masks": 3197
+          },
+          "pool_cleanup": {
+            "reductions": 119906130,
+            "dot_outputs": 0,
+            "local_products": 239812260,
+            "random_bits": 0,
+            "openings": 0,
+            "phases": 599,
+            "ram_bytes": 13120307200,
+            "direct_words": 0,
+            "canonical_masks": 0
+          }
+        }
+      }
+    ],
+    "base_cells": 131072,
+    "base_method": "one_hot_dot",
+    "base_work": {
+      "reductions": 67564032,
+      "dot_outputs": 131584,
+      "local_products": 672523264,
+      "random_bits": 0,
+      "openings": 0,
+      "phases": 10,
+      "ram_bytes": 12884901888,
+      "direct_words": 0,
+      "canonical_masks": 0
+    },
+    "work": {
+      "reductions": 3122598364.0,
+      "dot_outputs": 806400.0,
+      "local_products": 7401182136.0,
+      "random_bits": 98583588.0,
+      "openings": 1554360.0,
+      "phases": 8712,
+      "ram_bytes": 248407937792.0,
+      "direct_words": 0,
+      "canonical_masks": 775644.0
+    },
+    "state_bytes_party": 33037081505472,
+    "caveat": "Derived circuit template and unmeasured deployment; not an implementation benchmark."
+  },
+  "faster_cpu": {
+    "design": {
+      "records": 4294967296,
+      "key_bytes": 32,
+      "value_bytes": 32,
+      "parties": 10,
+      "threshold": 4,
+      "rate": 10000,
+      "batch": 1024,
+      "fanout": 64,
+      "base_cutoff": 256,
+      "cuckoo_load_ceiling": 0.4,
+      "cuckoo_stash": 8,
+      "cuckoo_tables": 2,
+      "bucket_z": 3,
+      "pool_slack": 128,
+      "field_bits": 127,
+      "field_bytes": 16,
+      "share_words": 2,
+      "metadata": "compact",
+      "conversion": "canonical",
+      "sort_cost_scale": 1.0,
+      "eviction_work_scale": 1.0,
+      "sort_method": "bitonic",
+      "quicksort_depth_factor": 4.5
+    },
+    "actual_cuckoo_load": 0.25,
+    "dense_cells": 17179869184,
+    "levels": [
+      {
+        "records": 8589934592,
+        "payload_words": 6,
+        "height": 33,
+        "lower_path_levels": 23,
+        "pool_records": 6269,
+        "tree_bytes": 14843405205504,
+        "pool_bytes": 14644384,
+        "work": {
+          "reductions": 628873066.0,
+          "dot_outputs": 9216.0,
+          "local_products": 1260289748.0,
+          "random_bits": 46492678.0,
+          "openings": 732660.0,
+          "phases": 3437,
+          "ram_bytes": 12355252864.0,
+          "direct_words": 0,
+          "canonical_masks": 365818.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 83386822,
+            "dot_outputs": 0,
+            "local_products": 166773644,
+            "random_bits": 796163,
+            "openings": 12538,
+            "phases": 906,
+            "ram_bytes": 3101163520,
+            "direct_words": 0,
+            "canonical_masks": 6269
+          },
+          "eviction_select": {
+            "reductions": 135890038,
+            "dot_outputs": 0,
+            "local_products": 271780076,
+            "random_bits": 796163,
+            "openings": 12538,
+            "phases": 1034,
+            "ram_bytes": 5945425920,
+            "direct_words": 0,
+            "canonical_masks": 6269
+          },
+          "pool_cleanup": {
+            "reductions": 59603246,
+            "dot_outputs": 0,
+            "local_products": 119206492,
+            "random_bits": 0,
+            "openings": 0,
+            "phases": 687,
+            "ram_bytes": 2862612480,
+            "direct_words": 0,
+            "canonical_masks": 0
+          }
+        }
+      },
+      {
+        "records": 134217728,
+        "payload_words": 64,
+        "height": 27,
+        "lower_path_levels": 17,
+        "pool_records": 6269,
+        "tree_bytes": 1726563680256,
+        "pool_bytes": 23872352,
+        "work": {
+          "reductions": 740312966.0,
+          "dot_outputs": 68608.0,
+          "local_products": 1494621964.0,
+          "random_bits": 34782214.0,
+          "openings": 548340.0,
+          "phases": 3327,
+          "ram_bytes": 37984164736.0,
+          "direct_words": 0,
+          "canonical_masks": 273658.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 118437018,
+            "dot_outputs": 0,
+            "local_products": 236874036,
+            "random_bits": 796163,
+            "openings": 12538,
+            "phases": 905,
+            "ram_bytes": 8349286400,
+            "direct_words": 0,
+            "canonical_masks": 6269
+          },
+          "eviction_select": {
+            "reductions": 233311514,
+            "dot_outputs": 0,
+            "local_products": 466623028,
+            "random_bits": 796163,
+            "openings": 12538,
+            "phases": 929,
+            "ram_bytes": 18606981120,
+            "direct_words": 0,
+            "canonical_masks": 6269
+          },
+          "pool_cleanup": {
+            "reductions": 110576082,
+            "dot_outputs": 0,
+            "local_products": 221152164,
+            "random_bits": 0,
+            "openings": 0,
+            "phases": 687,
+            "ram_bytes": 9248440320,
+            "direct_words": 0,
+            "canonical_masks": 0
+          }
+        }
+      },
+      {
+        "records": 2097152,
+        "payload_words": 64,
+        "height": 21,
+        "lower_path_levels": 11,
+        "pool_records": 6269,
+        "tree_bytes": 26964590592,
+        "pool_bytes": 21465056,
+        "work": {
+          "reductions": 633473462.0,
+          "dot_outputs": 68608.0,
+          "local_products": 1276003180.0,
+          "random_bits": 23071750.0,
+          "openings": 364020.0,
+          "phases": 3238,
+          "ram_bytes": 37202058112.0,
+          "direct_words": 0,
+          "canonical_masks": 181498.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 109403850,
+            "dot_outputs": 0,
+            "local_products": 218807700,
+            "random_bits": 796163,
+            "openings": 12538,
+            "phases": 905,
+            "ram_bytes": 8063025152,
+            "direct_words": 0,
+            "canonical_masks": 6269
+          },
+          "eviction_select": {
+            "reductions": 233311514,
+            "dot_outputs": 0,
+            "local_products": 466623028,
+            "random_bits": 796163,
+            "openings": 12538,
+            "phases": 929,
+            "ram_bytes": 18606981120,
+            "direct_words": 0,
+            "canonical_masks": 6269
+          },
+          "pool_cleanup": {
+            "reductions": 110576082,
+            "dot_outputs": 0,
+            "local_products": 221152164,
+            "random_bits": 0,
+            "openings": 0,
+            "phases": 687,
+            "ram_bytes": 9248440320,
+            "direct_words": 0,
+            "canonical_masks": 0
+          }
+        }
+      },
+      {
+        "records": 32768,
+        "payload_words": 64,
+        "height": 15,
+        "lower_path_levels": 5,
+        "pool_records": 6269,
+        "tree_bytes": 408354816,
+        "pool_bytes": 19057760,
+        "work": {
+          "reductions": 524110822.0,
+          "dot_outputs": 68608.0,
+          "local_products": 1052338124.0,
+          "random_bits": 11361286.0,
+          "openings": 179700.0,
+          "phases": 3088,
+          "ram_bytes": 36309851008.0,
+          "direct_words": 0,
+          "canonical_masks": 89338.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 100370682,
+            "dot_outputs": 0,
+            "local_products": 200741364,
+            "random_bits": 796163,
+            "openings": 12538,
+            "phases": 813,
+            "ram_bytes": 7776763904,
+            "direct_words": 0,
+            "canonical_masks": 6269
+          },
+          "eviction_select": {
+            "reductions": 229870874,
+            "dot_outputs": 0,
+            "local_products": 459741748,
+            "random_bits": 796163,
+            "openings": 12538,
+            "phases": 929,
+            "ram_bytes": 18496880640,
+            "direct_words": 0,
+            "canonical_masks": 6269
+          },
+          "pool_cleanup": {
+            "reductions": 110576082,
+            "dot_outputs": 0,
+            "local_products": 221152164,
+            "random_bits": 0,
+            "openings": 0,
+            "phases": 687,
+            "ram_bytes": 9248440320,
+            "direct_words": 0,
+            "canonical_masks": 0
+          }
+        }
+      }
+    ],
+    "base_cells": 32768,
+    "base_method": "one_hot_dot",
+    "base_work": {
+      "reductions": 34034688,
+      "dot_outputs": 33792,
+      "local_products": 336635904,
+      "random_bits": 0,
+      "openings": 0,
+      "phases": 9,
+      "ram_bytes": 6442450944,
+      "direct_words": 0,
+      "canonical_masks": 0
+    },
+    "work": {
+      "reductions": 5127835928.0,
+      "dot_outputs": 506880.0,
+      "local_products": 10853925424.0,
+      "random_bits": 231415856.0,
+      "openings": 3649440.0,
+      "phases": 13329,
+      "ram_bytes": 260587555328.0,
+      "direct_words": 0,
+      "canonical_masks": 1820624.0
+    },
+    "state_bytes_party": 33194843840128,
+    "caveat": "Derived circuit template and unmeasured deployment; not an implementation benchmark."
+  },
+  "slower_cpu": {
+    "design": {
+      "records": 4294967296,
+      "key_bytes": 32,
+      "value_bytes": 32,
+      "parties": 10,
+      "threshold": 4,
+      "rate": 10000,
+      "batch": 256,
+      "fanout": 64,
+      "base_cutoff": 65536,
+      "cuckoo_load_ceiling": 0.4,
+      "cuckoo_stash": 8,
+      "cuckoo_tables": 2,
+      "bucket_z": 3,
+      "pool_slack": 128,
+      "field_bits": 127,
+      "field_bytes": 16,
+      "share_words": 2,
+      "metadata": "compact",
+      "conversion": "canonical",
+      "sort_cost_scale": 1.0,
+      "eviction_work_scale": 1.0,
+      "sort_method": "bitonic",
+      "quicksort_depth_factor": 4.5
+    },
+    "actual_cuckoo_load": 0.25,
+    "dense_cells": 17179869184,
+    "levels": [
+      {
+        "records": 8589934592,
+        "payload_words": 6,
+        "height": 33,
+        "lower_path_levels": 25,
+        "pool_records": 1661,
+        "tree_bytes": 14843406532608,
+        "pool_bytes": 3880096,
+        "work": {
+          "reductions": 142561402.0,
+          "dot_outputs": 2304.0,
+          "local_products": 285814004.0,
+          "random_bits": 12622342.0,
+          "openings": 198900.0,
+          "phases": 2526,
+          "ram_bytes": 2157032064.0,
+          "direct_words": 0,
+          "canonical_masks": 99322.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 15098566,
+            "dot_outputs": 0,
+            "local_products": 30197132,
+            "random_bits": 210947,
+            "openings": 3322,
+            "phases": 673,
+            "ram_bytes": 544997376,
+            "direct_words": 0,
+            "canonical_masks": 1661
+          },
+          "eviction_select": {
+            "reductions": 23144838,
+            "dot_outputs": 0,
+            "local_products": 46289676,
+            "random_bits": 210947,
+            "openings": 3322,
+            "phases": 705,
+            "ram_bytes": 1022361600,
+            "direct_words": 0,
+            "canonical_masks": 1661
+          },
+          "pool_cleanup": {
+            "reductions": 9809966,
+            "dot_outputs": 0,
+            "local_products": 19619932,
+            "random_bits": 0,
+            "openings": 0,
+            "phases": 517,
+            "ram_bytes": 490733568,
+            "direct_words": 0,
+            "canonical_masks": 0
+          }
+        }
+      },
+      {
+        "records": 134217728,
+        "payload_words": 64,
+        "height": 27,
+        "lower_path_levels": 19,
+        "pool_records": 1661,
+        "tree_bytes": 1726573559808,
+        "pool_bytes": 6325088,
+        "work": {
+          "reductions": 159112342.0,
+          "dot_outputs": 17152.0,
+          "local_products": 322135340.0,
+          "random_bits": 9694726.0,
+          "openings": 152820.0,
+          "phases": 2521,
+          "ram_bytes": 6998055808.0,
+          "direct_words": 0,
+          "canonical_masks": 76282.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 21515674,
+            "dot_outputs": 0,
+            "local_products": 43031348,
+            "random_bits": 210947,
+            "openings": 3322,
+            "phases": 672,
+            "ram_bytes": 1496580096,
+            "direct_words": 0,
+            "canonical_masks": 1661
+          },
+          "eviction_select": {
+            "reductions": 41317930,
+            "dot_outputs": 0,
+            "local_products": 82635860,
+            "random_bits": 210947,
+            "openings": 3322,
+            "phases": 705,
+            "ram_bytes": 3373793280,
+            "direct_words": 0,
+            "canonical_masks": 1661
+          },
+          "pool_cleanup": {
+            "reductions": 19356882,
+            "dot_outputs": 0,
+            "local_products": 38713764,
+            "random_bits": 0,
+            "openings": 0,
+            "phases": 517,
+            "ram_bytes": 1676673024,
+            "direct_words": 0,
+            "canonical_masks": 0
+          }
+        }
+      },
+      {
+        "records": 2097152,
+        "payload_words": 64,
+        "height": 21,
+        "lower_path_levels": 13,
+        "pool_records": 1661,
+        "tree_bytes": 26974470144,
+        "pool_bytes": 5687264,
+        "work": {
+          "reductions": 133018822.0,
+          "dot_outputs": 17152.0,
+          "local_products": 268713356.0,
+          "random_bits": 6767110.0,
+          "openings": 106740.0,
+          "phases": 2451,
+          "ram_bytes": 6824057728.0,
+          "direct_words": 0,
+          "canonical_masks": 53242.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 19870666,
+            "dot_outputs": 0,
+            "local_products": 39741332,
+            "random_bits": 210947,
+            "openings": 3322,
+            "phases": 672,
+            "ram_bytes": 1444675584,
+            "direct_words": 0,
+            "canonical_masks": 1661
+          },
+          "eviction_select": {
+            "reductions": 41317930,
+            "dot_outputs": 0,
+            "local_products": 82635860,
+            "random_bits": 210947,
+            "openings": 3322,
+            "phases": 705,
+            "ram_bytes": 3373793280,
+            "direct_words": 0,
+            "canonical_masks": 1661
+          },
+          "pool_cleanup": {
+            "reductions": 19356882,
+            "dot_outputs": 0,
+            "local_products": 38713764,
+            "random_bits": 0,
+            "openings": 0,
+            "phases": 517,
+            "ram_bytes": 1676673024,
+            "direct_words": 0,
+            "canonical_masks": 0
+          }
+        }
+      },
+      {
+        "records": 32768,
+        "payload_words": 64,
+        "height": 15,
+        "lower_path_levels": 7,
+        "pool_records": 1661,
+        "tree_bytes": 418234368,
+        "pool_bytes": 5049440,
+        "work": {
+          "reductions": 106474742.0,
+          "dot_outputs": 17152.0,
+          "local_products": 214390252.0,
+          "random_bits": 3839494.0,
+          "openings": 60660.0,
+          "phases": 2326,
+          "ram_bytes": 6629612416.0,
+          "direct_words": 0,
+          "canonical_masks": 30202.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 18225658,
+            "dot_outputs": 0,
+            "local_products": 36451316,
+            "random_bits": 210947,
+            "openings": 3322,
+            "phases": 605,
+            "ram_bytes": 1392771072,
+            "direct_words": 0,
+            "canonical_masks": 1661
+          },
+          "eviction_select": {
+            "reductions": 40678954,
+            "dot_outputs": 0,
+            "local_products": 81357908,
+            "random_bits": 210947,
+            "openings": 3322,
+            "phases": 705,
+            "ram_bytes": 3353346048,
+            "direct_words": 0,
+            "canonical_masks": 1661
+          },
+          "pool_cleanup": {
+            "reductions": 19356882,
+            "dot_outputs": 0,
+            "local_products": 38713764,
+            "random_bits": 0,
+            "openings": 0,
+            "phases": 517,
+            "ram_bytes": 1676673024,
+            "direct_words": 0,
+            "canonical_masks": 0
+          }
+        }
+      }
+    ],
+    "base_cells": 32768,
+    "base_method": "one_hot_dot",
+    "base_work": {
+      "reductions": 8508672,
+      "dot_outputs": 33024,
+      "local_products": 84257280,
+      "random_bits": 0,
+      "openings": 0,
+      "phases": 9,
+      "ram_bytes": 1610612736,
+      "direct_words": 0,
+      "canonical_masks": 0
+    },
+    "work": {
+      "reductions": 1100908440.0,
+      "dot_outputs": 175872.0,
+      "local_products": 2354157360.0,
+      "random_bits": 65847344.0,
+      "openings": 1038240.0,
+      "phases": 10051,
+      "ram_bytes": 48438741504.0,
+      "direct_words": 0,
+      "canonical_masks": 518096.0
+    },
+    "state_bytes_party": 33194789576320,
+    "caveat": "Derived circuit template and unmeasured deployment; not an implementation benchmark."
+  },
+  "low_exchange": {
+    "design": {
+      "records": 4294967296,
+      "key_bytes": 32,
+      "value_bytes": 32,
+      "parties": 10,
+      "threshold": 4,
+      "rate": 10000,
+      "batch": 1024,
+      "fanout": 64,
+      "base_cutoff": 256,
+      "cuckoo_load_ceiling": 0.4,
+      "cuckoo_stash": 8,
+      "cuckoo_tables": 2,
+      "bucket_z": 3,
+      "pool_slack": 128,
+      "field_bits": 127,
+      "field_bytes": 16,
+      "share_words": 2,
+      "metadata": "compact",
+      "conversion": "canonical",
+      "sort_cost_scale": 1.0,
+      "eviction_work_scale": 1.0,
+      "sort_method": "shuffle_quicksort",
+      "quicksort_depth_factor": 4.5
+    },
+    "actual_cuckoo_load": 0.25,
+    "dense_cells": 17179869184,
+    "levels": [
+      {
+        "records": 8589934592,
+        "payload_words": 6,
+        "height": 33,
+        "lower_path_levels": 23,
+        "pool_records": 6269,
+        "tree_bytes": 14843405205504,
+        "pool_bytes": 14644384,
+        "work": {
+          "reductions": 541571827.9238671,
+          "dot_outputs": 9216.0,
+          "local_products": 1362935271.8477342,
+          "random_bits": 46492678.0,
+          "openings": 1411066.734201055,
+          "phases": 3257,
+          "ram_bytes": 20063658721.921165,
+          "direct_words": 13862400,
+          "canonical_masks": 365818.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 57679329.66042447,
+            "dot_outputs": 0,
+            "local_products": 166558659.32084894,
+            "random_bits": 796163,
+            "openings": 136882.08211566525,
+            "phases": 834,
+            "ram_bytes": 5294382763.202335,
+            "direct_words": 2560000,
+            "canonical_masks": 6269
+          },
+          "eviction_select": {
+            "reductions": 93155572.82702357,
+            "dot_outputs": 0,
+            "local_products": 296903145.65404713,
+            "random_bits": 796163,
+            "openings": 283920.4208971501,
+            "phases": 892,
+            "ram_bytes": 9519914333.241102,
+            "direct_words": 5529600,
+            "canonical_masks": 6269
+          },
+          "pool_cleanup": {
+            "reductions": 41781490.098577455,
+            "dot_outputs": 0,
+            "local_products": 194154980.1971549,
+            "random_bits": 0,
+            "openings": 271382.4208971501,
+            "phases": 637,
+            "ram_bytes": 4583662456.745716,
+            "direct_words": 5529600,
+            "canonical_masks": 0
+          }
+        }
+      },
+      {
+        "records": 134217728,
+        "payload_words": 64,
+        "height": 27,
+        "lower_path_levels": 17,
+        "pool_records": 6269,
+        "tree_bytes": 1726563680256,
+        "pool_bytes": 23872352,
+        "work": {
+          "reductions": 718453114.5978541,
+          "dot_outputs": 68608.0,
+          "local_products": 1728150261.1957083,
+          "random_bits": 34782214.0,
+          "openings": 1226746.734201055,
+          "phases": 3208,
+          "ram_bytes": 61067287263.75372,
+          "direct_words": 13862400,
+          "canonical_masks": 273658.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 112519620.1823425,
+            "dot_outputs": 0,
+            "local_products": 276239240.364685,
+            "random_bits": 796163,
+            "openings": 136882.08211566525,
+            "phases": 833,
+            "ram_bytes": 14254107439.390903,
+            "direct_words": 2560000,
+            "canonical_masks": 6269
+          },
+          "eviction_select": {
+            "reductions": 220605781.56433213,
+            "dot_outputs": 0,
+            "local_products": 551803563.1286643,
+            "random_bits": 796163,
+            "openings": 283920.4208971501,
+            "phases": 848,
+            "ram_bytes": 29793805968.847153,
+            "direct_words": 5529600,
+            "canonical_masks": 6269
+          },
+          "pool_cleanup": {
+            "reductions": 107008406.09857745,
+            "dot_outputs": 0,
+            "local_products": 324608812.1971549,
+            "random_bits": 0,
+            "openings": 271382.4208971501,
+            "phases": 637,
+            "ram_bytes": 14808755629.486158,
+            "direct_words": 5529600,
+            "canonical_masks": 0
+          }
+        }
+      },
+      {
+        "records": 2097152,
+        "payload_words": 64,
+        "height": 21,
+        "lower_path_levels": 11,
+        "pool_records": 6269,
+        "tree_bytes": 26964590592,
+        "pool_bytes": 21465056,
+        "work": {
+          "reductions": 615429720.5345325,
+          "dot_outputs": 68608.0,
+          "local_products": 1517163697.069065,
+          "random_bits": 23071750.0,
+          "openings": 1042426.734201055,
+          "phases": 3142,
+          "ram_bytes": 60058324274.38533,
+          "direct_words": 13862400,
+          "canonical_masks": 181498.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 107121922.70426051,
+            "dot_outputs": 0,
+            "local_products": 265443845.40852103,
+            "random_bits": 796163,
+            "openings": 136882.08211566525,
+            "phases": 833,
+            "ram_bytes": 13765395184.326073,
+            "direct_words": 2560000,
+            "canonical_masks": 6269
+          },
+          "eviction_select": {
+            "reductions": 220605781.56433213,
+            "dot_outputs": 0,
+            "local_products": 551803563.1286643,
+            "random_bits": 796163,
+            "openings": 283920.4208971501,
+            "phases": 848,
+            "ram_bytes": 29793805968.847153,
+            "direct_words": 5529600,
+            "canonical_masks": 6269
+          },
+          "pool_cleanup": {
+            "reductions": 107008406.09857745,
+            "dot_outputs": 0,
+            "local_products": 324608812.1971549,
+            "random_bits": 0,
+            "openings": 271382.4208971501,
+            "phases": 637,
+            "ram_bytes": 14808755629.486158,
+            "direct_words": 5529600,
+            "canonical_masks": 0
+          }
+        }
+      },
+      {
+        "records": 32768,
+        "payload_words": 64,
+        "height": 15,
+        "lower_path_levels": 5,
+        "pool_records": 6269,
+        "tree_bytes": 408354816,
+        "pool_bytes": 19057760,
+        "work": {
+          "reductions": 511403763.20851946,
+          "dot_outputs": 68608.0,
+          "local_products": 1304172006.417039,
+          "random_bits": 11361286.0,
+          "openings": 858106.734201055,
+          "phases": 3042,
+          "ram_bytes": 58873066575.142105,
+          "direct_words": 13862400,
+          "canonical_masks": 89338.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 101724225.22617854,
+            "dot_outputs": 0,
+            "local_products": 254648450.45235708,
+            "random_bits": 796163,
+            "openings": 136882.08211566525,
+            "phases": 791,
+            "ram_bytes": 13276682929.261242,
+            "direct_words": 2560000,
+            "canonical_masks": 6269
+          },
+          "eviction_select": {
+            "reductions": 218685714.30164066,
+            "dot_outputs": 0,
+            "local_products": 547963428.6032813,
+            "random_bits": 796163,
+            "openings": 283920.4208971501,
+            "phases": 848,
+            "ram_bytes": 29617511258.972317,
+            "direct_words": 5529600,
+            "canonical_masks": 6269
+          },
+          "pool_cleanup": {
+            "reductions": 107008406.09857745,
+            "dot_outputs": 0,
+            "local_products": 324608812.1971549,
+            "random_bits": 0,
+            "openings": 271382.4208971501,
+            "phases": 637,
+            "ram_bytes": 14808755629.486158,
+            "direct_words": 5529600,
+            "canonical_masks": 0
+          }
+        }
+      }
+    ],
+    "base_cells": 32768,
+    "base_method": "one_hot_dot",
+    "base_work": {
+      "reductions": 34034688,
+      "dot_outputs": 33792,
+      "local_products": 336635904,
+      "random_bits": 0,
+      "openings": 0,
+      "phases": 9,
+      "ram_bytes": 6442450944,
+      "direct_words": 0,
+      "canonical_masks": 0
+    },
+    "work": {
+      "reductions": 4848012148.529547,
+      "dot_outputs": 506880.0,
+      "local_products": 12512261865.059093,
+      "random_bits": 231415856.0,
+      "openings": 9076693.87360844,
+      "phases": 12888,
+      "ram_bytes": 413009575558.40466,
+      "direct_words": 110899200,
+      "canonical_masks": 1820624.0
+    },
+    "state_bytes_party": 33194843840128,
+    "caveat": "Derived circuit template and unmeasured deployment; not an implementation benchmark."
+  },
+  "slow_exchange": {
+    "design": {
+      "records": 4294967296,
+      "key_bytes": 32,
+      "value_bytes": 32,
+      "parties": 10,
+      "threshold": 4,
+      "rate": 10000,
+      "batch": 128,
+      "fanout": 64,
+      "base_cutoff": 65536,
+      "cuckoo_load_ceiling": 0.4,
+      "cuckoo_stash": 8,
+      "cuckoo_tables": 2,
+      "bucket_z": 3,
+      "pool_slack": 128,
+      "field_bits": 127,
+      "field_bytes": 16,
+      "share_words": 2,
+      "metadata": "compact",
+      "conversion": "canonical",
+      "sort_cost_scale": 1.0,
+      "eviction_work_scale": 1.0,
+      "sort_method": "bitonic",
+      "quicksort_depth_factor": 4.5
+    },
+    "actual_cuckoo_load": 0.25,
+    "dense_cells": 17179869184,
+    "levels": [
+      {
+        "records": 8589934592,
+        "payload_words": 6,
+        "height": 33,
+        "lower_path_levels": 26,
+        "pool_records": 893,
+        "tree_bytes": 14843406753792,
+        "pool_bytes": 2086048,
+        "work": {
+          "reductions": 68722562.0,
+          "dot_outputs": 1152.0,
+          "local_products": 137804548.0,
+          "random_bits": 6570886.0,
+          "openings": 103540.0,
+          "phases": 2170,
+          "ram_bytes": 884912768.0,
+          "direct_words": 0,
+          "canonical_masks": 51706.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 6377030,
+            "dot_outputs": 0,
+            "local_products": 12754060,
+            "random_bits": 113411,
+            "openings": 1786,
+            "phases": 570,
+            "ram_bytes": 223477760,
+            "direct_words": 0,
+            "canonical_masks": 893
+          },
+          "eviction_select": {
+            "reductions": 9428494,
+            "dot_outputs": 0,
+            "local_products": 18856988,
+            "random_bits": 113411,
+            "openings": 1786,
+            "phases": 604,
+            "ram_bytes": 415236096,
+            "direct_words": 0,
+            "canonical_masks": 893
+          },
+          "pool_cleanup": {
+            "reductions": 3886766,
+            "dot_outputs": 0,
+            "local_products": 7773532,
+            "random_bits": 0,
+            "openings": 0,
+            "phases": 441,
+            "ram_bytes": 198967296,
+            "direct_words": 0,
+            "canonical_masks": 0
+          }
+        }
+      },
+      {
+        "records": 134217728,
+        "payload_words": 64,
+        "height": 27,
+        "lower_path_levels": 20,
+        "pool_records": 893,
+        "tree_bytes": 1726575206400,
+        "pool_bytes": 3400544,
+        "work": {
+          "reductions": 74518942.0,
+          "dot_outputs": 8576.0,
+          "local_products": 151096124.0,
+          "random_bits": 5107078.0,
+          "openings": 80500.0,
+          "phases": 2165,
+          "ram_bytes": 2959629184.0,
+          "direct_words": 0,
+          "canonical_masks": 40186.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 9073946,
+            "dot_outputs": 0,
+            "local_products": 18147892,
+            "random_bits": 113411,
+            "openings": 1786,
+            "phases": 569,
+            "ram_bytes": 619970560,
+            "direct_words": 0,
+            "canonical_masks": 893
+          },
+          "eviction_select": {
+            "reductions": 17146034,
+            "dot_outputs": 0,
+            "local_products": 34292068,
+            "random_bits": 113411,
+            "openings": 1786,
+            "phases": 604,
+            "ram_bytes": 1410072576,
+            "direct_words": 0,
+            "canonical_masks": 893
+          },
+          "pool_cleanup": {
+            "reductions": 7954770,
+            "dot_outputs": 0,
+            "local_products": 15909540,
+            "random_bits": 0,
+            "openings": 0,
+            "phases": 441,
+            "ram_bytes": 700710912,
+            "direct_words": 0,
+            "canonical_masks": 0
+          }
+        }
+      },
+      {
+        "records": 2097152,
+        "payload_words": 64,
+        "height": 21,
+        "lower_path_levels": 14,
+        "pool_records": 893,
+        "tree_bytes": 26976116736,
+        "pool_bytes": 3057632,
+        "work": {
+          "reductions": 61605070.0,
+          "dot_outputs": 8576.0,
+          "local_products": 124650908.0,
+          "random_bits": 3643270.0,
+          "openings": 57460.0,
+          "phases": 2103,
+          "ram_bytes": 2877348736.0,
+          "direct_words": 0,
+          "canonical_masks": 28666.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 8385866,
+            "dot_outputs": 0,
+            "local_products": 16771732,
+            "random_bits": 113411,
+            "openings": 1786,
+            "phases": 569,
+            "ram_bytes": 598343680,
+            "direct_words": 0,
+            "canonical_masks": 893
+          },
+          "eviction_select": {
+            "reductions": 17146034,
+            "dot_outputs": 0,
+            "local_products": 34292068,
+            "random_bits": 113411,
+            "openings": 1786,
+            "phases": 604,
+            "ram_bytes": 1410072576,
+            "direct_words": 0,
+            "canonical_masks": 893
+          },
+          "pool_cleanup": {
+            "reductions": 7954770,
+            "dot_outputs": 0,
+            "local_products": 15909540,
+            "random_bits": 0,
+            "openings": 0,
+            "phases": 441,
+            "ram_bytes": 700710912,
+            "direct_words": 0,
+            "canonical_masks": 0
+          }
+        }
+      },
+      {
+        "records": 32768,
+        "payload_words": 64,
+        "height": 15,
+        "lower_path_levels": 8,
+        "pool_records": 893,
+        "tree_bytes": 419880960,
+        "pool_bytes": 2714720,
+        "work": {
+          "reductions": 48504830.0,
+          "dot_outputs": 8576.0,
+          "local_products": 97832956.0,
+          "random_bits": 2179462.0,
+          "openings": 34420.0,
+          "phases": 1989,
+          "ram_bytes": 2786417536.0,
+          "direct_words": 0,
+          "canonical_masks": 17146.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 7697786,
+            "dot_outputs": 0,
+            "local_products": 15395572,
+            "random_bits": 113411,
+            "openings": 1786,
+            "phases": 513,
+            "ram_bytes": 576716800,
+            "direct_words": 0,
+            "canonical_masks": 893
+          },
+          "eviction_select": {
+            "reductions": 16875698,
+            "dot_outputs": 0,
+            "local_products": 33751396,
+            "random_bits": 113411,
+            "openings": 1786,
+            "phases": 604,
+            "ram_bytes": 1401421824,
+            "direct_words": 0,
+            "canonical_masks": 893
+          },
+          "pool_cleanup": {
+            "reductions": 7954770,
+            "dot_outputs": 0,
+            "local_products": 15909540,
+            "random_bits": 0,
+            "openings": 0,
+            "phases": 441,
+            "ram_bytes": 700710912,
+            "direct_words": 0,
+            "canonical_masks": 0
+          }
+        }
+      }
+    ],
+    "base_cells": 32768,
+    "base_method": "one_hot_dot",
+    "base_work": {
+      "reductions": 4254336,
+      "dot_outputs": 32896,
+      "local_products": 42194176,
+      "random_bits": 0,
+      "openings": 0,
+      "phases": 9,
+      "ram_bytes": 805306368,
+      "direct_words": 0,
+      "canonical_masks": 0
+    },
+    "work": {
+      "reductions": 515989720.0,
+      "dot_outputs": 120704.0,
+      "local_products": 1108925872.0,
+      "random_bits": 35001392.0,
+      "openings": 551840.0,
+      "phases": 8648,
+      "ram_bytes": 20627229184.0,
+      "direct_words": 0,
+      "canonical_masks": 275408.0
+    },
+    "state_bytes_party": 33194780532352,
+    "caveat": "Derived circuit template and unmeasured deployment; not an implementation benchmark."
+  },
+  "two_second_target": {
+    "design": {
+      "records": 4294967296,
+      "key_bytes": 32,
+      "value_bytes": 32,
+      "parties": 10,
+      "threshold": 4,
+      "rate": 10000,
+      "batch": 64,
+      "fanout": 64,
+      "base_cutoff": 65536,
+      "cuckoo_load_ceiling": 0.4,
+      "cuckoo_stash": 8,
+      "cuckoo_tables": 2,
+      "bucket_z": 3,
+      "pool_slack": 128,
+      "field_bits": 127,
+      "field_bytes": 16,
+      "share_words": 2,
+      "metadata": "compact",
+      "conversion": "canonical",
+      "sort_cost_scale": 1.0,
+      "eviction_work_scale": 1.0,
+      "sort_method": "bitonic",
+      "quicksort_depth_factor": 4.5
+    },
+    "actual_cuckoo_load": 0.25,
+    "dense_cells": 17179869184,
+    "levels": [
+      {
+        "records": 8589934592,
+        "payload_words": 6,
+        "height": 33,
+        "lower_path_levels": 27,
+        "pool_records": 509,
+        "tree_bytes": 14843406864384,
+        "pool_bytes": 1189024,
+        "work": {
+          "reductions": 36747722.0,
+          "dot_outputs": 576.0,
+          "local_products": 73682068.0,
+          "random_bits": 3423238.0,
+          "openings": 53940.0,
+          "phases": 1941,
+          "ram_bytes": 491385472.0,
+          "direct_words": 0,
+          "canonical_masks": 26938.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 5995270,
+            "dot_outputs": 0,
+            "local_products": 11990540,
+            "random_bits": 64643,
+            "openings": 1018,
+            "phases": 570,
+            "ram_bytes": 223477760,
+            "direct_words": 0,
+            "canonical_masks": 509
+          },
+          "eviction_select": {
+            "reductions": 3830358,
+            "dot_outputs": 0,
+            "local_products": 7660716,
+            "random_bits": 64643,
+            "openings": 1018,
+            "phases": 512,
+            "ram_bytes": 165806080,
+            "direct_words": 0,
+            "canonical_masks": 509
+          },
+          "pool_cleanup": {
+            "reductions": 1511406,
+            "dot_outputs": 0,
+            "local_products": 3022812,
+            "random_bits": 0,
+            "openings": 0,
+            "phases": 371,
+            "ram_bytes": 79298560,
+            "direct_words": 0,
+            "canonical_masks": 0
+          }
+        }
+      },
+      {
+        "records": 134217728,
+        "payload_words": 64,
+        "height": 27,
+        "lower_path_levels": 21,
+        "pool_records": 509,
+        "tree_bytes": 1726576029696,
+        "pool_bytes": 1938272,
+        "work": {
+          "reductions": 40059430.0,
+          "dot_outputs": 4288.0,
+          "local_products": 81199436.0,
+          "random_bits": 2691334.0,
+          "openings": 42420.0,
+          "phases": 1936,
+          "ram_bytes": 1605524352.0,
+          "direct_words": 0,
+          "canonical_masks": 21178.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 8645594,
+            "dot_outputs": 0,
+            "local_products": 17291188,
+            "random_bits": 64643,
+            "openings": 1018,
+            "phases": 569,
+            "ram_bytes": 619970560,
+            "direct_words": 0,
+            "canonical_masks": 509
+          },
+          "eviction_select": {
+            "reductions": 7065594,
+            "dot_outputs": 0,
+            "local_products": 14131188,
+            "random_bits": 64643,
+            "openings": 1018,
+            "phases": 512,
+            "ram_bytes": 580321280,
+            "direct_words": 0,
+            "canonical_masks": 509
+          },
+          "pool_cleanup": {
+            "reductions": 3226002,
+            "dot_outputs": 0,
+            "local_products": 6452004,
+            "random_bits": 0,
+            "openings": 0,
+            "phases": 371,
+            "ram_bytes": 288358400,
+            "direct_words": 0,
+            "canonical_masks": 0
+          }
+        }
+      },
+      {
+        "records": 2097152,
+        "payload_words": 64,
+        "height": 21,
+        "lower_path_levels": 15,
+        "pool_records": 509,
+        "tree_bytes": 26976940032,
+        "pool_bytes": 1742816,
+        "work": {
+          "reductions": 33262294.0,
+          "dot_outputs": 4288.0,
+          "local_products": 67296428.0,
+          "random_bits": 1959430.0,
+          "openings": 30900.0,
+          "phases": 1881,
+          "ram_bytes": 1553742720.0,
+          "direct_words": 0,
+          "canonical_masks": 15418.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 7962890,
+            "dot_outputs": 0,
+            "local_products": 15925780,
+            "random_bits": 64643,
+            "openings": 1018,
+            "phases": 569,
+            "ram_bytes": 598343680,
+            "direct_words": 0,
+            "canonical_masks": 509
+          },
+          "eviction_select": {
+            "reductions": 7065594,
+            "dot_outputs": 0,
+            "local_products": 14131188,
+            "random_bits": 64643,
+            "openings": 1018,
+            "phases": 512,
+            "ram_bytes": 580321280,
+            "direct_words": 0,
+            "canonical_masks": 509
+          },
+          "pool_cleanup": {
+            "reductions": 3226002,
+            "dot_outputs": 0,
+            "local_products": 6452004,
+            "random_bits": 0,
+            "openings": 0,
+            "phases": 371,
+            "ram_bytes": 288358400,
+            "direct_words": 0,
+            "canonical_masks": 0
+          }
+        }
+      },
+      {
+        "records": 32768,
+        "payload_words": 64,
+        "height": 15,
+        "lower_path_levels": 9,
+        "pool_records": 509,
+        "tree_bytes": 420704256,
+        "pool_bytes": 1547360,
+        "work": {
+          "reductions": 26389382.0,
+          "dot_outputs": 4288.0,
+          "local_products": 53241868.0,
+          "random_bits": 1227526.0,
+          "openings": 19380.0,
+          "phases": 1795,
+          "ram_bytes": 1498356608.0,
+          "direct_words": 0,
+          "canonical_masks": 9658.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 7280186,
+            "dot_outputs": 0,
+            "local_products": 14560372,
+            "random_bits": 64643,
+            "openings": 1018,
+            "phases": 513,
+            "ram_bytes": 576716800,
+            "direct_words": 0,
+            "canonical_masks": 509
+          },
+          "eviction_select": {
+            "reductions": 6952954,
+            "dot_outputs": 0,
+            "local_products": 13905908,
+            "random_bits": 64643,
+            "openings": 1018,
+            "phases": 512,
+            "ram_bytes": 576716800,
+            "direct_words": 0,
+            "canonical_masks": 509
+          },
+          "pool_cleanup": {
+            "reductions": 3226002,
+            "dot_outputs": 0,
+            "local_products": 6452004,
+            "random_bits": 0,
+            "openings": 0,
+            "phases": 371,
+            "ram_bytes": 288358400,
+            "direct_words": 0,
+            "canonical_masks": 0
+          }
+        }
+      }
+    ],
+    "base_cells": 32768,
+    "base_method": "one_hot_dot",
+    "base_work": {
+      "reductions": 2127168,
+      "dot_outputs": 32832,
+      "local_products": 21162624,
+      "random_bits": 0,
+      "openings": 0,
+      "phases": 9,
+      "ram_bytes": 402653184,
+      "direct_words": 0,
+      "canonical_masks": 0
+    },
+    "work": {
+      "reductions": 277561112.0,
+      "dot_outputs": 93120.0,
+      "local_products": 594049072.0,
+      "random_bits": 18603056.0,
+      "openings": 293280.0,
+      "phases": 7768,
+      "ram_bytes": 11103324672.0,
+      "direct_words": 0,
+      "canonical_masks": 146384.0
+    },
+    "state_bytes_party": 33194776010368,
+    "caveat": "Derived circuit template and unmeasured deployment; not an implementation benchmark."
+  },
+  "no_overlap": {
+    "design": {
+      "records": 4294967296,
+      "key_bytes": 32,
+      "value_bytes": 32,
+      "parties": 10,
+      "threshold": 4,
+      "rate": 10000,
+      "batch": 512,
+      "fanout": 64,
+      "base_cutoff": 256,
+      "cuckoo_load_ceiling": 0.4,
+      "cuckoo_stash": 8,
+      "cuckoo_tables": 2,
+      "bucket_z": 3,
+      "pool_slack": 128,
+      "field_bits": 127,
+      "field_bytes": 16,
+      "share_words": 2,
+      "metadata": "compact",
+      "conversion": "canonical",
+      "sort_cost_scale": 1.0,
+      "eviction_work_scale": 1.0,
+      "sort_method": "bitonic",
+      "quicksort_depth_factor": 4.5
+    },
+    "actual_cuckoo_load": 0.25,
+    "dense_cells": 17179869184,
+    "levels": [
+      {
+        "records": 8589934592,
+        "payload_words": 6,
+        "height": 33,
+        "lower_path_levels": 24,
+        "pool_records": 3197,
+        "tree_bytes": 14843406090240,
+        "pool_bytes": 7468192,
+        "work": {
+          "reductions": 298286706.0,
+          "dot_outputs": 4608.0,
+          "local_products": 597900516.0,
+          "random_bits": 24237574.0,
+          "openings": 381940.0,
+          "phases": 2913,
+          "ram_bytes": 5191545472.0,
+          "direct_words": 0,
+          "canonical_masks": 190714.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 35604422,
+            "dot_outputs": 0,
+            "local_products": 71208844,
+            "random_bits": 406019,
+            "openings": 6394,
+            "phases": 785,
+            "ram_bytes": 1308622848,
+            "direct_words": 0,
+            "canonical_masks": 3197
+          },
+          "eviction_select": {
+            "reductions": 56353150,
+            "dot_outputs": 0,
+            "local_products": 112706300,
+            "random_bits": 406019,
+            "openings": 6394,
+            "phases": 813,
+            "ram_bytes": 2480930816,
+            "direct_words": 0,
+            "canonical_masks": 3197
+          },
+          "pool_cleanup": {
+            "reductions": 24355630,
+            "dot_outputs": 0,
+            "local_products": 48711260,
+            "random_bits": 0,
+            "openings": 0,
+            "phases": 599,
+            "ram_bytes": 1192755200,
+            "direct_words": 0,
+            "canonical_masks": 0
+          }
+        }
+      },
+      {
+        "records": 134217728,
+        "payload_words": 64,
+        "height": 27,
+        "lower_path_levels": 18,
+        "pool_records": 3197,
+        "tree_bytes": 1726570266624,
+        "pool_bytes": 12174176,
+        "work": {
+          "reductions": 342240398.0,
+          "dot_outputs": 34304.0,
+          "local_products": 691890460.0,
+          "random_bits": 18382342.0,
+          "openings": 289780.0,
+          "phases": 2908,
+          "ram_bytes": 16378944384.0,
+          "direct_words": 0,
+          "canonical_masks": 144634.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 50686618,
+            "dot_outputs": 0,
+            "local_products": 101373236,
+            "random_bits": 406019,
+            "openings": 6394,
+            "phases": 784,
+            "ram_bytes": 3557818368,
+            "direct_words": 0,
+            "canonical_masks": 3197
+          },
+          "eviction_select": {
+            "reductions": 98648610,
+            "dot_outputs": 0,
+            "local_products": 197297220,
+            "random_bits": 406019,
+            "openings": 6394,
+            "phases": 813,
+            "ram_bytes": 7967604736,
+            "direct_words": 0,
+            "canonical_masks": 3197
+          },
+          "pool_cleanup": {
+            "reductions": 46523346,
+            "dot_outputs": 0,
+            "local_products": 93046692,
+            "random_bits": 0,
+            "openings": 0,
+            "phases": 599,
+            "ram_bytes": 3959947264,
+            "direct_words": 0,
+            "canonical_masks": 0
+          }
+        }
+      },
+      {
+        "records": 2097152,
+        "payload_words": 64,
+        "height": 21,
+        "lower_path_levels": 12,
+        "pool_records": 3197,
+        "tree_bytes": 26971176960,
+        "pool_bytes": 10946528,
+        "work": {
+          "reductions": 289465022.0,
+          "dot_outputs": 34304.0,
+          "local_products": 583869820.0,
+          "random_bits": 12527110.0,
+          "openings": 197620.0,
+          "phases": 2829,
+          "ram_bytes": 16010304384.0,
+          "direct_words": 0,
+          "canonical_masks": 98554.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 46808266,
+            "dot_outputs": 0,
+            "local_products": 93616532,
+            "random_bits": 406019,
+            "openings": 6394,
+            "phases": 784,
+            "ram_bytes": 3435134976,
+            "direct_words": 0,
+            "canonical_masks": 3197
+          },
+          "eviction_select": {
+            "reductions": 98648610,
+            "dot_outputs": 0,
+            "local_products": 197297220,
+            "random_bits": 406019,
+            "openings": 6394,
+            "phases": 813,
+            "ram_bytes": 7967604736,
+            "direct_words": 0,
+            "canonical_masks": 3197
+          },
+          "pool_cleanup": {
+            "reductions": 46523346,
+            "dot_outputs": 0,
+            "local_products": 93046692,
+            "random_bits": 0,
+            "openings": 0,
+            "phases": 599,
+            "ram_bytes": 3959947264,
+            "direct_words": 0,
+            "canonical_masks": 0
+          }
+        }
+      },
+      {
+        "records": 32768,
+        "payload_words": 64,
+        "height": 15,
+        "lower_path_levels": 6,
+        "pool_records": 3197,
+        "tree_bytes": 414941184,
+        "pool_bytes": 9718880,
+        "work": {
+          "reductions": 235616494.0,
+          "dot_outputs": 34304.0,
+          "local_products": 473702876.0,
+          "random_bits": 6671878.0,
+          "openings": 105460.0,
+          "phases": 2692,
+          "ram_bytes": 15593954176.0,
+          "direct_words": 0,
+          "canonical_masks": 52474.0
+        },
+        "pool_phases": {
+          "pool_fetch": {
+            "reductions": 42929914,
+            "dot_outputs": 0,
+            "local_products": 85859828,
+            "random_bits": 406019,
+            "openings": 6394,
+            "phases": 705,
+            "ram_bytes": 3312451584,
+            "direct_words": 0,
+            "canonical_masks": 3197
+          },
+          "eviction_select": {
+            "reductions": 97157666,
+            "dot_outputs": 0,
+            "local_products": 194315332,
+            "random_bits": 406019,
+            "openings": 6394,
+            "phases": 813,
+            "ram_bytes": 7919894528,
+            "direct_words": 0,
+            "canonical_masks": 3197
+          },
+          "pool_cleanup": {
+            "reductions": 46523346,
+            "dot_outputs": 0,
+            "local_products": 93046692,
+            "random_bits": 0,
+            "openings": 0,
+            "phases": 599,
+            "ram_bytes": 3959947264,
+            "direct_words": 0,
+            "canonical_masks": 0
+          }
+        }
+      }
+    ],
+    "base_cells": 32768,
+    "base_method": "one_hot_dot",
+    "base_work": {
+      "reductions": 17017344,
+      "dot_outputs": 33280,
+      "local_products": 168383488,
+      "random_bits": 0,
+      "openings": 0,
+      "phases": 9,
+      "ram_bytes": 3221225472,
+      "direct_words": 0,
+      "canonical_masks": 0
+    },
+    "work": {
+      "reductions": 2368364888.0,
+      "dot_outputs": 286208.0,
+      "local_products": 5038568112.0,
+      "random_bits": 123637808.0,
+      "openings": 1949600.0,
+      "phases": 11575,
+      "ram_bytes": 112791947776.0,
+      "direct_words": 0,
+      "canonical_masks": 972752.0
+    },
+    "state_bytes_party": 33194807664256,
+    "caveat": "Derived circuit template and unmeasured deployment; not an implementation benchmark."
+  }
+}

@@ -5,6 +5,7 @@ No MPC execution. Preserves the previously priced circuit and backend assumption
 Scan prices are resource-capacity equivalents, not feasible AWS deployment quotes.
 """
 from __future__ import annotations
+import argparse
 from dataclasses import asdict
 from math import ceil, log2
 import json
@@ -152,7 +153,11 @@ def capacity_equivalent(c: dict, sku: dict, dep: Deployment, backend: Backend) -
 
 
 def main():
-    summary=json.loads((ROOT/'results/summary.json').read_text())
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--results',type=Path,default=ROOT/'results',
+                        help='Directory containing a saved run summary; comparison is written here.')
+    args=parser.parse_args()
+    summary=json.loads((args.results/'summary.json').read_text())
     saved=next(s for s in summary['scenarios'] if s['scenario']=='central')
     d=Design(**saved['design']); dep=Deployment(**saved['deployment']); be=Backend(**saved['backend'])
     oram=circuit(d)
@@ -180,7 +185,7 @@ def main():
                 assumptions=dict(backend=asdict(be),deployment=asdict(dep),instance=sku),
                 oram_selected_deployment=selected,oram_without_storage_constraint=without_memory,
                 rows=rows)
-    (ROOT/'results/bottleneck_scan_comparison.json').write_text(json.dumps(result,indent=2)+'\n')
+    (args.results/'bottleneck_scan_comparison.json').write_text(json.dumps(result,indent=2)+'\n')
     for r in rows:
         s=r['phase_split_batch']
         print(f"{r['name']}: {r['reductions_per_read']:,.0f} outputs/read, "

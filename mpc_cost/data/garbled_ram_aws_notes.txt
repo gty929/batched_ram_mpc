@@ -1,0 +1,265 @@
+AWS network and SSD costing for garbled RAM -- verified 2026-10-13
+
+This memo supplies prices and accounting formulas. It does not establish the
+size, security, throughput, or latency of any garbled-RAM construction. The
+intended workload is 10 parties, malicious security with abort, 10,000 queries/s,
+32-byte keys and 32-byte values, with N=2^28 or N=2^32. SSD performance is
+assumed separately provisioned so that party communication remains the target
+bottleneck; SSD capacity cost is retained. CPU/preprocessing work remains a
+separate feasibility constraint, never a free resource.
+
+1. CURRENT OFFICIAL PRICE SNAPSHOT
+Raw selected rows and normalized fields are saved in:
+  aws_garbled_prices_2026-10-13.json
+Source:
+https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/us-east-1/index.csv
+Version 20261012193925; published 2026-10-12T19:39:25Z; effective 2026-10-01.
+The current feed was fetched on 2026-10-13 and still had that publication/version.
+EC2 filters: Linux, shared tenancy, no preinstalled software, Used capacity,
+OnDemand, hourly, US East (N. Virginia). gp3 rows use the same region and
+OnDemand term. This is public rate-card pricing, not a capacity reservation.
+
+gp3 SSD capacity: $0.08 per GiB-month.
+  SKU JG3KUJMBRGHV3N8G, rate JG3KUJMBRGHV3N8G.JRTCKXETXF.6YS6EN2CT7.
+Extra provisioned IOPS: $0.005 per IOPS-month above 3000 included IOPS.
+  SKU 7Q58NR58VQEASA4W.
+Extra throughput: $0.04 per MiB/s-month above 125 MiB/s included throughput.
+  SKU SQUFRQX4K92S4SBB; raw feed unit is GiBps-mo at $40.96/unit, which is
+  exactly $0.04 per MiB/s-month. Do not misread the raw 40.96 as a MiB/s price.
+The EBS pricing page explicitly defines its GB as 1024^3 bytes, so capacity
+conversion must divide bytes by 2^30, not 10^9.
+https://aws.amazon.com/ebs/pricing/
+
+gp3 supports 1 GiB through 64 TiB per volume. Current maximums are 80,000 IOPS
+and 2,000 MiB/s; the included baseline is 3000 IOPS and 125 MiB/s. Provisioned
+IOPS/throughput and instance EBS limits must still be sufficient, even when
+SSD throughput is intentionally assumed nonbinding. Capacity price alone
+does not purchase unlimited I/O performance.
+https://docs.aws.amazon.com/ebs/latest/userguide/general-purpose.html
+
+2. NETWORK-FOCUSED INSTANCES
+Linux OnDemand us-east-1, without SSD capacity charges:
+ instance          vCPU   RAM GiB   NIC Gbps   USD/hour    ten nodes/year
+ c6in.16xlarge       64      128       100      3.62880       317,882.88
+ c6in.24xlarge       96      192       150      5.44320       476,824.32
+ c6in.32xlarge      128      256       200      7.25760       635,765.76
+ c8in.32xlarge      128      256       200      8.70912       762,918.91
+ c7gn.16xlarge       64      128       200      3.99360       349,839.36
+ r6idn.32xlarge     128     1024       200     12.50496     1,095,434.50
+The c6in.32xlarge is the primary x86 network-capacity comparison. With bulk
+state on SSD there is no reason to automatically buy r6in memory capacity.
+c7gn is an ARM/Graviton alternative requiring code compatibility and real
+cryptographic benchmarks; its attractive NIC price is not a measured MPC win.
+r6idn includes four 1900-GB local NVMe devices (7.6 TB advertised capacity).
+It is useful as an optional local-SSD alternative, not the baseline capacity
+choice. Local instance storage is ephemeral and has different durability from
+EBS. Do not bill those local bytes again as gp3 unless a separate copy exists.
+
+Official specifications:
+https://aws.amazon.com/ec2/instance-types/c6i/
+https://docs.aws.amazon.com/ec2/latest/instancetypes/co.html
+https://docs.aws.amazon.com/ec2/latest/instancetypes/mo.html
+c6in.32xlarge requires at least two ENIs attached to different network cards
+to reach 200 Gbps; its default EBS limit is 100 Gbps. c6in.24xlarge has 150-Gbps
+network and 75-Gbps EBS; c6in.16xlarge has 100-Gbps network and 50-Gbps EBS.
+This memo does not assign any gate rate to vCPU counts.
+
+3. FULL-DUPLEX NETWORK ACCOUNTING -- VERIFIED EXPLICITLY
+AWS states that advertised bandwidth is available to inbound and outbound
+traffic simultaneously. Consequently use max(tx,rx) for a symmetric instance's
+capacity constraint, not tx+rx. Both directions must individually fit.
+For asymmetric party roles, compute each party's transmit and receive demand
+separately. An aggregator/evaluator may have much more receive traffic than
+the average party. Network byte totals count each send once for billing.
+Single TCP/UDP flows normally cap at 5 Gbps; a cluster placement group can
+raise that to 10 Gbps, and eligible same-AZ ENA Express flows to 25 Gbps.
+Use enough flows and all relevant NICs. These are capacity specifications,
+not measured application throughput; packet/connection allowances can bind.
+https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-network-bandwidth.html
+
+Use the requested model factors consistently:
+  NIC efficiency eta=0.65
+  distributed efficiency delta=0.70
+  target utilization u=0.70
+  effective c6in.32xlarge one-direction capacity
+    = (200e9/8)*eta*delta*u = 7,962,500,000 bytes/s = 63.7 Gbps.
+These factors are assumptions. Do not apply another 70% headroom after this.
+For a strictly single-machine party one could omit distributed efficiency,
+but the main comparison deliberately uses the same factors at every scale.
+
+Let X_p(N) and Y_p(N) be the COMPLETE bytes sent and received per query by
+party p, including amortized malicious preprocessing, checking, delivery of
+garbled material, online input/output, and required local-cluster routing.
+For R=10000 and h=$7.2576/hour:
+  K_p = max(1, ceil(R*max(X_p,Y_p) / 7,962,500,000)).
+  EC2_USD/year = 8760*h*sum_p K_p.
+If all ten parties are symmetric, this is 10*K*8760*h.
+If using an average-party byte count, apply a justified hottest-party factor
+before K; do not assume that symmetric byte distribution follows from a low
+total-communication protocol. Include required delivery copies explicitly.
+
+Generic byte sensitivities, not garbled-RAM measurements:
+complete MB/query/party    nodes/party   EC2 USD/year (all 10)
+        1                      2            1,271,531.52
+       10                     13            8,264,954.88
+      100                    126           80,106,485.76
+     1000                   1256          798,521,794.56
+MB here means 10^6 bytes. These NIC-only fleets do not certify CPU capacity,
+latency, storage performance, or a correct concurrent garbled-RAM schedule.
+
+4. SSD CAPACITY: PERSISTENT STATE AND ROLLING MATERIAL ARE DIFFERENT
+Let S_p(N) be persistent garbled/encoded memory state at party p, including
+the actual ORAM/cuckoo/position-map layout, labels, authentication, and
+independent state replicas. Let C_p(N) be FRESH stored garbled/preprocessed
+material consumed per query at party p. Let T_p be the buffer horizon in
+seconds, and Q_p the extra scratch/working storage. Then:
+  provisioned_SSD_bytes_p = S_p(N) + R*T_p*C_p(N) + Q_p.
+  SSD_capacity_USD/year = 12*0.08 * sum_p(provisioned_SSD_bytes_p/2^30).
+Round actual EBS allocations to volume GiB and retain desired free space.
+An explicit persistent state replica factor belongs in S; the NIC machine
+count alone does not prove that every machine needs a complete state copy.
+
+Material produced per query C_p is generally NOT X_p. Malicious multiparty
+garbling may communicate many shares/checks/ciphertext contributions while
+storing only the resulting tables. Conversely, each evaluator might store
+a full garbled table while a garbler stores only its local shares. Count real
+roles and multiplicities rather than blindly multiplying everything by ten.
+
+The one-minute buffer illustration below assumes, ONLY for unit sensitivity,
+C_p = complete MB/query/party and ten parties each store their own copy:
+ C MB/query  rolling GiB/party (60 sec)    SSD capacity USD/year (all 10)
+     1                 558.79                         5,364.42
+    10                5587.94                        53,644.18
+   100               55879.35                       536,441.80
+  1000              558793.54                     5,364,418.03
+A longer buffer multiplies capacity linearly; it does not increase steady
+production capacity. At 10,000 QPS, fresh material must still be generated and
+checked for 315.36 billion queries/year. Precomputing before service launch
+shifts production in time; it does not make its CPU or communication free.
+Do not divide the cost of one ordinary garbled circuit across arbitrary
+queries, reuse its consumed labels/correlations, or assume a reusable-garbling
+theorem without a concrete supported construction. Persistent encoded memory
+and permitted state transitions are not the same as reusing consumed tables.
+
+5. N=2^28 VERSUS N=2^32 CAPACITY
+The flat 64N-byte key/value database is 16 GiB and 256 GiB, respectively.
+Define e_p(N)=S_p(N)/(64N). This includes the ACTUAL garbled storage expansion
+and any state replication at that party. If e is constant and each party
+stores one equally sized state, annual ten-party capacity cost is:
+  N=2^28: $153.60 * e
+  N=2^32: $2457.60 * e.
+This 16x size increase applies to persistent storage when expansion is fixed;
+it is not automatically a 16x increase in garbled work or bytes/query.
+
+Illustrative storage multipliers, not claims about a specific garbled RAM:
+ e       GiB/party at2^28   GiB/party at2^32   ten-party annual USD (2^28;2^32)
+ 1              16              256                    153.60;       2457.60
+ 128          2048            32768                  19660.80;     314572.80
+ 768         12288           196608                 117964.80;    1887436.80
+e=128 corresponds to one active 128-bit label per bit of flat stored data;
+e=768 further multiplies that hypothetical representation by six. A garbling
+with arithmetic words, vector labels, different tree expansion, both wire
+labels, or other state representations has different e. Do not assign these
+illustrative values to PicoGRAM or multiparty arithmetic garbling unverified.
+
+6. SAME-AZ AND CROSS-AZ COSTS
+Same physical AZ peering transfer is free, including between accounts:
+https://docs.aws.amazon.com/vpc/latest/peering/what-is-vpc-peering.html
+Use AZ-ID to match physical AZ across accounts and private peering paths.
+Cross-AZ same-region VPC peering costs $0.01/GB out and $0.01/GB in:
+https://aws.amazon.com/vpc/pricing/
+Let B_cross be bytes/query summed only over sends whose endpoints cross AZs.
+  cross_AZ_USD/year = R*31536000*B_cross/U * 0.02.
+Do not count receive bytes again after including both endpoint charges.
+Use U=10^9 as the declared conservative transfer-unit convention; the VPC page
+does not explicitly give bytes/GB, unlike the EBS capacity page. If U=2^30 is
+the applicable transfer meter, this transfer estimate is 6.87% lower.
+
+For symmetric ten-party traffic of 1 MB sent/query/party and all crossing,
+transfer alone is $63,072,000/year; scale by MB/query and actual crossing
+fraction. Uniform all-to-all 4/3/3 placement has crossing fraction66/90, but
+an asymmetric garbler/evaluator topology requires its own directed byte graph.
+Same-AZ placement removes this fee under the cited conditions, not the
+cryptographic production work, NIC limits, or cloud-provider trust assumption.
+
+7. HOW TO USE THESE NUMBERS IN THE CONSTRUCTION COMPARISON
+First derive S_p(N), C_p(N), X_p(N), Y_p(N), and independent state/producer
+counts from the selected malicious-secure construction. Then apply the SSD
+capacity and network formulas separately. Include setup, fresh-material
+production, verification, online work, and output release before quoting a
+total; a two-party semi-honest garbling table-size number is not already the
+cost of ten-party malicious garbling with abort. Show SSD throughput as an
+explicit nonbinding assumption, supported by the actual provisioned topology,
+rather than using SSD residence to erase ongoing preprocessing or network load.
+
+8. ROLE-AWARE SINGLE-EVALUATOR REFINEMENT (2026-10-13)
+The backend review's corrected per-AND table contribution is 192 bytes per
+garbler, with nine garblers and one evaluator. The evaluator receives
+9*192=1728 bytes per AND. The earlier 128.5-byte interpretation was incorrect:
+the additive share of the selector bit is a field share, not a packed bit.
+These protocol constants come from the concurrent backend review; keep them
+synchronized with its final choice of preprocessing formula and security model.
+
+Let A be AND gates/query and let P be average per-party preprocessing bytes
+sent per AND, with matching average receive demand. The current finite-packing
+paper-leading-cost proxy is P=7113.6 bytes (71,136 bytes globally), across all
+ten parties. This uses outer ell=5,c=2 and SuperPack k=3,t_SP=5,epsilon_SP=.4
+covering four actual corruptions. Repairing the source's multiplication-count
+algebra gives P=7389.6 (73,896 bytes globally) as a separate sensitivity. The
+earlier P=6204.8 value applies the formal unified epsilon=.5 expression without
+an integral exact backend packing; it is not the current finite central case.
+Sublinear VOLE-generator/PCG production cost is still additional to these
+paper-leading-cost coefficients and must not be treated as measured or free.
+The source only gives an aggregate; uniform per-party transmit/receive load
+is a stated scheduling assumption, not a theorem supplied by that formula.
+Inputs, outputs, fixed check terms, and any formula-repair sensitivity must be
+added to P before applying these expressions. Use h=1.12 as the same hot-party
+sizing proxy used for interactive MPC. Then, for a fixed evaluator:
+  garbler tx = h*P + 192; garbler rx = h*P;
+  evaluator tx = h*P; evaluator rx = h*P + 1728.
+Multiply by A and 10,000 queries/s, and size each role by its own max(tx,rx).
+  k_g = ceil(10000*A*(h*P+192)/7,962,500,000)
+  k_e = ceil(10000*A*(h*P+1728)/7,962,500,000)
+  total EC2 instances = 9*k_g + k_e
+  EC2 USD/year = (9*k_g+k_e)*7.2576*8760.
+Require at least one instance for each role when A=0 is used in a unit case.
+Do not multiply the evaluator's node requirement by all ten parties.
+
+For P=7113.6 and h=1.12, hP=7967.232 bytes/AND. Garbler demand is 8159.232
+and evaluator demand 9695.232 bytes/AND. Ignoring integer rounding, the sum
+of the ten role capacities is 83,128.32 bytes/AND, whereas ten evaluator-sized
+roles would reserve 96,952.32. A hot-party sizing factor is not an extra
+transmitted message: raw billed sends per AND are 10*P + 9*192 = 72,864 bytes
+under the stated protocol-count interpretation, before framing or extra terms.
+
+If evaluators are uniformly assigned across ten independent valid garbled-RAM
+states, every physical party is evaluator for one tenth of queries and garbler
+for nine tenths. Average table transmit and receive both become 172.8 bytes/AND
+per party; capacity per party becomes hP+172.8. This uses both NIC directions
+and can save about 2.08% in the continuous full model, before rounding. In a
+table-only model the gain could approach twofold, but preprocessing dominates
+the present constants. Rotating the evaluator is not assumed to be a free
+handoff of one mutable state: charge independent states and their initialization,
+or establish an appropriate state-transfer protocol. Latency/concurrency needs
+may require more states than the minimum number for role balancing.
+
+9. ROLLING TABLES VERSUS A COMPLETE GARBLED EPOCH
+The rolling-buffer formula in Section 4 is conditional on the chosen scheme
+supporting generation, validation, and safe consumption in that streaming
+schedule. SSD residence itself does not establish this property. A construction
+may require a complete epoch/circuit, labels, or verification commitments before
+evaluation starts. In that case, if one epoch serves E queries and has M_epoch
+bytes of garbled/preprocessed material at a role, provision the required epoch
+material and any concurrently prefetched next epoch, not an arbitrary 60-second
+buffer smaller than the protocol permits.
+
+For L concurrent independent states with equal epochs, a conservative capacity
+budget is persistent_state_bytes + L*M_epoch + prefetched_next_epoch_bytes
++ scratch. A peak full-epoch requirement is distinct from average used bytes;
+provisioned EBS capacity is charged until released and volumes cannot simply
+be billed as a linearly shrinking file. If an authenticated streaming schedule
+is established, the R*T*C rolling formula becomes appropriate. Whichever
+schedule is used, verification must complete before a dependent output release,
+fresh material cannot be reused, and lifetime generation/communication must
+cover every served query. The AWS model should expose epoch length/buffering
+as a construction parameter rather than silently treating it as a storage knob.

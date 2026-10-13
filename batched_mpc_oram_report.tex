@@ -86,6 +86,35 @@ Section~\ref{sec:next} identifies the next experiments.
 
 \section{Restart summary and status of conclusions}\label{sec:restart}
 
+\textbf{Numerical update, 13 October 2026.} The user has now confirmed malicious
+security with abort and a five-second average-latency target, and requested both
+$2^{28}$ and $2^{32}$ records. The subsequent construction and capacity study is
+in \texttt{mpc\_cost/mpc\_oram\_cost\_report.tex}, with the rendered report at
+\texttt{output/pdf/mpc\_oram\_cost\_report.pdf}. It supersedes the earlier
+numerical budget sketches below. All figures remain conditional models.
+\begin{center}\small
+\begin{tabular}{lrr}\toprule
+Annual USD, ten parties at 10,000 queries/s & $2^{28}$ & $2^{32}$\\\midrule
+Interactive Circuit-OPRAM reference & \$2.33B & \$5.16B\\
+Modeled mean latency & 4.77 s & 3.97 s\\
+Garbled RAM, selected prepared horizon & \$10.33--18.52B & \$21.59--38.71B\\
+Garbled RAM, reference $T=2N$ horizon & \$10.33--18.52B & \$55.07--65.69B\\
+\bottomrule\end{tabular}
+\end{center}
+The interactive bottleneck is local arithmetic under the baseline phase
+attribution, with RAM capacity also constraining the larger case. In garbled RAM,
+about 97.7\% of modeled communication is preprocessing; SSD retention can dominate
+the dollar bill for long prepared epochs. The selected horizons are 14.91 hours
+at both sizes, minimizing the conservative fleet endpoint within the tested grid.
+They are preparation horizons, not query-batching delays. Garbled estimates use
+zero stack/adaptor cost under the requested migration assumption, SSD storage,
+and networking as the throughput bottleneck. They exclude a concrete finite
+correlation generator and complete malicious initialization/epoch renewal; the
+range reflects party traffic imbalance only. The full study includes exact-key
+and indexed parallel-scan comparisons, Python calculations, sources, and
+sensitivity analyses. The remainder of this document preserves the earlier
+research discussion rather than asserting that its alternatives were implemented.
+
 \textbf{Working direction.} Prototype an honest-majority arithmetic backend
 with batched gather/merge primitives before selecting the ORAM. Compare a direct
 batched array access, a recursive square-root ORAM with an enlarged shelter,
@@ -96,8 +125,7 @@ The following points should survive into later sessions.
 \begin{enumerate}
 \item \textbf{The user accepts honest majority.} Ten parties with degree-4
 Shamir sharing suggests privacy against up to four corruptions. Malicious
-security with abort is the working interpretation, not an explicitly finalized
-deployment requirement. Do not silently substitute a three-corruption protocol
+security with abort is now the user-confirmed requirement. Do not silently substitute a three-corruption protocol
 requiring $t<n/3$, or assume passive security is sufficient.
 \item \textbf{The square-root proposal is promising but unbenchmarked.}
 An idealized shelter/rebuild model gives $S\asymp\sqrt{Db}$, where $D$ is dense

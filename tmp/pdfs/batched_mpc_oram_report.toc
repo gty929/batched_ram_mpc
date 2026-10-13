@@ -1,0 +1,55 @@
+\contentsline {section}{\numberline {1}Restart summary and status of conclusions}{1}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Evidence labels}{2}{subsection.1.1}%
+\contentsline {section}{\numberline {2}Workload, notation, and security model}{2}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Batch semantics and latency}{3}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}What honest majority does and does not fix}{3}{subsection.2.2}%
+\contentsline {section}{\numberline {3}A common accounting framework}{3}{section.3}%
+\contentsline {section}{\numberline {4}Direct batched access, compaction, and duplicate requests}{4}{section.4}%
+\contentsline {subsection}{\numberline {4.1}The direct baseline is not a batch of independent scans}{4}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}What compaction actually contributes}{5}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}A sorted-shelter extension}{5}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}Deduplication and inverse routing}{5}{subsection.4.4}%
+\contentsline {section}{\numberline {5}Square-root ORAM: balance and comparison with direct access}{6}{section.5}%
+\contentsline {subsection}{\numberline {5.1}Construction skeleton and known starting point}{6}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}General amortization model}{6}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}Crossover against an efficient direct batch}{7}{subsection.5.3}%
+\contentsline {section}{\numberline {6}Recursive position maps and the large-base proposal}{8}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Why larger fanout can help, and where it stops helping}{8}{subsection.6.1}%
+\contentsline {section}{\numberline {7}Tree ORAM, eviction, and sparse-key maps}{9}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Circuit ORAM and the depth of eviction}{9}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}Arithmetic-friendly reformulations to test}{9}{subsection.7.2}%
+\contentsline {subsection}{\numberline {7.3}What a batch of paths can save}{10}{subsection.7.3}%
+\contentsline {subsection}{\numberline {7.4}Sparse 256-bit keys: cuckoo table versus an oblivious search tree}{10}{subsection.7.4}%
+\contentsline {section}{\numberline {8}Honest-majority arithmetic and degree-4 sharing}{11}{section.8}%
+\contentsline {subsection}{\numberline {8.1}Multiplication is not local share multiplication alone}{11}{subsection.8.1}%
+\contentsline {subsection}{\numberline {8.2}Practical starting points}{11}{subsection.8.2}%
+\contentsline {subsection}{\numberline {8.3}Batching is not automatically packed Shamir sharing}{12}{subsection.8.3}%
+\contentsline {section}{\numberline {9}Equality on degree-4 Shamir sharings}{12}{section.9}%
+\contentsline {subsection}{\numberline {9.1}Exact full-field masked equality}{12}{subsection.9.1}%
+\contentsline {subsection}{\numberline {9.2}Canonical masks and their real preprocessing cost}{13}{subsection.9.2}%
+\contentsline {subsection}{\numberline {9.3}A two-opening power-tuple variant}{13}{subsection.9.3}%
+\contentsline {subsection}{\numberline {9.4}Bounded integer equality and field-size slack}{14}{subsection.9.4}%
+\contentsline {subsection}{\numberline {9.5}Full 256-bit keys}{14}{subsection.9.5}%
+\contentsline {subsection}{\numberline {9.6}Other zero tests and pitfalls}{14}{subsection.9.6}%
+\contentsline {section}{\numberline {10}Preprocessing literature: what changes with honest majority}{15}{section.10}%
+\contentsline {subsection}{\numberline {10.1}A useful practical reference: ATLAS}{15}{subsection.10.1}%
+\contentsline {subsection}{\numberline {10.2}Recent honest-majority directions}{15}{subsection.10.2}%
+\contentsline {subsection}{\numberline {10.3}How to read multiparty triple-generation claims}{16}{subsection.10.3}%
+\contentsline {section}{\numberline {11}AWS cost model for 10,000 reads per second}{17}{section.11}%
+\contentsline {subsection}{\numberline {11.1}What is known and what is missing}{17}{subsection.11.1}%
+\contentsline {subsection}{\numberline {11.2}Throughput and leading multiplication traffic}{17}{subsection.11.2}%
+\contentsline {subsection}{\numberline {11.3}Compute-price snapshot}{18}{subsection.11.3}%
+\contentsline {subsection}{\numberline {11.4}Network placement can dominate the annual bill}{18}{subsection.11.4}%
+\contentsline {section}{\numberline {12}Recommended experiments and unresolved decisions}{19}{section.12}%
+\contentsline {subsection}{\numberline {12.1}Experiments in dependency order}{19}{subsection.12.1}%
+\contentsline {subsection}{\numberline {12.2}Security and construction questions still open}{19}{subsection.12.2}%
+\contentsline {subsection}{\numberline {12.3}Decision log for the next session}{20}{subsection.12.3}%
+\contentsline {section}{\numberline {13}Notes for future readers and reproducibility}{20}{section.13}%
+\contentsline {section}{\numberline {A}Dishonest-majority multiparty preprocessing references}{21}{appendix.A}%
+\contentsline {section}{\numberline {B}Small reproducible numerical calculations}{21}{appendix.B}%
+\contentsline {section}{\numberline {C}Proposed scan circuits for Circuit ORAM eviction}{22}{appendix.C}%
+\contentsline {subsection}{\numberline {C.1}Eligibility from a public path}{22}{subsection.C.1}%
+\contentsline {subsection}{\numberline {C.2}A proposed target planner}{22}{subsection.C.2}%
+\contentsline {subsection}{\numberline {C.3}Associative summaries for the backward passes}{23}{subsection.C.3}%
+\contentsline {subsection}{\numberline {C.4}Parallel payload propagation}{24}{subsection.C.4}%
+\contentsline {section}{References}{25}{section*.2}%

@@ -1,0 +1,335 @@
+PRIVATE DATABASE COST STUDY
+Conditional cost study
+Colleague briefing | Updated 14 October 2026
+1 / 7
+COLLEAGUE BRIEFING / 14 OCTOBER 2026
+Cost of a private database
+Seven-page briefing: ten-party malicious MPC and two-party semi-honest computation.
+Prioritize batched interactive designs. For garbled RAM, derive independent state copies from
+sequential service time before pricing the fleet. Neither design yet has a measured deployment
+budget.
+The service we are evaluating
+The target is 10,000 key-value reads per second, with mean response time below five seconds, for 228 or 232
+records. Keys and values are each 32 bytes; parties are in the same AWS availability zone. Pages 2-4 retain the
+ten-party model, tolerating four malicious parties with abort. Pages 5-6 assess a separate two-party,
+semi-honest setting.
+Ten-party reference results
+Conditional model result
+228 records
+232 records
+Interactive MPC: annual EC2 cost
+$2.33 billion
+$5.16 billion
+Interactive MPC: mean response
+4.77 seconds
+3.97 seconds
+Garbled RAM: annual network EC2 + SSD
+$10.33-18.52 billion
+$21.59-38.71 billion
+Garbled RAM: mean response
+Not established
+Not established
+Annual resource costs cover all ten parties for the 10,000-read/s target; they do not establish achieved throughput. Garbled
+horizons minimize the upper cost endpoint in the tested grid. Their ranges describe network-role imbalance, not omitted costs.
+New two-party result: the evaluator changes the comparison
+A few hundred independent garbled states are not a defensible default for this workload. At 100 ms per
+complete lookup, 70% utilization requires 1,429 states; at 500 ms it requires 7,143. Under the modeled
+two-epoch retention policy, those cases cost $0.99B/$13.56B and $4.31B/$65.84B per year for the two
+database sizes, before complete CPU and renewal costs.
+Streamed Circuit OPRAM avoids retaining future garbled programs and can parallelize a batch within one state.
+Its explicit Boolean template costs $70.44M/$89.08M per year for network and SSD resources at batch 256 and
+one state. That state count requires batch service within 17.92 ms, which has not been demonstrated. Joint
+fresh-position generation is a small traffic term; private routing remains expensive.
+These are conditional research estimates with different security guarantees and resource coverage, not comparable production
+quotes or universal lower bounds.
+
+
+PRIVATE DATABASE COST STUDY
+Conditional cost study
+Colleague briefing | Updated 14 October 2026
+2 / 7
+02 / TEN-PARTY INTERACTIVE DESIGN
+What the interactive estimate includes
+The working design places two cuckoo hash tables over binary Circuit OPRAM, a batched oblivious-memory
+construction. Every lookup probes both tables in parallel, checks the full key, and returns a value and
+membership result. Oblivious access hides the requested locations; even logical reads update the private
+placement state.
+A central dispatcher forms batches before assigning them to independent replicas. Within each replica, several
+machines per party divide the state and computation. Each replica carries a complete, independently evolving
+ORAM state. This replication is a major reason the fleet is much larger than the raw database suggests.
+Selected configuration
+228 records
+232 records
+Raw key-value data
+16 GiB
+256 GiB
+Queries per batch / map packing
+128 / 128
+512 / 256
+Secure outputs per read
+3.36 million
+6.10 million
+Sent data per read, per party
+629.2 MB
+1,085.8 MB
+Persistent state per party, per replica
+1.88 TiB
+30.05 TiB
+Machines per party, per replica
+6
+96
+Independent replica groups
+530
+110
+Total EC2 instances, all parties
+31,800
+105,600
+MB is decimal; GiB and TiB are binary units. Traffic includes framing. Persistent state excludes scratch and preprocessing buffers.
+Map packing is the number of labels per recursive record; the interactive ORAM tree remains binary.
+Why batching alone does not solve the cost
+Batching exposes parallelism, but private comparisons, metadata conversion, payload movement,
+recursive-map updates and eviction still require substantial work. A private dot product can communicate one
+reduced output while performing many local multiplications. Counting only communicated outputs therefore
+misses a major cost driver.
+At 10,000 reads/s, forming a 128-query batch adds only about 6.35 milliseconds of mean waiting. The
+several-second response time comes mainly from computation and dependent exchanges. Moving work
+offline may reduce response latency, but its steady-state production must still be paid for.
+The larger model has a lower selected latency because memory requirements force a larger parallel allocation. This is not evidence
+that increasing the database size improves performance. Both configurations are grid-search selections, not proven global optima.
+
+
+PRIVATE DATABASE COST STUDY
+Conditional cost study
+Colleague briefing | Updated 14 October 2026
+3 / 7
+03 / TEN-PARTY COST DRIVERS
+Local computation is the first bottleneck
+For the smaller interactive reference, CPU demand exceeds network and memory demand. The model
+overlaps these resources, then adds dependent communication phases:
+Per 128-query batch
+Modeled time
+CPU, including preprocessing
+3.45 s
+Network, including internal routing
+2.22 s
+RAM traffic
+0.09 s
+Dependent exchanges
+1.29 s
+Service time: 1.29 + max(3.45, 2.22, 0.09)
+4.74 s
+Preprocessing accounts for about 36% of CPU work and 24% of transmitted bytes; most remaining work is
+online. These are derived allocations that can change with scheduling. At 232 records, RAM capacity also forces
+more machines.
+A low-communication scan can still be expensive
+A full-key scan compares the query with every record. An indexed two-dimensional scan uses private dot
+products to reduce communication but still processes the entire arrays locally. For the smaller database:
+Per read, per party
+Interactive OPRAM
+Full-key scan
+Indexed 2D scan
+CPU proxy, billion operations
+0.340
+3,059
+25.79
+Sent data, decimal GB
+0.629
+6,075
+0.041
+The indexed scan uses about 6.5% of the reference traffic but 76 times its local arithmetic. It remains a useful
+bandwidth-oriented benchmark if batched matrix kernels outperform the assumed CPU proxy.
+Which assumptions move the answer most?
+CPU and scheduling. For 228 records, independently optimized faster- and slower-CPU scenarios cost $1.52
+billion and $6.06 billion/year. Disabling resource overlap gives $3.96 billion/year. These are scenario results,
+not confidence limits.
+Placement. The headline estimates assume same-availability-zone placement without marginal inter-party
+transfer fees. Cross-zone traffic is charged at $0.02 per transmitted GB across both endpoints in the retained
+price snapshot. Network placement can overwhelm compute savings.
+Central assumptions include 2 billion weighted field operations/s per 64 vCPUs, 0.2 ms per exchange, 65% NIC efficiency and 70%
+operating utilization. None is a measured guarantee for this MPC service.
+
+
+PRIVATE DATABASE COST STUDY
+Conditional cost study
+Colleague briefing | Updated 14 October 2026
+4 / 7
+04 / TEN-PARTY GARBLED-RAM MODEL
+Preprocessing and retention dominate
+Garbled RAM prepares an encoded computation before queries are evaluated. Few online rounds do not imply
+low total operating cost: at 10,000 reads/s, the prepared computation must be replenished continuously. In
+this model, about 97.7% of transmitted bytes are preprocessing.
+The estimate assumes networking is the throughput bottleneck and sets garbled-stack and associated adaptor
+costs to zero under a proposed migration of a two-party optimization. This is a conditional multiparty
+construction, not an executed ten-party benchmark. CPU evaluation and a five-second response time have not
+been established.
+The prepared horizon is a major budget choice
+An epoch is the number of future queries prepared in advance; it is not a batch that waits to fill. Longer epochs
+amortize setup-related work over more queries but retain more garbled tables. The reference keeps two
+complete epochs, representing the current and next execution, plus encoded state.
+Database / policy
+Hours prepared
+per epoch
+SSD per year
+Total per year
+228: reference and selected horizon
+14.91
+$2.14B
+$10.33-18.52B
+232: reference horizon
+238.61
+$44.44B
+$55.07-65.69B
+232: selected shorter horizon
+14.91
+$4.46B
+$21.59-38.71B
+B denotes billion USD; totals include network-capacity EC2 plus SSD for all parties. The selected horizon minimizes the upper
+endpoint within the tested grid. The range reflects party send/receive imbalance, not a complete uncertainty bound.
+Shortening the larger case to about 15 hours substantially lowers the estimate. The reference SSD footprint is
+therefore a retention-policy consequence, not an unavoidable storage lower bound. Shorter epochs also
+increase recurring preparation per query, so the shortest horizon is not automatically cheapest.
+What must be solved before this becomes a service estimate
+The ledger does not fully price malicious correlation generation, joint hidden-state initialization, secure
+epoch renewal, or the necessary representation conversions. Accepting a continuing stream of external client
+queries also needs a service-security argument beyond the cited standalone protocol.
+Securely carrying a live state into the next epoch requires more than re-encoding its bits. The model also leaves
+local evaluation speed, SSD throughput, machine allocation and cloud capacity unvalidated. The
+sequential-throughput issue on page 5 also prevents treating these resource figures as a validated
+10,000-read/s fleet. Two-party coefficients cannot be substituted directly into this malicious model.
+
+
+PRIVATE DATABASE COST STUDY
+Conditional cost study
+Colleague briefing | Updated 14 October 2026
+5 / 7
+05 / TWO-PARTY SEMI-HONEST: GARBLED MERGE
+Sequential evaluation drives replication
+Both two-party models use two cuckoo tables of 2N slots, two probes and an eight-entry stash; each stored
+payload has 513 bits. Accounting uses 128-bit labels, FreeXOR and 32 bytes per AND (half gates), with 16-byte
+merge joins counted separately. This is a backend substitution, not the artifact's native ThreeHalves gate size.
+What PicoGRAM establishes [1, 2]
+PicoGRAM describes its evaluator as mostly sequential. Its online-optimized variant already avoids DDH/SIMD
+garbling: a 64-bit RAM access takes 9.73 ms at 216 words; 25 ms at 224 and 41 ms at 230 are paper
+extrapolations. These are not timings of garbled merge or of a two-probe, 64-byte lookup. Removing DDH
+therefore does not establish a faster evaluator; merge adds PRF work.
+Recursive maps must return old positions before outer paths can be fetched; reinsertion and eviction modify
+shared state. The two cuckoo tables can run on two lanes, but adding cores does not give linear speedup for
+successive accesses to either table. SIMD and inter-request overlap need an implemented schedule.
+Required copies S = ceil(10,000 x L / 0.70), where L is the complete state service time in seconds,
+including maintenance before the next query. 128 copies require L <= 8.96 ms; 500 require L <= 35
+ms.
+Assumed service per KV
+Required states
+Annual 228
+Annual 232
+100 ms
+1,429
+$0.991B
+$13.563B
+500 ms
+7,143
+$4.307B
+$65.839B
+1 second
+14,286
+$8.378B
+$130.621B
+Conditional network EC2 + SSD capacity and attachment hosts, both parties. Each row reoptimizes the prepared horizon at a fixed,
+unmeasured L. Two complete epochs, literal labels and separate one-time programs per state are retained. CPU, full SSD I/O,
+temporary space, initialization and secure renewal are additional; these are not GRAM cost lower bounds.
+Communication savings do not establish runtime
+At horizon T = 2N and map packing 8, the source-derived model produces 61.47/80.38 MB of tables per
+lookup, including merge and output bindings. Live labels occupy 49.39/799.91 TB per party per state. The
+literal artifact's full-horizon merge computation is impractical at these sizes; small-window resets and handoff
+need implementation. Aggregate hash throughput cannot replace the service-time constraint.
+For scale, a hypothetical 64-call reset window gives 30.40M/41.28M evaluator merge hashes per lookup at T = 2N. At 40 cycles/hash
+and 2.2 GHz, that is 0.55/0.75 seconds of scalar merge work alone. Two table lanes can overlap; SIMD may help. This is a work
+sensitivity with unimplemented reset/handoff and assumed visit statistics, not a measured latency or circuit-depth bound.
+
+
+PRIVATE DATABASE COST STUDY
+Conditional cost study
+Colleague briefing | Updated 14 October 2026
+6 / 7
+06 / TWO-PARTY SEMI-HONEST: STREAMED BATCHES
+Trade retained programs for interaction
+The evaluator reveals retired ORAM fetch positions (or independent dummy paths) to the garbler, which
+supplies and streams the next circuit. This removes the hidden-runtime stack/merge machinery and
+future-program retention. Circuit OPRAM exposes parallel work within a batch, potentially reducing the
+number of complete state copies [3].
+Joint positions are a small incremental cost
+Generate fresh leaf bits as the XOR of the parties' private contributions inside the circuit. FreeXOR adds no
+AND gates; input labels and OT still cost traffic. Keep live replacement positions hidden; resolve duplicates
+secretly and substitute dummy fetches. At batch 256, the conservative fresh-position allowance is only
+17.92/23.04 KB per lookup. Joint hidden initialization remains separate work.
+Explicit Boolean template, batch 256
+Per lookup / annual resource model
+228 records
+232 records
+AND gates per lookup
+12.921 million
+16.008 million
+Garbled table bytes per lookup
+413.5 MB
+512.3 MB
+Live label state per party, one copy
+63.095 TB
+1.032 PB
+NIC + SSD capacity / modeled I/O, per year
+$70.44 million
+$89.08 million
+Both parties, one state, decimal units. This planning template pays for bitonic pool sorting, private retrieval/movement, recursive
+updates, duplicate handling and eviction. It is not a measured implementation or a proven finite upper bound. At an assumed 200M
+AND/s per machine after overhead, CPU provisioning raises totals to $83.28M/$104.97M; that rate is unmeasured.
+Batch latency must justify the state count
+S = ceil(10,000 x Lbatch / (0.70 x B)). One state at B = 256 requires service <= 17.92 ms. At B = 1,024 the
+allowance is 71.68 ms: a 50 ms batch needs one state; a 500 ms batch needs seven. Mean batch-fill waiting is
+another 51.15 ms at B = 1,024. CPU throughput alone does not establish these latencies.
+Larger batches expose more concurrency but increase this template's sorting work: at B = 1,024, table traffic is
+541.2/665.7 MB per lookup and the one-state resource estimate is $91.68M/$114.62M per year. Replication,
+measured CPU and renewal must be added consistently.
+Storage benefit: stream and discard consumed tables, while retaining live ORAM state and bounded working buffers. The table uses
+16 bytes per state bit at each party. Compact XOR shares can shrink that representation, but require secure input conversion/OT on
+touched state; that saving is not included.
+
+
+PRIVATE DATABASE COST STUDY
+Conditional cost study
+Colleague briefing | Updated 14 October 2026
+7 / 7
+07 / RECOMMENDED NEXT STEPS AND SOURCES
+Measure service time before choosing a fleet
+Continue the ten-party interactive study and prototype the two-party streamed design separately. The
+two-party opportunity is parallelism within a shared batch state and less retained garbled code; its current
+gate template is substantially larger per query than sequential GRAM.
+1. Measure a complete state cycle
+For garbled merge, measure both table probes, recursive maps, PRFs, label/table I/O, eviction and the
+proposed reset/renewal mechanism. Report state service time and active core-seconds separately. For batch
+OPRAM, measure full batch depth, dependent exchanges and worker scaling, including duplicate queries,
+misses and map-block conflicts.
+2. Optimize, then enforce the throughput constraint
+Specialize metadata, pool cleanup and private routing; tune packing and the flat base together. Derive copies
+from measured service time at 70% utilization, then optimize horizons, workers and storage. Include
+preprocessing replenishment and queueing tails. A few hundred sequential states, or one batch state, must be
+justified by that measurement.
+3. Calibrate cost and security together
+Validate joint hidden initialization, position refresh, state transitions and lifetime overflow bounds. Reprice
+measured CPU, network and storage I/O on the intended topology. Streaming does not remove live state;
+neither short-epoch renewal nor compact state conversion is free. The original ten-party goal still requires
+malicious security with abort.
+Price basis. Two-party figures use AWS US East Linux/shared On-Demand prices refreshed 14 October 2026 (feed version
+20261012193925): c6in.32xlarge $7.2576/hour, 200 Gbps NIC; gp3 $0.96/GiB-year. Network planning uses 65% efficiency, 70%
+distributed efficiency and 70% utilization, with both roles charged. These factors are not measured protocol throughput.
+Scope. Flat read-only key-value service with private client-supplied hash indices; no Merkle proofs. Setup, a client gateway, backups,
+failover reserve, support, taxes and engineering are unpriced. Coverage differs across tables; every quoted range is conditional, not
+a confidence interval or complete budget.
+Evidence and reproduction
+[1] Liu et al., Improved Garbled RAM via Garbled Merge, ePrint 2026/761, final revision 9 August 2026; artifact v2. Byte/hash
+measurements do not establish end-to-end service throughput.
+[2] PicoGRAM, ePrint 2025/1479, Table 2, Section 7, Appendices D.2 and E.3. Communication-, end-to-end- and online-optimized
+variants are distinct; their best numbers cannot be combined.
+[3] Chan and Shi, Circuit OPRAM, ePrint 2016/1084. The two-party Boolean cost template is this study's proposed compilation, not a
+benchmark reported by that paper.
+[4] Ten-party figures: full 13 October report, Sections 1-5 and 9-12. Two-party derivations: mpc_cost/data/two_party_notes.txt and
+two_party_serial_notes.txt; results: two_party_comparison.json and two_party_serial_comparison.json under mpc_cost/results/.
+Commands and assumptions: mpc_cost/README.txt.

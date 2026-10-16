@@ -1,0 +1,237 @@
+TWO-PARTY PROPOSAL ESTIMATE: ACCURACY REVIEW
+16 October 2026
+
+Follow-up: confirmed public-position optimization
+------------------------------------------------
+The user clarified that only old leaf positions requested in the current batch
+are public. Local path sorting/public wire permutation and authorized terminal
+result unpermutation are valid and cost zero extra ANDs. The estimator already
+omitted these operations, so recomputation leaves the numerical anchors below
+unchanged. Do not subtract private pool extraction/inverse allowances as though
+they were final public output ordering. The updated two_party_notes.txt and
+JSON routing_audit itemize 3.320M/4.032M retained private inverse AND/query as
+subsets of the existing total, not additional costs or proven minima.
+The follow-up test suite passes 56 checks, including two new routing-ledger
+checks. This still does not validate a complete circuit or throughput.
+
+Scope
+-----
+Use two-party Garbled RAM for the current approach and interactive two-party
+Circuit OPRAM for the proposed approach. The existing numerical model assumes
+semi-honest security, same-AZ placement, 10,000 flat KV reads/s, 256-bit keys and
+256-bit values, and N=2^28 or 2^32 records. Dollar figures below retain the
+repository's October 12 AWS price-feed snapshot; they are model sensitivities,
+not new cloud quotes or measured service costs.
+
+The review reran mpc_cost.test_two_party and mpc_cost.test_garbled: 26 tests pass.
+These check accounting identities, not the correctness/security of a complete
+OPRAM circuit or its ability to sustain the target throughput.
+
+Current numerical anchor
+------------------------
+For B=256, F=8, Z=3, pool slack=128, both parties combined:
+
+                                           N=2^28           N=2^32
+AND gates / KV query                         12.921M          16.008M
+Half-gate table bytes / query                413.479 MB       512.254 MB
+Network hosts PER PARTY                     546              676
+Network + SSD capacity + modeled I/O / year  $70.436M         $89.077M
+With assumed effective 200M AND/s/node       $83.278M         $104.971M
+With assumed effective 50M AND/s/node        $329.701M        $410.266M
+Live label state PER PARTY                  63.095 TB        1.032 PB
+Sequential recursive path-reveal barriers   7                8
+
+MB/TB/PB are decimal. Both CPU scenarios assume their rate includes FreeXOR,
+runtime and utilization/scaling losses, but neither rate has been measured.
+Both still omit explicit intra-party routing and full protocol integration.
+The one-state rows require complete batch service <=17.92 ms at utilization .7.
+They are not a defensible unconditional proposed-service budget.
+
+1. Resolve the pool circuits first
+---------------------------------
+two_party_batch.py:72-91,111-127,158-184 uses explicit sorting kernels but
+template allowances for their composition, packed updates and eviction.
+At the selected B256 configuration, the AND proportions are:
+
+                                N=2^28       N=2^32
+Pool retrieval                  19.86%       19.52%
+Eviction selection              44.32%       43.05%
+Pool cleanup                    22.63%       21.98%
+Three pool operations combined  86.81%       84.54%
+
+Derive an executable circuit for these operations, including private grouping,
+selection, reverse routing and full payload movement. Audit repeated logical
+addresses, different offsets in the same recursive map block, overlapping
+physical fetch paths, dummy requests, and simultaneous writes. Compare resulting
+outputs and state against a clear reference execution, then obtain gate/XOR,
+wire-liveness and communication traces. A proof of the abstract OPRAM does not
+automatically certify this particular Boolean compilation.
+
+There is no established missing second full-record mask in subtree_fetch:
+the same product (match AND record) can serve extraction and XOR clearing.
+Likewise, tuning the eviction planner factor alone misses the dominant pool
+cost. The 2x/4x sequential-core rows are optimization targets, not implemented
+batch circuits or justified cost bounds.
+
+2. Derive state count from measured batch service and a concrete schedule
+-----------------------------------------------------------------------
+Let L_B(K) be the complete state-reuse time for batch B with K workers per
+party. Required independent states are
+
+  S = ceil(10,000 * L_B(K) / (0.7 * B)).
+
+For S=1 the limits are 17.92, 71.68 and 286.72 ms for B=256,1024,4096.
+At B256 a 50 ms service time needs 3 states; 100 ms needs 6. Reprice both the
+replicated state and the actual worker allocation. Aggregate AND/s or NIC
+capacity alone does not establish L_B(K), even if total gates are exact.
+
+Measure path discovery, pool/eviction maintenance, memory/SSD latency, state
+distribution, worker synchronization and label routing. Use a dependency-aware
+schedule to establish which phases overlap and when the next batch may start.
+Charge intraparty messages on the same NICs as garbled tables when appropriate.
+Model fill and queue delay separately; mean fill at B256 is 12.75 ms at 10k/s.
+Yao's nonlinear gate depth is local circuit depth, not one RTT per AND layer.
+
+The current sweep only tries B=256,1024,4096 and selects by AND count. B128 in
+the same template costs 11.225M/13.969M AND per query and $61.342M/$78.217M for
+network+state+I/O, but requires <=8.96 ms one-state service. This is evidence
+to broaden the sweep, not to substitute another unvalidated low-cost row.
+Optimize total dollars over B, map packing, base cutoff, worker count, state
+representation and replicas, subject to measured service/latency constraints.
+
+3. Calibrate both 2PC roles, including local work
+----------------------------------------------
+two_party_cost.py:198-206 assigns the same effective AND rate to both roles.
+Half-gate garbling/evaluation have different cryptographic work. Benchmark
+each role on the actual mixture of comparisons, swaps, scans, XORs, input OT,
+serialization and state I/O. A fast isolated AES/AND kernel does not measure
+this workload. Record active CPU separately from time waiting for I/O.
+
+Half gates charge 256 transmitted bits/AND at label width128. ThreeHalves
+charges 197 bits/AND, a 23.05% table reduction with different CPU behavior.
+Keeping every other assumption fixed gives network+state+I/O sensitivities
+of $54.414M/$69.241M instead of $70.436M/$89.077M. At the assumed 200M-AND CPU
+rate the existing CPU host counts still dominate, so this is not a 23% total
+cost saving. Select and benchmark a complete compatible backend for each row.
+
+4. Compare persistent labels with compact secret-shared state
+-----------------------------------------------------------
+The current representation stores 16 bytes per logical state bit at EACH role.
+Bit-packed XOR shares would store one bit per state bit per role, giving
+459.077 GiB / 7509.796 GiB per party: 128x less persistent storage.
+
+The existing touched-state ledger counts 506,671 / 720,563 bits per query.
+Applying the model's conservative input allowance (16B G label + 32B E OT
+payload + 16B E extension traffic) to these bits gives 32.427 / 46.116 MB/query
+additional bidirectional input traffic. This is 7.84%/9.00% of current table
+bytes; forward traffic rises about 5.88%/6.75%. This is an input-only ledger,
+not a validated complete compact-state implementation. Output resharing,
+labels, OT/XOR CPU, caching and repeated physical accesses need their own audit.
+
+Under that ledger, network+compact capacity alone is $73.495M/$91.819M/year,
+excluding compact I/O and extra CPU. Compact state is thus primarily a
+memory/I/O and latency opportunity at this placement, not a demonstrated
+network-cost reduction. The N28 label state already fits in aggregate nominal
+RAM of the NIC-sized fleet; locality/workspace still matter. N32 label state
+exceeds that RAM by about 5.55x. Benchmark RAM-resident and SSD-backed layouts.
+
+If labels persist across streamed batches, specify label renewal for modified
+slots, uniqueness of gate/hash tweaks, output decoding, and restart behavior.
+The review has not established a flaw in linked garbling; the missing item is
+a concrete secure composition and its measured cost.
+
+5. Select finite overflow/security parameters before final optimization
+---------------------------------------------------------------------
+Z=3, pool slack 128 and cuckoo stash 8 are planning parameters. Establish a
+finite failure bound for the EXACT pool/eviction protocol across all recursive
+trees and the service lifetime. 10k queries/s is 315.36 billion queries/year;
+a one-access failure bound alone is insufficient. Treat one-time cuckoo setup
+failure separately from repeated operational overflow.
+
+The formal Circuit ORAM stash theorem uses Z>=4 and a modified construction
+including an extra partial read-path eviction. It does not directly certify
+this Z3 OPRAM template. Even Z4 needs an argument matching the flattened OPRAM
+pool and its eviction schedule before the theorem can be transferred.
+
+Sensitivity in the present template: Z3->Z4 increases gates about 29% and live
+state 33.3%, raising network+state+I/O to $90.86M/$114.91M. Increasing slack 128
+to 512 raises gates about 26%, because a sort crosses a power-of-two padding
+boundary. This makes finite parameter analysis economically significant.
+
+Also distinguish 128-bit labels from a claimed 128-bit service-lifetime
+security guarantee. Specify the concrete hash/garbling instantiation, its
+total-query bound and epoch/key policy before fixing label width and CPU cost.
+
+6. Complete the service interface and amortized setup
+---------------------------------------------------
+The current notes assume the evaluator owns the query and receives the answer.
+If both computation servers must be unaware of an external client's query,
+specify private client input sharing/encoding and output delivery. Do not infer
+that a two-party computation with evaluator-owned inputs already provides
+that service. The extra input bits may be cheap, but the security/interface
+claim must match the actual protocol. Keep semi-honest and malicious budgets
+distinct; the current numbers establish only the former model.
+
+Joint new-leaf randomness is already budgeted and is small: 17.92/23.04 KB/query
+against 413.5/512.3 MB tables. Optimizing it is low priority. Hidden initial
+placement, consistent recursive maps, recovery and database refresh/rebuilds
+remain unpriced. If serving a changing blockchain snapshot, explicitly budget
+the update/rebuild cadence; this model contains only application reads.
+
+7. Align proposal scope and comparisons
+-------------------------------------
+The status-quo Garbled RAM row must use the sequential-evaluator correction
+in two_party_serial.py and its stated retention/service assumptions. Earlier
+1/16/128-state capacity rows do not establish 10k QPS. The corrected GRAM rows
+are also conditional; hypothetical reset/handoff and scalar microkernel
+sensitivities are not measured deployments. Do not advertise an empirical
+speedup or universal cost ratio between two uncalibrated implementations.
+
+The current body.tex table uses older m6id throughput-based figures, while
+this estimate uses c6in fleets and storage accounting. The smaller model is
+N=2^28, whereas the proposal says 206.8M accounts. This causes a discrete
+capacity difference under the original 40% dictionary load ceiling:
+206.8M records can use two tables of 2^28 cells (38.52% occupancy), whereas
+2^28 records require two tables of 2^29 cells (25% occupancy after rounding).
+model.py:304-310 computes that rounding; the two-party modules instead assume
+table address width log_records+1. Parameterize actual record count/table
+capacity before copying numbers, and validate the dictionary stash at the
+higher load. Proportionally scaling cost by 206.8M/2^28 would be incorrect.
+
+body.tex:262-267 multiplies MPT cost by six based on a memory-capacity-bound
+assumption. This does not follow for a gate/network-bound interactive design.
+Re-estimate the actual proof layout, record width, piece reads, padding and
+dependent traversal. Neither 6x storage nor 143 representative proof-piece
+reads by itself establishes an end-to-end cost multiplier.
+
+body.tex:520 onward still proposes 10--20-party RAM and related preprocessing.
+A two-party proposal revision should align the technical approach, security
+assumptions, performance and cost rows, and Thrust 1 description.
+
+Suggested order of work
+-----------------------
+First freeze the service/security interface and proof-compatible parameters.
+Then produce exact pool circuit counts and a complete batch dependency graph.
+Benchmark both roles and the storage/routing path on representative hardware.
+Finally jointly optimize batch size, packing, worker/replica counts and state
+representation, and report a conditional cost interval with its assumptions.
+The current arithmetic supports research planning, but not a single calibrated
+annual-service price or the earlier low-millions optimization targets.
+
+Primary sources checked
+-----------------------
+Circuit OPRAM (construction and pool analysis):
+https://eprint.iacr.org/2016/1084
+Parallel eviction/depth:
+https://eprint.iacr.org/2017/861
+Circuit ORAM (Section 3.4, theorem and modified eviction):
+https://eprint.iacr.org/2014/672.pdf
+Half gates:
+https://www.cs.virginia.edu/~evans/pubs/ec2015/
+ThreeHalves:
+https://eprint.iacr.org/2021/749
+Concrete garbling security and total workload:
+https://eprint.iacr.org/2019/1168
+AWS machine and gp3 specifications (not performance measurements):
+https://aws.amazon.com/ec2/instance-types/c6i/
+https://docs.aws.amazon.com/ebs/latest/userguide/general-purpose.html

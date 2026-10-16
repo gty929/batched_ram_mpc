@@ -7,6 +7,7 @@ from pathlib import Path
 from .render_bottleneck_section import render as render_bottleneck_section
 from .render_size_section import render as render_size_section
 from .render_garbled_section import render as render_garbled_section
+from .render_two_party_section import render as render_two_party_section
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -15,6 +16,7 @@ ROOT=Path(__file__).resolve().parent
 OUT=ROOT/'results'
 render_bottleneck_section()
 render_size_section()
+render_two_party_section()
 garbled=render_garbled_section()
 summary=json.loads((OUT/'summary.json').read_text())
 scenarios=summary['scenarios']
@@ -70,16 +72,22 @@ report=r'''\documentclass[11pt]{article}
 \usepackage[hyphens]{url}
 \usepackage{hyperref,fancyhdr}
 \definecolor{navy}{HTML}{17324D}\definecolor{teal}{HTML}{176B73}
-\hypersetup{colorlinks=true,linkcolor=navy,urlcolor=teal,pdftitle={Honest-majority MPC database: construction and cost model}}
+\hypersetup{colorlinks=true,linkcolor=navy,urlcolor=teal,pdftitle={Two-party private database: current estimate and historical MPC study}}
 \setlength{\parindent}{0pt}\setlength{\parskip}{5pt}\setlength{\emergencystretch}{2em}
 \setlist{nosep,leftmargin=1.5em}\setlength{\headheight}{14pt}
-\pagestyle{fancy}\fancyhf{}\fancyhead[L]{\small\textcolor{navy}{Honest-majority MPC database}}
+\pagestyle{fancy}\fancyhf{}\fancyhead[L]{\small\textcolor{navy}{Private database cost study}}
 \fancyhead[R]{\small Conditional research estimate}\fancyfoot[C]{\thepage}
 \newcommand{\F}{\mathbb F}
 \begin{document}
-{\color{teal}\large CONSTRUCTION AND CAPACITY STUDY}\par
+\input{two_party_notes.tex}
+\clearpage
+{\color{teal}\large HISTORICAL TEN-PARTY STUDY}\par
 {\color{navy}\LARGE\bfseries A 10,000-query/s key--value database\\in ten-party honest-majority MPC}\par
-Updated 13 October 2026, America/New\_York\par
+Historical estimate dated 13 October 2026, America/New\_York\par
+\textbf{Archive status.} The current proposal focuses on two parties, as
+described in the opening sections. The following analysis preserves the
+earlier ten-party investigation and its original assumptions. Its proposal
+recommendations are superseded by the two-party scope.\par
 \textbf{Target:} $2^{28}$ and $2^{32}$ records, 32-byte keys and values; ten parties, at most four
 malicious corruptions, security with abort; average response time at most five seconds.
 
@@ -94,7 +102,7 @@ secure epoch renewal remain unpriced. Sections~\ref{sec:scale}
 and~\ref{sec:garbled} give the calculations, sensitivities and limits.
 The earlier detailed interactive sections use $N=2^{28}$ unless stated otherwise.
 
-\section{Decision for the proposal}
+\section{Historical ten-party proposal decision}
 \textbf{Continue with two cuckoo tables over binary Circuit OPRAM, but make the
 arithmetic compilation and private routing the research contribution.} Probe both
 tables in parallel; use a shared central batcher, grouped recursive-map updates,
@@ -117,7 +125,7 @@ vector. A backend-conditional envelope below shows that even 10,000--30,000 secu
 outputs per read can consume millions of dollars/year across ten parties. Those
 counts are \emph{optimization targets}, not achieved costs of the proposed system.
 
-\paragraph{Suggested proposal language.}
+\paragraph{Historical suggested proposal language (superseded).}
 \begin{quote}
 We will develop an honest-majority MPC key--value service using batched oblivious
 access rather than a direct multiparty garbled-RAM extension. Our design combines

@@ -1,0 +1,319 @@
+TWO-PARTY SEMI-HONEST DATABASE COST STUDY
+Updated 16 October 2026
+
+PUBLIC-ROUTING REVIEW, 16 October 2026
+------------------------------------
+Only positions requested in the current batch are opened. Sorting those old
+paths and applying the public permutation to encoded UIDs/request metadata is
+local work. Authorized terminal results, including selected old child paths,
+can be decoded and reordered locally; a public permutation can also reorder
+still-encoded results. Neither operation needs a garbled Waksman circuit.
+Keep duplicate masking before disclosure and fresh replacement positions
+hidden. This does not expose all pool records' assigned leaves or UIDs.
+
+Recomputation preserves 12.921M/16.008M AND per query and $70.44M/$89.08M/year
+for the B256 network+state+I/O rows ($83.28M/$104.97M at the assumed 200M AND/s).
+The old template did not separately charge public-path sorting or terminal
+output unpermutation. Its reverse-routing terms follow private sorts: request
+UID deduplication, hidden pool-result extraction/alignment and eviction routing.
+Removing them all would give an unsupported reduction. After a secret pool
+sort, the locations of request rows among resident records are still secret;
+private extraction/compaction must precede authorized plaintext reordering.
+
+New routing_audit fields in results/two_party_comparison.json make the three
+public/terminal operations explicitly zero. Retained private inverse costs,
+already INCLUDED in total ANDs (both probes, per complete query), are:
+
+                                      N=2^28         N=2^32
+Request conflict routing              65,952         80,100
+Pool fetch extraction/alignment       967,296        1,174,800
+Eviction selection routing            2,286,336      2,776,800
+Flat-map duplicate routing            396            432
+Total retained inverse allowance      3,319,980      4,032,132
+
+These are unresolved composition allowances, not lower bounds. Retaining a
+sorted pool and privately extracting only required output bits may improve
+the count. That requires a concrete extraction circuit, consistent packed
+updates, and a next-state invariant; it is not established by public paths
+alone. The historical numerical and deployment caveats below still apply.
+
+THROUGHPUT CORRECTION, later on 14 October 2026
+--------------------------------------------
+Read two_party_serial_notes.txt before using this capacity ledger. The
+1/16/128-state scenarios below do not establish 10,000 requests/s. The same is
+true of the aggregate evaluator-hash capacity scenarios. Replica count must
+first be derived from the service time of an independently evolving state.
+The previous emphasis on the small-replica dollar figures was misleading as
+a throughput comparison. Their arithmetic remains a capacity sensitivity,
+but they are not the working service estimate. New results and source-backed
+sequential evaluator analysis are in results/two_party_serial_comparison.json.
+
+Decision-relevant result
+------------------------
+Joint fresh-position generation is inexpensive relative to the ORAM circuit.
+Streaming removes retained garbled-program storage, and batching can replace
+independent state copies with parallel workers over one state. These benefits
+do not imply that batch OPRAM has fewer gates per query: the pool, duplicate
+handling, recursive-map updates and eviction selection must still be paid for.
+
+The estimates below separate a source-derived GRAM communication/storage
+ledger, a conservative Boolean batch template, and unimplemented optimization
+targets. None is a measured service cost, proven finite upper bound, or SLA.
+The previous ten-party malicious estimates are not reused as backend costs.
+
+Workload and common accounting
+-----------------------------
+User-confirmed assumptions: N=2^28 and 2^32 records, 32-byte keys, 32-byte values,
+10,000 reads/second; two parties in the same AWS availability zone. Raw data is
+16 GiB/256 GiB. Both candidates in two cuckoo tables of 2N slots are read, plus an
+eight-entry stash scan. Each stored payload is 513 bits, including occupancy.
+Only application reads are modeled; ORAM metadata changes on every read.
+Clients supply the privately encoded query key and two public-hash indices;
+the evaluator is assumed to own those inputs and receive the answer. A client
+gateway, internal hash computation, and a different input/output ownership
+split are additional work. Two SHA3-256 permutations would add 76,800 AND/query
+under the existing Keccak counting convention, if that frontend were selected.
+
+Use standard semi-honest Yao with 128-bit labels, FreeXOR, and half gates:
+  ordinary AND table =32 bytes G->E; XOR table =0 bytes;
+  switch-system join =16 bytes, counted separately from ordinary AND;
+  persistent hidden state =16 bytes/bit at EACH role, not two labels at G.
+G keeps one zero-label and a global delta, E one active label. Updated state
+receives fresh output labels; untouched state retains its existing labels.
+The author's ordinary-gate backend uses ThreeHalves (197 bits/AND); 32 bytes is
+an explicit conservative backend substitution, not a native artifact result.
+FreeXOR and zero-byte switches still consume local CPU and memory bandwidth.
+
+AWS US East Linux/shared On-Demand feed, refreshed 14 October (unchanged snapshot
+20261012193925): c6in.32xlarge costs $7.2576/hour, has 128 vCPUs/64 physical cores,
+256 GiB RAM, 200 Gbps network and 100 Gbps EBS. gp3 costs $0.96/GiB-year for capacity.
+Using the previous planning factors 0.65 network efficiency, 0.70 distributed
+efficiency and 0.70 operating utilization gives 7.9625 GB/s per NIC direction.
+There is 5% framing. Full-duplex capacity is enforced separately at BOTH roles:
+  nodes per role=ceil(QPS*max(forward,backward)/7.9625e9).
+Annual EC2=total nodes*8760*7.2576. Same-AZ transfer has no marginal transfer
+charge in this placement. Prices are not hardware throughput measurements.
+
+1. Garbled RAM with the paper's merge
+------------------------------------
+Source: Liu, Liu, Luo, Heath, Improved Garbled RAM via Garbled Merge,
+https://eprint.iacr.org/2026/761 (final revision 9 August 2026).
+Artifact v2: https://zenodo.org/records/20751401 (18 June 2026).
+Relevant source files: gadgets/link.cpp, switch_stack.cpp, func.cpp,
+circuit_oram.hpp, rec_oram.hpp. Full artifact is in tmp/two_party_paper.
+The existing source-derived core template is garbled_circuit.py. The new
+two_party_merge.py adds actual link-port and output-binding communication.
+
+For a parent-call budget T, child budget n, and total bidirectional port width W:
+  joins=T*(W+1), garbled bytes=16*T*(W+1)+8.
+The port contains both metadata and payload traffic:
+  W=3+2*p_child+2*h+3*m+2*w, m=bit_width(ceil(h/2)).
+Sum this over every child link in every recursive tree and both table probes.
+Preassigned output languages additionally require w+m+1 binding joins per
+generated node invocation. Small selector/reveal overhead remains unpriced.
+The model accounts for all provisioned code, including unused/dummy calls,
+rather than equating offline generated work with the path actually visited.
+
+At T=2N, map packing F8, communication-oriented buckets, flat base 256/512:
+                                               N=2^28          N=2^32
+  generated nonmerge AND/query                    1.288M          1.672M
+  visited nonmerge AND/query                      1.193M          1.562M
+  ordinary half-gate tables/query                41.205 MB         53.498 MB
+  merge link data/query                         18.035 MB         23.977 MB
+  output-binding data/query                      2.230 MB          2.902 MB
+  total table data/query                        61.470 MB         80.376 MB
+  table traffic at 10k QPS                          4.918 Tb/s        6.430 Tb/s
+  one epoch of table data                       33.001 PB        690.427 PB
+  label state per party                         49.390 TB        799.911 TB
+
+All MB/TB/PB here are decimal; storage billing uses GiB. The paper's 20% merge
+share applies to its tested configurations, N=2^10..2^24; it was NOT applied as
+a fixed extrapolation to this different width/layout. The final paper reports
+bytes and hash counts, not an end-to-end request rate or a 10k QPS replica count.
+
+Retention policy: two complete epochs (current and next), one program copy at
+E and a full label-state snapshot at both roles for each epoch. Stored programs
+also include fresh-position input labels and output-decoding bits; the table
+above reports table data alone. This policy is not a storage lower bound for
+all possible GRAM systems. With T=2N:
+  NIC EC2/year                         $10.43M / $13.61M
+  SSD capacity/year                    $59.19M / $1,237.53M
+  extra attached-storage EC2/year        $0.00M / $43.17M
+  network+storage/year                 $69.62M / $1,294.31M
+The larger case needs extra evaluator hosts to attach its volumes. Each gp3
+volume is at most 64 TiB and this c6in configuration budgets 25 data attachments.
+This still excludes disk I/O provisioning, CPU and temporary merge workspace.
+
+Shorter horizons reduce retained programs but increase work/query, because
+fixed node-invocation allowances amortize over fewer queries. Searching power-
+of-two T from 2^18 through 2^(logN+4), at the same F8 layout, gives:
+ independent states     N=2^28 chosen T; annual       N=2^32 chosen T; annual
+          1                    2^24; $23.10M                 2^26; $58.62M
+         16                    2^22; $49.03M                 2^23; $268.50M
+        128                    2^20; $149.26M                2^22; $1,417.57M
+These optimize only network+retention capacity. They are NOT executable
+production plans: initializing, transferring, or renewing live state into a
+new garbling requires a concrete secure protocol. No free epoch renewal is
+claimed. Replicas share aggregate 10k QPS: traffic is not multiplied by their
+count, but independently prepared programs and states are.
+
+CPU is a major unresolved issue in this approach. The downloaded v2 artifact's
+MEASURE branch counts linear bytes, while its actual GARBLE branch walks a
+full-horizon grid. Let S=(n+1)T-n(n+1)/2 and D=S-(T-n). The implemented
+garbler hashes are 2S+W(S+D)+TW per link. At T=2N, this is approximately
+9.97e13 / 1.896e15 merge hashes per KV query across all links. The literal
+prototype is therefore not a realistic large-service runtime just because
+its table bytes can be priced.
+
+Paper section 3.4 discusses small-stack resets; section 5.2 discusses banding.
+The artifact examined does not implement those optimizations. Our 64/256-call
+window scenarios assume a full-capacity window and omit reset/handoff gates.
+At the one-state capacity-optimal horizons, assuming an UNMEASURED 4 billion
+charged hashes/sec/node after headroom, adding ordinary half-gate hash work
+to merge hash counts gives the following illustrative network+CPU+retention
+figures: N28 about $58M/$196M, N32 about $105M/$302M (windows 64/256).
+The evaluator count is a loose allowance, and XOR, memory and reset work are
+additional. These are sensitivities, neither benchmark predictions nor cost
+bounds. A reset implementation and full kernel benchmark are required.
+
+2. Streamed interactive batch OPRAM
+----------------------------------
+Source: Chan and Shi, Circuit OPRAM, https://eprint.iacr.org/2016/1084 .
+The new two_party_batch.py is an explicit Boolean compilation template, not
+the old arithmetic-reduction count with a new price attached. It counts:
+  - secret duplicate resolution at every recursive level;
+  - lower-subtree fetches and simultaneous clearing of intersecting paths;
+  - pool retrieval, eviction-candidate selection, and pool cleanup;
+  - two deterministic disjoint eviction subtrees per request;
+  - coalescing multiple updated offsets in a recursive position-map block;
+  - the full scalar base position map and exact KV equality/stash lookup.
+
+At batch B, top r=ceil(log2(2B)) levels form a pool of Z*(2^r-1)+slack records.
+Z=3 and slack 128 are inherited planning parameters, not annual failure bounds.
+The three pool operations use concrete padded bitonic networks plus segmented
+scan allowances. A sort of K=2^l items uses K*l*(l+1)/4 compare-exchanges and
+l*(l+1)/2 comparator stages. Each comparison is charged <=3k-2 AND, plus one
+AND per conditionally swapped bit. Private movement of full records is paid.
+Parallel eviction/planning, packed-update composition and scan composition
+remain auditable template allowances, not a formally validated complete circuit.
+
+Sweep F in {4,8,16,32} and base-cutoff in {256,1024,4096}; selected F is 8:
+ N       batch    AND/query     table MB/query    network+storage+I/O/year
+ 2^28      256      12.921M           413.5                 $70.44M
+ 2^28     1024      16.913M           541.2                 $91.68M
+ 2^28     4096      20.828M           666.5                $112.54M
+ 2^32      256      16.008M           512.3                 $89.08M
+ 2^32     1024      20.802M           665.7                $114.62M
+ 2^32     4096      26.571M           850.3                $145.50M
+CPU is not included in these rows. At B256, an assumed effective 200 million
+AND/sec/node INCLUDING FreeXOR/runtime and operating headroom raises the
+conditional totals to $83.28M/$104.97M. At 50 million, totals are $329.70M/$410.27M.
+Those are explicit sensitivity inputs, not measured AWS or EMP performance.
+
+This baseline has substantially greater per-query work than sequential ORAM.
+It does not establish a best-possible cost for Circuit OPRAM. Pool processing
+dominates; optimizing it is the primary algorithmic target. For comparison,
+if a complete batch circuit could achieve 2x or 4x the no-merge sequential
+visited-AND count, its network+state-capacity targets would be:
+ work multiplier       N28 gates; annual             N32 gates; annual
+       2x                  2.387M; $12.96M                3.124M; $18.63M
+       4x                  4.774M; $25.80M                6.248M; $35.41M
+These are engineering TARGETS, not achieved batch constructions. They omit
+CPU and persistent I/O. The sequential 1x core is $6.60M/$10.24M with the batch
+state layout, but cannot be relabeled a parallel OPRAM implementation.
+
+Joint positions and what may be revealed
+---------------------------------------
+For each p-bit replacement leaf, G inputs independent random g and E inputs
+independent random e, then newleaf=g XOR e inside GC. The XOR has zero AND cost.
+Each party can privately expand its own PRG outside GC; the PRGs need not run
+inside the circuit. Newleaf is not opened at assignment. Only the old path
+is revealed when fetching a block, and the hidden position is then replaced.
+
+Conservative classic OT input budget: per E bit 16 bytes E->G extension traffic
+and 32 bytes G->E ciphertexts; per G bit 16 bytes G->E selected label. Thus a joint
+position bit costs 64 bytes total, 48 forward and 16 backward. At B256/F8 the two
+sizes need 280/360 fresh bits per query, or 17.92 KB/23.04 KB. This is tiny compared
+with 413 MB/512 MB tables. Base OT setup is amortized. Modern correlated OT can
+lower this allowance; no malicious checking or ten-party preprocessing applies.
+
+Repeated queries and shared map-block accesses must be resolved secretly
+before revealing paths. Every batch exposes a fixed number of paths; duplicate
+nonrepresentatives fetch independently randomized dummy paths. Naively opening
+the same stale path for duplicates would leak equality. Their otherwise-unused
+fresh leaf can serve as a dummy path. Initial hidden placement must also be
+generated jointly: an XOR coin alone does not construct a valid initialized
+ORAM with a hidden mapping, populated buckets, and consistent recursive maps.
+A complete hidden setup/shuffle/placement protocol is separately unpriced.
+
+Streaming, state copies, I/O and latency
+---------------------------------------
+For B256/F8, label state is about 63.10 TB / 1.032 PB PER PARTY. Across both parties,
+gp3 capacity is about $0.113M/$1.846M/year. Streaming removes prepared-program
+retention, not this live ORAM state. Compact XOR shares would reduce live-state
+storage 128x, but converting every touched state bit back into GC inputs needs
+input labels and OT. That alternative is not treated as a free memory saving.
+
+Persistent I/O counts one read+write of each pool, B lower fetch paths and 2B
+eviction paths, plus the full scalar base map, per batch. Overlapping paths are
+overcounted; caches can reduce this. At B256 this is 16.21 MB/23.06 MB per query
+per role. Intermediates, sorting records and saved controls stay in RAM.
+The priced few-volume gp3 scenario assumes 64 KiB aggregated operations,
+65% I/O efficiency and 70% utilization, with all device and instance throughput
+and IOPS caps checked. Added gp3 I/O is about $0.90M/$1.28M/year. Many smaller
+volumes can exploit included 125 MiB/s and 3000 IOPS, eliminating that surcharge
+without more capacity or NIC hosts in these cases. That alternative requires
+thousands of volumes. Neither scenario proves the required I/O latency.
+Tiny stream buffers are recorded separately from SSD. Per-worker buffers,
+live circuit scratch, intra-party distribution and scheduling require a real
+implementation; the model does not certify their RAM or network requirements.
+
+The one-state feasibility condition at 70% utilization is
+  batch service time <=0.7*B/10000.
+  B256: 17.92 ms service, 12.75 ms mean fill;
+  B1024: 71.68 ms service, 51.15 ms mean fill;
+  B4096: 286.72 ms service, 204.75 ms mean fill.
+Batch fill assumes a central queue, so it is not multiplied by replica count.
+Circuit depth is local work in Yao, not one network round per AND layer.
+Only sequential path discovery across recursive maps creates those path
+revelation barriers; input OT/output and scheduling can add boundary latency.
+For a sequential state with service time t, copies>=ceil(10000*t/0.7).
+For a batch state with service time tB, copies>=ceil(10000*tB/(0.7*B)).
+For example 10 ms sequential service needs 143 states; 50 ms per 1024-query batch
+needs only one. These are scheduling examples, not measured protocol times.
+Distributed workers over one state do not each need an independent state copy.
+
+Operational interpretation
+--------------------------
+The interactive approach has a compelling storage and scheduling rationale,
+and joint position randomness does not appear to threaten it. A defensible
+claim that it achieves a particular lower total price requires a faster pool
+implementation and a measured batch critical path. Avoid comparing either
+approach solely on online garbled bytes or omitting generation and state
+maintenance. Stash/cuckoo lifetime bounds, hidden setup, stream-state linking,
+external-client security, quotas/capacity and failure recovery remain work.
+Cross-AZ is not in the selected placement: as sensitivity, each additional
+decimal MB/query would cost about $6.62M/year at 10k QPS including 5% framing and
+both billed endpoints, much larger than its approximately $0.168M/year NIC cost.
+
+Reproduction and evidence
+-------------------------
+  python -m mpc_cost.two_party_cost
+  python -m unittest mpc_cost.test_two_party mpc_cost.test_garbled -v
+Results: mpc_cost/results/two_party_comparison.json.
+Pricing: mpc_cost/data/aws_garbled_prices_2026-10-13.json.
+Live refresh scratch: tmp/two_party_backend/aws_prices_live.json.
+The six new checks verify independent small-grid merge enumeration, two-role
+NIC sizing, label/OT units, replication accounting and recursive state/I/O
+aggregation. Together with 18 existing garbled tests, 24 checks passed. These
+validate arithmetic; they do not validate the unimplemented OPRAM circuit.
+
+Other primary sources:
+  Half gates: https://eprint.iacr.org/2014/756
+  ThreeHalves: https://eprint.iacr.org/2021/749
+  EMP OT: https://github.com/emp-toolkit/emp-ot
+  AWS C6in: https://aws.amazon.com/ec2/instance-types/c6i/
+  AWS full duplex: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-network-bandwidth.html
+  AWS gp3: https://docs.aws.amazon.com/ebs/latest/userguide/general-purpose.html
+  AWS EBS prices: https://aws.amazon.com/ebs/pricing/
+  AWS attachments: https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/volume_limits.html

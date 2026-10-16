@@ -1,0 +1,194 @@
+SEQUENTIAL EVALUATOR CORRECTION
+14 October 2026
+
+The previous comparison did not enforce the evaluator's per-state throughput.
+Presenting 1/16/128 independent-state capacity scenarios as the principal
+10k-QPS comparison was misleading. Their dollar arithmetic does not establish
+that those states can serve the required traffic. The correction is to derive
+the state count from its sequential service time BEFORE optimizing retention.
+
+Primary evidence: PicoGRAM
+--------------------------
+Local paper 2025-1479.pdf, 67 pages; https://eprint.iacr.org/2025/1479 .
+Table 2 (p 6), Section 7 (pp 32-35), Appendix D.2 (p 64), Appendix E.3 (p 66).
+Table 2 and Appendix D.2 were visually inspected as well as text-extracted.
+
+PicoGRAM's variant optimized for online evaluation ALREADY avoids SIMD/DDH
+and uses ordinary symmetric tri-state machinery. Its online times are:
+ RAM address space     word width      online time       evidence
+       2^16               64 bits         9.73 ms          reported timing
+       2^24               64 bits        25 ms             paper extrapolation
+       2^30               64 bits        41 ms             paper extrapolation
+The paper could not directly run the larger cases because the garbled circuits
+had to remain in RAM. The platform is 8 cores, 2.2 GHz Xeon Platinum 8352S, but
+the explicitly parallelized work is expensive ECGroup/Ungroup computation.
+Appendix D.2 describes the evaluator as mostly sequential and points to parallel
+ORAM as the algorithmic route to parallel evaluation. There is no established
+8x, 64x or 128x acceleration of a symmetric evaluator on one shared mutable state.
+
+Table 2 optimizes communication, end-to-end time and online time SEPARATELY;
+their best numbers cannot be combined into one executable configuration.
+Figure 12(a) includes simulated network scenarios and excludes input OT.
+The 41 ms figure is one 64-bit RAM access, not a 512-bit key/value lookup with two
+probes. It is also NOT a measurement of Improved Garbled RAM via Garbled Merge.
+Removing DDH from that construction does not justify assuming it beats 41 ms,
+since the PicoGRAM online comparison already removes DDH and merge adds PRFs.
+
+What is sequential
+------------------
+The recursive position map must return the old leaf before the enclosing
+ORAM can fetch its path. In the source, metadata scans descend and return,
+the read returns data used by reinsertion, and later evictions mutate the
+same buckets. Successive requests share root, map, labels and link counters.
+The implementation does not pipeline these requests. Word/bucket-level SIMD
+may help, but must be demonstrated; physical sharding does not create it.
+
+Source locations in the downloaded merge artifact:
+  picogram_imp/gadgets/rec_oram.hpp:44-69
+  picogram_imp/gadgets/circuit_oram.hpp:914-952
+  picogram_imp/gadgets/switch_stack.cpp:357-417
+The two cuckoo tables can be evaluated on two independent lanes, then combined
+by the final equality/output circuit. This saves up to about 2x state service
+time while doubling simultaneous evaluator lanes. It does not parallelize
+successive accesses to either table. New inter-request overlap would require
+an explicit schedule and state/conflict invariants.
+
+Correct sizing equation
+-----------------------
+Let L(T,v) be the time before a state can service its next query, at prepared
+horizon T and implementation variant v. With rate R=10,000 and utilization u=.7:
+  required states S(T,v)=ceil(R*L(T,v)/u).
+  Then optimize cost(T,v,S(T,v)).
+Use wall service time for this constraint. For CPU provisioning separately,
+use active core-seconds: time blocked on I/O is not active CPU. 64 physical
+cores/node may run different state evaluators concurrently, but that does
+not eliminate their independently evolving state and garbling storage.
+
+Copies available      maximum permitted complete-query service time
+         1                         0.070 ms
+        16                         1.120 ms
+       128                         8.960 ms
+       300                        21.000 ms
+       500                        35.000 ms
+
+The paper's 41 ms SINGLE 64-bit access already needs 586 states at 70% utilization;
+two sequential accesses would need 1,172 states before payload/merge differences.
+A rough PicoGRAM analogy for our table sizes 2^29/2^33 and 513-bit payloads
+suggests thousand-scale replication. It must not be presented as a measured
+garbled-merge latency. The user is correct that a few hundred was not a
+defensible working assumption for the complete workload.
+
+Explicit service-time sensitivities
+----------------------------------
+Holding the assumed service time fixed while reoptimizing the old two-epoch
+retention policy gives the following CONDITIONAL network+storage budgets.
+Neither the time nor short-epoch renewal is asserted to be implemented.
+The horizon grid now extends to 2^8, avoiding a false optimum at the old 2^18
+floor when replica counts rise. All selected points are inside that grid.
+
+ time/KV     required states      annual N=2^28       annual N=2^32
+  50 ms             715               $0.548B              $6.979B
+ 100 ms           1,429               $0.991B             $13.563B
+ 500 ms           7,143               $4.307B             $65.839B
+   1 s           14,286               $8.378B            $130.621B
+   5 s           71,429              $40.576B            $647.834B
+
+These figures use two complete current/next epochs, literal live labels,
+independent one-time programs per state, same-AZ networking, and the prior
+cloud prices/headroom. They are NOT universal GRAM cost lower bounds. CPU,
+temporary workspace, secure setup/epoch renewal and complete SSD I/O costs
+remain additional. Compact state representations, program regeneration, a
+different retention scheme, or a different construction could change them.
+Only storage multiplies by state count; 10k aggregate queries are not multiplied
+by the number of copies. One cannot simply reuse an ordinary one-time garbling
+across different query sequences to eliminate the independent-program cost.
+
+Scalar non-merge core cross-check
+--------------------------------
+The old artifact's 2.2 GHz kernel constants are 53.2583 ns/AND and 6.322 ns/XOR.
+They are not current EC2 measurements and do not prove a circuit-span bound.
+Applying them to our existing visited-node gate template gives:
+ records      one worker core     two table lanes core    states for two lanes
+ 2^28             82.055 ms              41.180 ms                   589
+ 2^32            107.336 ms              53.820 ms                   769
+These omit the merge, output-language bindings, label/program I/O, runtime
+overheads, inputs, and epoch transitions. They are useful incomplete proxies,
+not service estimates or hardware lower bounds. Finer SIMD could reduce them.
+The two-lane time is one probe plus the final candidate check, not half of all
+the work: that final check runs after both probes. Core CPU work still adds.
+
+Active evaluator merge work, separately from generated work
+----------------------------------------------------------
+The former aggregate CPU sensitivity used a loose all-provisioned workload
+allowance and an assumed 4 billion hashes/sec/node. That does not determine
+one-state latency. New visited_evaluator_merge() follows actual visited paths.
+
+For a hypothetical full-capacity reset window K, b children, port width W,
+phase t and r previous calls to the currently selected child, the source-loop
+hash count is:
+  H_E(t,r)=b(t+1)+(b-1)W+(K-1-r)(W+1)+2W(t+1).
+All child links update indicators; only the selected child performs the
+expensive row lookahead/prefill and translation. Under independent uniform
+child selection E[r]=t/b; uniform window phase gives the model's expectation.
+The identity was checked by exhaustive small-trace enumeration for b=2,K<=8
+and b=4,K<=5 at three widths. This checks the conditional arithmetic, not the
+assumed distribution in a real finite service run.
+
+At T=2N, both probes together, the expected model counts are:
+ reset window       N=2^28 hashes/KV       N=2^32 hashes/KV
+      64                 30.40M                 41.28M
+     256                115.26M                157.82M
+At the paper's roughly 40 cycles/hash and 2.2 GHz, the 64-window count represents
+about 0.553/0.751 seconds of scalar merge work alone across both probes. Two
+independent table lanes roughly halve that contribution to service time.
+This is a scalar-work sensitivity, not proof every hash lies on one dependency
+chain; intra-word SIMD could reduce it. It illustrates why removing DDH does
+not make the extra symmetric work negligible.
+
+The code caps the window by each node's parent budget at shorter horizons.
+Its stationary phase assumption does not recover the actual finite node-visit
+distribution or weight final partial windows. It also changes child capacity
+to a full window and requires an unimplemented reset/handoff mechanism.
+Deterministic evictions, balanced position permutations and short-lived leaf
+nodes can change the distribution. These caveats are stored in the JSON.
+
+Combining this scalar-work sensitivity with the core proxy and deriving S(T)
+BEFORE choosing T produces illustrative optimized points:
+ records   window   table lanes    modeled service    copies     capacity/year
+ 2^28        64         1               .493 s           7,041        $4.250B
+ 2^28        64         2               .247 s           3,523        $2.265B
+ 2^28       256         1              1.348 s          19,257       $11.491B
+ 2^28       256         2               .717 s          10,241        $6.157B
+ 2^32        64         1               .617 s           8,818       $81.739B
+ 2^32        64         2               .321 s           4,585       $42.640B
+ 2^32       256         1              1.670 s          23,853      $224.444B
+ 2^32       256         2               .887 s          12,666      $118.781B
+These are NOT calibrated costs of a complete implementation. Reset gates,
+bindings, I/O, memory/XOR overhead in merge and hardware differences remain
+unaccounted. They support testing thousands-to-tens-of-thousands state counts,
+rather than treating hundreds as enough, while awaiting actual benchmarks.
+The two-lane merge rows use an equal-lane mean-work approximation. Actual
+paired completion is E[max(L1,L2)], which can exceed either lane's mean; the
+table does not model that extra delay or its queueing consequences.
+
+Implication for interactive batch OPRAM
+--------------------------------------
+For a batch state, required copies=ceil(R*L_batch/(u*B)). This is the important
+algorithmic change: independent requests can contribute to useful parallel
+work within one state, instead of just assigning more hardware to a serial
+access stream. At B=1024, a measured 50 ms batch service would support the target
+with one state; at 500 ms it would need 7 states. Neither time has been measured.
+Higher batch gate counts can therefore coexist with much lower state/program
+replication cost. The prior one-state batch dollar rows remain CONDITIONAL
+on the batch service-time limit; aggregate AND/s alone does not establish it.
+
+Reproduction
+------------
+  python -m mpc_cost.two_party_serial
+  python -m mpc_cost.two_party_cost
+  python -m unittest mpc_cost.test_two_party mpc_cost.test_garbled -v
+New result: results/two_party_serial_comparison.json.
+The old result now explicitly labels unconstrained GRAM capacity and batch
+service-time feasibility. 26 checks pass, including per-state sizing boundaries
+and two-table work/span separation. These checks are not a cryptographic
+implementation or end-to-end performance validation.

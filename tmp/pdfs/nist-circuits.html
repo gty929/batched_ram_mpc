@@ -1,0 +1,2537 @@
+<!DOCTYPE html>
+<html lang="en-us" xml:lang="en-us">
+<head>
+    <meta charset="utf-8" />
+    <title>Circuit Complexity | CSRC</title>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    <meta http-equiv="content-style-type" content="text/css" />
+    <meta http-equiv="content-script-type" content="text/javascript" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="msapplication-config" content="/CSRC/Media/images/favicons/browserconfig.xml" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="google-site-verification" content="xbrnrVYDgLD-Bd64xHLCt4XsPXzUhQ-4lGMj4TdUUTA" />
+    
+
+        <meta name="description" content="The circuit files with the straight-line programs (SLPs) are stored in our GitHub page, here:  https://github.com/usnistgov/Circuits/tree/master/data/slp     AES implementations      The AES Circuits repository&#160;on GitHub is more comprehensive and updated..." />
+
+    <!-- dcterms meta information -->
+    <meta name="dcterms.title" content="List of circuits - Circuit Complexity | CSRC | CSRC" />
+    <meta name="dcterms.description" content="The circuit files with the straight-line programs (SLPs) are stored in our GitHub page, here:  https://github.com/usnistgov/Circuits/tree/master/data/slp     AES implementations      The AES Circuits repository&#160;on GitHub is more comprehensive and updated..." />
+    <meta name="dcterms.creator" content="Computer Security Division, Information Technology Laboratory, National Institute of Standards and Technology, U.S. Department of Commerce" />
+    <meta name="dcterms.date.created" scheme="ISO8601" content="2016-12-29" />
+    <meta name="dcterms.date.reviewed" scheme="ISO8601" content="2026-10-15" />
+    <meta name="dcterms.language" scheme="DCTERMS.RFC1766" content="EN-US" />
+
+    <!-- Facebook OpenGraph Tags -->
+    <meta name="og:site_name" content="CSRC | NIST" />
+    <meta name="og:type" content="article" />
+    <meta name="og:url" content="https://csrc.nist.gov/projects/circuit-complexity/list-of-circuits" />
+    <meta name="og:title" content="List of circuits - Circuit Complexity | CSRC | CSRC" />
+    <meta name="og:description" content="The circuit files with the straight-line programs (SLPs) are stored in our GitHub page, here:  https://github.com/usnistgov/Circuits/tree/master/data/slp     AES implementations      The AES Circuits repository&#160;on GitHub is more comprehensive and updated more frequently.  AES S-Box circuits added in 2026  The following are selected examples of AES circuits over the basis {AND, XOR, XNOR}.&#160;Metrics of interest:&#160;A (#AND), AD (AND depth), G (#Gates),&#160;GD (Gate depth).&#160;In one table, &#39;Tuple Metric&#39; (1st column) indicates a sequence of metrics for which the referenced circuit is&#160;a good representative (within the scope of the table&#39;s range).&#160;Note that any Sbox/Ax/ADy can be converted into invsbox/Ax/ADy (and vice-versa) via affine transformation, whose added depth and #gates can often be improved thereafter.  The circuits posted since 2026 were obtained via computational search assisted by reasoning models.&#160; Most referenced circuits can be superseded by further compute focus.&#160; However, instead of &#39;easy&#39; small..." />
+
+    <meta name="article:tag" content="cryptography; circuits; complexity" />
+    <meta name="article:published_time" content="2016-12-29" />
+        <meta name="article:modified_time" content="2026-10-15" />
+
+
+    <link rel="apple-touch-icon" sizes="180x180" href="/images/icons/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" href="/images/icons/favicon-32x32.png" sizes="32x32" />
+    <link rel="icon" type="image/png" href="/images/icons/favicon-16x16.png" sizes="16x16" />
+    <link rel="manifest" href="/images/icons/manifest.json" />
+    <link rel="mask-icon" href="/images/icons/safari-pinned-tab.svg" color="#000000" />
+    <link href="/CSRC/Media/images/favicons/favicon.ico" type="image/x-icon" rel="shortcut icon" />
+    <link href="/CSRC/Media/images/favicons/favicon.ico" type="image/x-icon" rel="icon" />
+    <link href="/dist/app.css" rel="stylesheet" />
+    
+    <!-- Highlight.js -->
+    <link href="/dist/highlight-js/github.css" rel="stylesheet" />
+    
+    <!-- USWDS Top -->
+    <link href="/dist/uswds/css/uswds.css" type="text/css" rel="stylesheet" />
+    <script type="text/javascript" src="/dist/uswds/js/uswds-init.min.js"></script>
+
+    <!-- reCAPTCHA v3 -->
+    <style>
+    .grecaptcha-badge {
+        visibility: hidden;
+    }
+    </style>
+
+    
+
+
+    <script async type="text/javascript" id="_fed_an_ua_tag" src="https://dap.digitalgov.gov/Universal-Federated-Analytics-Min.js?agency=nist&subagency=csrc&pua=UA-66610693-15&yt=true&exts=xsd,xml,wav,mpg,mpeg,avi,rtf,webm,ogg,ogv,oga,map,otf,eot,svg,ttf,woff"></script>
+    <style id="antiClickjackCss">
+        body > * {
+            display: none !important;
+        }
+        #antiClickjack {
+            display: block !important;
+        }
+    </style>
+    <noscript>
+        <style id="antiClickjackNoScript">
+            body > * { display: block !important; }
+            #antiClickjack {
+                display: none !important;
+            }
+        </style>
+    </noscript>
+    <script type="text/javascript" id="antiClickjackScript">
+        if (self === top) {
+            // no clickjacking
+            var antiClickjack = document.getElementById("antiClickjackCss"); antiClickjack.parentNode.removeChild(antiClickjack);
+        } else {
+            setTimeout(tryForward(), 5000);
+        }
+        function tryForward() {
+            top.location = self.location;
+        }
+    </script>
+    <!-- Google tag (gtag.js) --> 
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-TSQ0PLGJZP"></script> 
+    <script>   window.dataLayer = window.dataLayer || [];   function gtag(){dataLayer.push(arguments);}   gtag('js', new Date());   gtag('config', 'G-TSQ0PLGJZP'); </script>
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','GTM-MZQC4NCJ');</script>
+    <!-- End Google Tag Manager -->
+</head>
+<body>
+    <!-- Google Tag Manager (noscript) -->
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-MZQC4NCJ" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    <!-- End Google Tag Manager (noscript) -->
+    <div id="antiClickjack" style="display: none;">
+        <strong style="font-size: 1.6rem;">You are viewing this page in an unauthorized frame window.</strong>
+        <p>This is a potential security issue, you are being redirected to <a href="https://csrc.nist.gov">https://csrc.nist.gov</a>.</p>
+    </div>
+
+    <section
+    class="usa-banner"
+    aria-label="Official website of the United States government">
+    <div class="usa-accordion">
+        <header class="usa-banner__header">
+            <noscript>
+                <p style="font-size: 0.85rem; font-weight: bold;">You have JavaScript disabled. This site requires JavaScript to be enabled for complete site functionality.</p>
+            </noscript>
+            <div class="usa-banner__inner">
+                <div class="grid-col-auto">
+                    <img
+                        aria-hidden="true"
+                        class="usa-banner__header-flag"
+                        src="/dist/uswds/img/us_flag_small.png"
+                        alt=""/>
+                </div>
+                <div class="grid-col-fill tablet:grid-col-auto" aria-hidden="true">
+                    <p class="usa-banner__header-text">
+                        An official website of the United States government
+                    </p>
+                    <p class="usa-banner__header-action">Here’s how you know</p>
+                </div>
+                <button
+                    type="button"
+                    class="usa-accordion__button usa-banner__button"
+                    aria-expanded="false"
+                    aria-controls="gov-banner-default">
+                    <span class="usa-banner__button-text">Here’s how you know</span>
+                </button>
+            </div>
+        </header>
+        <div
+            class="usa-banner__content usa-accordion__content"
+            id="gov-banner-default">
+            <div class="grid-row grid-gap-lg">
+                <div class="usa-banner__guidance tablet:grid-col-6">
+                    <img
+                        class="usa-banner__icon usa-media-block__img"
+                        src="/dist/uswds/img/icon-dot-gov.svg"
+                        role="img"
+                        alt=""
+                        aria-hidden="true"/>
+                    <div class="usa-media-block__body">
+                        <p>
+                            <strong>Official websites use .gov</strong><br/>A
+                            <strong>.gov</strong> website belongs to an official government
+                            organization in the United States.
+                        </p>
+                    </div>
+                </div>
+                <div class="usa-banner__guidance tablet:grid-col-6">
+                    <img
+                        class="usa-banner__icon usa-media-block__img"
+                        src="/dist/uswds/img/icon-https.svg"
+                        role="img"
+                        alt=""
+                        aria-hidden="true"/>
+                    <div class="usa-media-block__body">
+                        <p>
+                            <strong>Secure .gov websites use HTTPS</strong><br/>A
+                            <strong>lock</strong> (
+                            <span class="icon-lock">
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="52"
+                                    height="64"
+                                    viewBox="0 0 52 64"
+                                    class="usa-banner__lock-image"
+                                    role="img"
+                                    aria-labelledby="banner-lock-description-default"
+                                    focusable="false">
+                                    <title id="banner-lock-title-default">Lock</title>
+                                    <desc id="banner-lock-description-default">Locked padlock icon</desc>
+                                    <path
+                                        fill="#000000"
+                                        fill-rule="evenodd"
+                                        d="M26 0c10.493 0 19 8.507 19 19v9h3a4 4 0 0 1 4 4v28a4 4 0 0 1-4 4H4a4 4 0 0 1-4-4V32a4 4 0 0 1 4-4h3v-9C7 8.507 15.507 0 26 0zm0 8c-5.979 0-10.843 4.77-10.996 10.712L15 19v9h22v-9c0-6.075-4.925-11-11-11z"/>
+                                </svg>
+                            </span
+                            >) or <strong>https://</strong> means you’ve safely connected to
+                            the .gov website. Share sensitive information only on official,
+                            secure websites.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+    <nav id="navbar" class="navbar">
+    <div id="nist-menu-container" class="container">
+        <div class="row">
+            <!-- Brand -->
+            <div class="col-xs-6 col-md-4 navbar-header">
+                <a class="navbar-brand" href="https://www.nist.gov" target='_blank' rel="noopener noreferrer" id="navbar-brand-image">
+                    <img src="/CSRC/media/images/svg/nist-logo.svg" alt="National Institute of Standards and Technology" width="110" height="30">
+                </a>
+            </div>
+            <div class="col-xs-6 col-md-8 navbar-nist-logo">
+                <div class="form-inline hidden-sm hidden-xs">
+                    <form name="site-search" id="site-search-form" action="/search" method="GET">
+                        <label for="search-csrc-query" class="element-invisible">Search</label>
+                        <input autocomplete="off" class="form-control" id="search-csrc-query" name="keywords" type="text" size="15" maxlength="128" placeholder="Search CSRC" />
+                        <input type="hidden" name="ipp" value="25" />
+                        <input type="hidden" name="sortBy" value="relevance" />
+                        <input type="hidden" name="showOnly" value="publications,projects,news,events,presentations,glossary,topics" />
+                        <input type="hidden" name="topicsMatch" value="ANY" />
+                        <input type="hidden" name="status" value="Final,Draft" />
+                        <button type="submit" id="search-csrc-submit-btn" class="form-submit">
+                            <span class="element-invisible">Search</span>
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </form>
+                </div>
+                <span id="nvd-menu-button" class="pull-right">
+                    <a href="#" id="nvd-menu-button-link">
+                        <span class="fa fa-bars"></span>
+                        <span id="nvd-menu-full-text">CSRC MENU</span>
+                    </a>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-inline hidden-md hidden-lg">
+        <form name="site-search-mobile" id="site-search-form-mobile" action="/search" method="GET">
+            <label for="search-csrc-query-mobile" class="element-invisible">Search</label>
+            <input autocomplete="off" class="form-control" id="search-csrc-query-mobile" name="keywords" type="text" size="15" maxlength="128" placeholder="Search CSRC" />
+            <button type="submit" id="search-csrc-submit-btn-mobile" class="form-submit">
+                <span class="element-invisible">Search</span>
+                <i class="fa fa-search"></i>
+            </button>
+        </form>
+    </div>
+    <div class="main-menu-row container">
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <div id="main-menu-drop" class="col-lg-12" style="display: none;">
+            <ul>
+                <li><a href="/projects">Projects</a></li>
+                <li>
+                    <a href="/publications">
+                        Publications
+                        <span class="expander fa fa-plus" id="main-menu-pubs-expander" data-expander-name="publications" data-expanded="false">
+                            <span class="element-invisible">Expand or Collapse</span>
+                        </span>
+                    </a>
+                    <div style="display: none;" class="sub-menu" data-expander-trigger="publications" id="main-menu-pubs-expanded">
+                        <div class="row">
+                            <div class="col-lg-4">
+                                <p><a href="/publications/drafts-open-for-comment">Drafts for Public Comment</a></p>
+                                <p><a href="/publications/draft-pubs">All Public Drafts</a></p>
+                                <p><a href="/publications/final-pubs">Final Pubs</a></p>
+                                <p><a href="/publications/fips">FIPS <small>(standards)</small></a></p>
+                            </div>
+                            <div class="col-lg-4">
+                                <p><a href="/publications/sp">Special Publications (SP<small>s</small>)</a></p>
+                                <p><a href="/publications/ir">IR <small>(interagency/internal reports)</small></a></p>
+                                <p><a href="/publications/cswp">CSWP <small>(cybersecurity white papers)</small></a></p>
+                                <p><a href="/publications/itl-bulletin">ITL Bulletins</a></p>
+                            </div>
+                            <div class="col-lg-4">
+                                <p><a href="/publications/project-description">Project Descriptions</a></p>
+                                <p><a href="/publications/journal-article">Journal Articles</a></p>
+                                <p><a href="/publications/conference-paper">Conference Papers</a></p>
+                                <p><a href="/publications/book">Books</a></p>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+                <li>
+                    <a href="/topics">
+                        Topics
+                        <span class="expander fa fa-plus" id="main-menu-topics-expander" data-expander-name="topics" data-expanded="false">
+                            <span class="element-invisible">Expand or Collapse</span>
+                        </span>
+                    </a>
+                    <div style="display: none;" class="sub-menu" data-expander-trigger="topics" id="main-menu-topics-expanded">
+                        <div class="row">
+                            <div class="col-lg-4">
+                                <p><a href="/Topics/Security-and-Privacy">Security & Privacy</a></p>
+                                <p><a href="/Topics/Applications">Applications</a></p>
+                            </div>
+                            <div class="col-lg-4">
+                                <p><a href="/Topics/Technologies">Technologies</a></p>
+                                <p><a href="/Topics/Sectors">Sectors</a></p>
+                            </div>
+                            <div class="col-lg-4">
+                                <p><a href="/Topics/Laws-and-Regulations">Laws & Regulations</a></p>
+                                <p><a href="/Topics/Activities-and-Products">Activities & Products</a></p>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+                <li><a href="/news">News & Updates</a></li>
+                <li><a href="/events">Events</a></li>
+                <li><a href="/glossary">Glossary</a></li>
+                <li>
+                    <a href="/about">
+                        About CSRC
+                        <span class="expander fa fa-plus" id="main-menu-about-expander" data-expander-name="about" data-expanded="false">
+                            <span class="element-invisible">Expand or Collapse</span>
+                        </span>
+                    </a>
+                    <div style="display: none;" class="sub-menu" data-expander-trigger="about" id="main-menu-about-expanded">
+                        <div class="row">
+                            <div class="col-lg-6">
+                                <p>
+                                    <strong><a href="/Groups/Computer-Security-Division">Computer Security Division</a></strong><br />
+                                    <ul>
+                                        <li><a href="/Groups/Computer-Security-Division/Cryptographic-Technology">Cryptographic Technology</a></li>
+                                        <li><a href="/Groups/Computer-Security-Division/software-security-group">Software Security Group</a></li>
+                                        <li><a href="/Groups/Computer-Security-Division/hardware-security-group">Hardware Security Group</a></li>
+                                        <li><a href="/Groups/Computer-Security-Division/Security-Engineering-and-Risk-Management">Security Engineering and Risk Management</a></li>
+                                    </ul>
+                                </p>
+                            </div>
+                            <div class="col-lg-6">
+                                <p>
+                                    <strong><a href="/Groups/Applied-Cybersecurity-Division">Applied Cybersecurity Division</a></strong><br />
+                                    <ul>
+                                        <li><a href="/Groups/Applied-Cybersecurity-Division/Cybersecurity-and-Privacy-Applications">Cybersecurity and Privacy Applications</a></li>
+                                        <li><a href="/Groups/Applied-Cybersecurity-Division/National-Cybersecurity-Center-of-Excellence">National Cybersecurity Center of Excellence (NCCoE)</a></li>
+                                        <li><a href="https://www.nist.gov/nice/">National Initiative for Cybersecurity Education (NICE)</a></li>
+                                    </ul>
+                                </p>
+                                <p>
+                                    <a href="/contact">
+                                        Contact Us
+                                    </a>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </li>
+            </ul>
+        </div><!-- /#mobile-nav-container -->
+    </div>
+
+</nav>
+
+    <section id="itl-header" class="has-menu">
+        <div class="itl-background"></div>
+            <div class="container">
+                <div class="row">
+                    <div class="col-sm-12 col-md-8">
+                        <div class="hidden-xs hidden-sm" id="itl-header-lg">
+                            <a href="https://www.nist.gov/itl" target='_blank' rel="noopener noreferrer" id="itl-header-link">Information Technology Laboratory</a>
+                        </div>
+                        <div class="hidden-xs hidden-sm" id="csrc-header-lg">
+                            <a href="/" id="csrc-header-link-lg">Computer Security Resource Center</a>
+                        </div>
+                    </div>
+                    <div class="col-sm-12 col-md-4">
+                        <div class="hidden-xs hidden-sm hidden-md">
+                            <a id="logo-csrc-lg" href="/"><img id="img-logo-csrc-lg" src="/CSRC/Media/images/nist-logo-csrc-white.svg" alt="CSRC Logo" class="csrc-header-logo"></a>
+                        </div>
+                        <div class="hidden-lg">
+                            <a id="logo-csrc-sm" href="/"><img id="img-logo-csrc-sm" src="/CSRC/Media/images/nist-logo-csrc-white.svg" alt="CSRC Logo" class="csrc-header-logo"></a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    </section>
+
+    <div id="body-section" class="container">
+        
+        
+
+
+
+
+<div class="breadcrumb">
+        <a href="/projects" class="breadcrumb-link">Projects</a>
+        <a href="/projects/circuit-complexity" class="breadcrumb-link">Circuit Complexity</a>
+</div>
+
+
+    <h1 id="projectName">Circuit Complexity</h1>
+
+
+<div class="page-social-buttons" id=&quot;news-social-buttons&quot;>
+    <a href="https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fcsrc.nist.gov%2Fprojects%2Fcircuit-complexity%2Flist-of-circuits" class="social-facebook"><i class="fa fa-facebook fa-fw" aria-hidden="true"></i><span class="sr-only">Share to Facebook</span></a>
+    <a href="https://x.com/share?url=https%3A%2F%2Fcsrc.nist.gov%2Fprojects%2Fcircuit-complexity%2Flist-of-circuits" class="social-twitter"><i class="fa-brands fa-x-twitter"></i><span class="sr-only">Share to X</span></a>
+    <a href="https://www.linkedin.com/shareArticle?mini=true&amp;url=https%3A%2F%2Fcsrc.nist.gov%2Fprojects%2Fcircuit-complexity%2Flist-of-circuits&amp;source=csrc.nist.gov" class="social-linked-in"><i class="fa fa-linkedin fa-fw" aria-hidden="true"></i><span class="sr-only">Share to LinkedIn</span></a>
+    <a href="/cdn-cgi/l/email-protection#69561a1c0b030c0a1d540a1a1b0a4707001a1d470e061f4f080419520b060d10542a010c0a0249061c1d491d01001a491a001d0c49011d1d191a5346460a1a1b0a4707001a1d470e061f46191b06030c0a1d1a460a001b0a1c001d440a060419050c11001d104605001a1d44060f440a001b0a1c001d1a" class="social-email"><i class="fa fa-envelope fa-fw" aria-hidden="true"></i><span class="sr-only">Share ia Email</span></a>
+</div>
+
+<div class="row visible-sm visible-xs visible-md">
+	<div class="col-sm-12">
+        <div class="bs-callout bs-callout-subnav" id="projectLinksContainer-sm">
+            <h4><i class="fa fa-link"></i> Project Links</h4>
+            <div class="project-icons-container">
+                <span>
+                    <a href="/projects/circuit-complexity" id="NavOverviewLink-sm">
+                        <i class="fa fa-info-circle"></i> Overview
+                    </a>
+                </span>
+                                                                <span>
+                    <a href="/Projects/circuit-complexity/publications" id="NavPubsLink-sm" data-count="23">
+                        <i class="fa fa-file-text"></i> Publications
+                    </a>
+                </span>
+                                <span>
+                    <a href="/Projects/circuit-complexity/presentations" id="NavPresLink-sm" data-count="12">
+                        <i class="fa fa-desktop"></i> Presentations
+                    </a>
+                </span>
+            </div>
+        </div>
+	</div>
+</div>
+<div class="row">
+
+
+        <div class="col-lg-8 col-sm-12">
+<h3 id="pageName">List of circuits</h3>
+
+
+<p id="content">
+    <p>&nbsp;The circuit files with the straight-line programs (SLPs) are stored in our GitHub page, here:</p>
+
+<p><a href="https://github.com/usnistgov/Circuits/tree/master/data/slp">https://github.com/usnistgov/Circuits/tree/master/data/slp</a></p>
+
+<div aria-multiselectable="true" class="panel-group" id="collapse1792081586490" role="tablist">
+<div class="panel panel-default">
+<div class="panel-heading" id="heading1792081586490_0" role="tab">
+<div class="panel-title"><a aria-controls="collapse1792081586490_0" aria-expanded="false" class="collapsed" data-parent="#collapse1792081586490" data-target="#collapse1792081586490_0" data-toggle="collapse" href="javascript:void(0)">AES implementations </a></div>
+</div>
+
+<div aria-labelledby="heading1792081586490_0" class="collapse in panel-collapse" id="collapse1792081586490_0" role="tabpanel">
+<div class="panel-body">
+<div class="alert alert-success"><strong>The <a href="https://github.com/usnistgov/Circuits/tree/master/data/slp/aes">AES Circuits repository</a>&nbsp;on GitHub is more comprehensive and updated more frequently.</strong></div>
+
+<h2><strong>AES S-Box circuits added in 2026</strong></h2>
+
+<p>The following are selected examples of AES circuits over the basis {AND, XOR, XNOR}.&nbsp;Metrics of interest:&nbsp;<strong>A</strong> (#AND), <strong>AD</strong> (AND depth), <strong>G</strong> (#Gates),&nbsp;<strong>GD</strong> (Gate depth).&nbsp;In one table, "Tuple Metric" (1st column) indicates a sequence of metrics for which the referenced circuit is&nbsp;a good representative (within the scope of the table's range).&nbsp;Note that any Sbox/Ax/ADy can be converted into invsbox/Ax/ADy (and vice-versa) via affine transformation, whose added depth and #gates can often be improved thereafter.</p>
+
+<p>The circuits posted since 2026 were obtained via computational search assisted by reasoning models.&nbsp; Most referenced circuits can be superseded by further compute focus.&nbsp; However, instead of "easy" small increments, we'd prefer <strong>external contributions</strong> on the following (over AND, XOR, XNOR):&nbsp;</p>
+
+<ul>
+	<li><strong>S-Box and Inverse S-Box:</strong> A&lt;=27;&nbsp; G&lt;=100;&nbsp; G&lt;=120/GD&lt;=12.</li>
+	<li><strong>MixColumns:</strong> G&lt;=86;&nbsp; G&lt;=93/GD3.</li>
+	<li><strong>Inverse MixColumns:</strong> G&lt;=105/GD&lt;=5.</li>
+</ul>
+
+<h4><strong>#AND&nbsp;≤&nbsp;34</strong></h4>
+
+<div class="table-responsive">
+<table align="left" border="1" class="table table-condensed table-striped" style="width:500px">
+	<thead>
+		<tr>
+			<td style="text-align:center"><strong>Tuple<br>
+			Metric</strong></td>
+			<td style="text-align:center"><strong>Link</strong></td>
+			<td style="text-align:center"><strong>#AND<br>
+			(A)</strong></td>
+			<td style="text-align:center"><strong>AND depth<br>
+			(AD)</strong></td>
+			<td style="text-align:center"><strong>#Gates<br>
+			(G)</strong></td>
+			<td style="text-align:center"><strong>Gate depth<br>
+			(GD)</strong></td>
+			<td style="text-align:center"><strong>#XOR +<br>
+			#XNOR</strong></td>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td style="text-align:center">A/AD/G</td>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/aes-sbox/aes-sbox-a28-ad4-g131-gd32-xx103-47.circ.txt">circ</a></td>
+			<td style="text-align:center"><strong>28</strong></td>
+			<td style="text-align:center"><strong>4</strong></td>
+			<td style="text-align:center">131</td>
+			<td style="text-align:center">32</td>
+			<td style="text-align:center">103</td>
+		</tr>
+		<tr>
+			<td style="text-align:center">A/AD/GD</td>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/aes-sbox/aes-sbox-a28-ad4-g177-gd14-xx149-24.circ.txt">circ</a></td>
+			<td style="text-align:center"><strong>28</strong></td>
+			<td style="text-align:center"><strong>4</strong></td>
+			<td style="text-align:center">177</td>
+			<td style="text-align:center"><strong>14</strong></td>
+			<td style="text-align:center">149</td>
+		</tr>
+		<tr>
+			<td style="text-align:center">A/G</td>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/aes-sbox/aes-sbox-a28-ad5-g124-gd27-xx96-26.circ.txt">circ</a></td>
+			<td style="text-align:center"><strong>28</strong></td>
+			<td style="text-align:center">5</td>
+			<td style="text-align:center">124</td>
+			<td style="text-align:center">27</td>
+			<td style="text-align:center">96</td>
+		</tr>
+		<tr>
+			<td style="text-align:center">G/A</td>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/aes-sbox/aes-sbox-a32-ad5-g110-gd22-xx78-3.circ.txt">circ</a></td>
+			<td style="text-align:center">32</td>
+			<td style="text-align:center">5</td>
+			<td style="text-align:center"><strong>110</strong></td>
+			<td style="text-align:center">22</td>
+			<td style="text-align:center">78</td>
+		</tr>
+		<tr>
+			<td style="text-align:center">G/AD</td>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/aes-sbox/aes-sbox-a33-ad4-g110-gd20-xx77-4.circ.txt">circ</a></td>
+			<td style="text-align:center">33</td>
+			<td style="text-align:center"><strong>4</strong></td>
+			<td style="text-align:center"><strong>110</strong></td>
+			<td style="text-align:center">20</td>
+			<td style="text-align:center">77</td>
+		</tr>
+	</tbody>
+</table>
+</div>
+
+<p>The circuits with #AND=28 are <a href="http://github.com/usnistgov/Circuits/blob/master/data/slp/aes/aes-sbox/aes-sbox-a28-ad4-g177-gd14-xx149-24.circ.txt">contributions</a> or <a href="http://github.com/usnistgov/Circuits/blob/master/data/slp/aes/aes-sbox/aes-sbox-a28-ad4-g131-gd32-xx103-47.circ.txt">derivations</a> from contributions by Milad Nasr (@ Antropic, 2026-Sep-24)</p>
+
+<h4><strong>#AND&nbsp;</strong>≥<strong> 35 (various depths)</strong></h4>
+
+<div class="table-responsive">
+<table align="left" border="1" class="table table-condensed table-striped" style="width:450px">
+	<thead>
+		<tr>
+			<td style="text-align:center"><strong>Link</strong></td>
+			<td style="text-align:center"><strong>#AND<br>
+			(A)</strong></td>
+			<td style="text-align:center"><strong>AND depth<br>
+			(AD)</strong></td>
+			<td style="text-align:center"><strong>#Gates<br>
+			(G)</strong></td>
+			<td style="text-align:center"><strong>Gate depth<br>
+			(GD)</strong></td>
+			<td style="text-align:center"><strong>#XOR +<br>
+			#XNOR</strong></td>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td>
+			<p style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/aes-sbox/aes-sbox-a35-ad3-g157-gd15-xx122-31.circ.txt">circ</a></p>
+			</td>
+			<td>
+			<p style="text-align:center"><strong>35</strong></p>
+			</td>
+			<td>
+			<p style="text-align:center"><strong>3</strong></p>
+			</td>
+			<td>
+			<p style="text-align:center">157</p>
+			</td>
+			<td>
+			<p style="text-align:center">15</p>
+			</td>
+			<td>
+			<p style="text-align:center">122</p>
+			</td>
+		</tr>
+		<tr>
+			<td>
+			<p style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/aes-sbox/aes-sbox-a36-ad4-g137-gd14-xx101-22.circ.txt">circ</a></p>
+			</td>
+			<td>
+			<p style="text-align:center">36</p>
+			</td>
+			<td>
+			<p style="text-align:center">4</p>
+			</td>
+			<td>
+			<p style="text-align:center"><strong>137</strong></p>
+			</td>
+			<td>
+			<p style="text-align:center">14</p>
+			</td>
+			<td>
+			<p style="text-align:center"><strong>102</strong></p>
+			</td>
+		</tr>
+		<tr>
+			<td>
+			<p style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/aes-sbox/aes-sbox-a38-ad4-g148-gd13-xx110-24.circ.txt">circ</a></p>
+			</td>
+			<td>
+			<p style="text-align:center">38</p>
+			</td>
+			<td>
+			<p style="text-align:center">4</p>
+			</td>
+			<td>
+			<p style="text-align:center">148</p>
+			</td>
+			<td>
+			<p style="text-align:center">13</p>
+			</td>
+			<td>
+			<p style="text-align:center">110</p>
+			</td>
+		</tr>
+		<tr>
+			<td>
+			<p style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/aes-sbox/aes-sbox-a45-ad4-g151-gd12-xx106-26.circ.txt">circ</a></p>
+			</td>
+			<td>
+			<p style="text-align:center">45</p>
+			</td>
+			<td>
+			<p style="text-align:center">4</p>
+			</td>
+			<td>
+			<p style="text-align:center">151</p>
+			</td>
+			<td>
+			<p style="text-align:center">12</p>
+			</td>
+			<td>
+			<p style="text-align:center">106</p>
+			</td>
+		</tr>
+		<tr>
+			<td>
+			<p style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/aes-sbox/aes-sbox-a51-ad4-g157-gd11-xx106-28.circ.txt">circ</a></p>
+			</td>
+			<td>
+			<p style="text-align:center">51</p>
+			</td>
+			<td>
+			<p style="text-align:center">4</p>
+			</td>
+			<td>
+			<p style="text-align:center">157</p>
+			</td>
+			<td>
+			<p style="text-align:center"><strong>11</strong></p>
+			</td>
+			<td>
+			<p style="text-align:center">106</p>
+			</td>
+		</tr>
+	</tbody>
+</table>
+</div>
+
+<p>The circuit <a href="http://github.com/usnistgov/Circuits/blob/master/data/slp/aes/aes-sbox/aes-sbox-a35-ad3-g139-gd31-xx104-25.circ.txt">A35/AD3</a> was contributed by by Milad Nasr (@ Antropic, 2026-Sep-24)</p>
+
+<h3><strong>AES S-Box circuits added prior to 2020</strong></h3>
+
+<div class="table-responsive">
+<table align="left" border="1" class="table table-condensed table-striped" style="width:600px">
+	<thead>
+		<tr>
+			<td style="text-align:center"><strong>AES S-Boxes</strong></td>
+			<td style="text-align:center"><strong>Links</strong></td>
+			<td style="text-align:center"><strong>#ANDs</strong></td>
+			<td style="text-align:center">
+			<p><strong>AND&nbsp;</strong><strong>depth</strong></p>
+			</td>
+			<td style="text-align:center"><strong>#Gates</strong></td>
+			<td style="text-align:center"><strong>Depth</strong></td>
+			<td style="text-align:center"><strong>#XOR + #XNOR</strong></td>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td style="text-align:center">S-Box 1</td>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/old-2020/aes-sbox-fwd-g115-a32-d28-ad6.slp">SLP</a>, <a href="/CSRC/media/Projects/Circuit-Complexity/documents/AESBoxVerbose.pdf">Graph</a></td>
+			<td style="text-align:center"><strong>32</strong></td>
+			<td style="text-align:center">6</td>
+			<td style="text-align:center">115</td>
+			<td style="text-align:center">28</td>
+			<td style="text-align:center">83</td>
+		</tr>
+		<tr>
+			<td style="text-align:center">S-Box 2</td>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/old-2020/aes-sbox-fwd-g113-a32-d27-ad6.slp">SLP</a></td>
+			<td style="text-align:center"><strong>32</strong></td>
+			<td style="text-align:center">6</td>
+			<td style="text-align:center"><strong>113</strong></td>
+			<td style="text-align:center">27</td>
+			<td style="text-align:center">81</td>
+		</tr>
+		<tr>
+			<td style="text-align:center">S-Box 3</td>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/old-2020/aes-sbox-fwd-g128-a34-d16-ad4.slp">SLP</a>, <a href="/CSRC/media/Projects/Circuit-Complexity/documents/AESForwardDepthVerbose.pdf">Graph</a></td>
+			<td style="text-align:center">34</td>
+			<td style="text-align:center"><strong>4</strong></td>
+			<td style="text-align:center">128</td>
+			<td style="text-align:center"><strong>16</strong></td>
+			<td style="text-align:center">94</td>
+		</tr>
+		<tr>
+			<td style="text-align:center">S-Box inverse 1</td>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/old-2020/aes-sbox-rev-g121-a34-d21-ad4.slp">SLP</a></td>
+			<td style="text-align:center">34</td>
+			<td style="text-align:center"><strong>4</strong></td>
+			<td style="text-align:center">121</td>
+			<td style="text-align:center">21</td>
+			<td style="text-align:center">87</td>
+		</tr>
+		<tr>
+			<td style="text-align:center">S-Box inverse 2</td>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/old-2020/aes-sbox-rev-g127-a34-d16-ad4.slp">SLP</a>, <a href="/CSRC/media/Projects/Circuit-Complexity/documents/AESReverseDepthVerbose.pdf">Graph</a></td>
+			<td style="text-align:center">34</td>
+			<td style="text-align:center"><strong>4</strong></td>
+			<td style="text-align:center">127</td>
+			<td style="text-align:center"><strong>16</strong></td>
+			<td style="text-align:center">93</td>
+		</tr>
+	</tbody>
+</table>
+</div>
+
+<div class="table-responsive">
+<table align="left" border="1" class="table table-condensed table-striped" style="width:600px">
+	<thead>
+		<tr>
+			<td style="text-align:center"><strong>AES Cipher</strong></td>
+			<td style="text-align:center"><strong>Links</strong></td>
+			<td style="text-align:center"><strong>#ANDs</strong></td>
+			<td style="text-align:center"><strong>#XNOR</strong></td>
+			<td style="text-align:center"><strong>#XOR</strong></td>
+			<td style="text-align:center"><strong>#Gates</strong></td>
+			<td style="text-align:center"><strong>Depth</strong></td>
+			<td style="text-align:center"><strong>AND-Depth</strong></td>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td style="text-align:center">AES-128(k,m)</td>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/aes128-enc.slp">SLP</a></td>
+			<td style="text-align:center">6400</td>
+			<td style="text-align:center">844</td>
+			<td style="text-align:center">21 356</td>
+			<td style="text-align:center">28 600</td>
+			<td style="text-align:center">326</td>
+			<td style="text-align:center">60</td>
+		</tr>
+		<tr>
+			<td style="text-align:center">AES-128(0,m)</td>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/aes128-enc-key0.slp">SLP</a></td>
+			<td style="text-align:center">5120</td>
+			<td style="text-align:center">1620</td>
+			<td style="text-align:center">14 652</td>
+			<td style="text-align:center">21 392</td>
+			<td style="text-align:center">325</td>
+			<td style="text-align:center">60</td>
+		</tr>
+	</tbody>
+</table>
+</div>
+
+<p>The AES circuit above is constructed using: (i) the S-Box implementation “forward 2” (<a href="https://doi.org/10.1007/s00145-012-9124-7">doi:10.1007/s00145-012-9124-7</a> further improved in 2013 by 2 XORs); and (ii) the MixColumn circuit by Maximov in 2019 (<a href="https://eprint.iacr.org/2019/833">ia.cr/2019/833</a>).</p>
+
+<h2><strong>AES MixColumns (and inverse) added in 2026</strong></h2>
+
+<p><strong>MixColumns</strong></p>
+
+<div class="table-responsive">
+<table align="left" border="1" class="table table-condensed table-striped" style="width:300px">
+	<thead>
+		<tr>
+			<td style="text-align:center"><strong>Link</strong></td>
+			<td style="text-align:center"><strong>Depth</strong></td>
+			<td style="text-align:center"><strong>#XOR</strong></td>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/aes-mixcols/aes-mixcols-xor97-depth3.circ.txt">circ</a></td>
+			<td style="text-align:center"><strong>3</strong></td>
+			<td style="text-align:center">97</td>
+		</tr>
+		<tr>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/aes-mixcols/aes-mixcols-xor90-depth4.circ.txt">circ</a></td>
+			<td style="text-align:center">4</td>
+			<td style="text-align:center">90</td>
+		</tr>
+		<tr>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/aes-mixcols/aes-mixcols-xor88-depth5.circ.txt">circ</a></td>
+			<td style="text-align:center">5</td>
+			<td style="text-align:center"><strong>88</strong></td>
+		</tr>
+	</tbody>
+</table>
+</div>
+
+<p><strong>Inverse&nbsp;MixColumns</strong></p>
+
+<table align="left" border="1" class="table table-condensed table-striped" style="width:300px">
+	<thead>
+		<tr>
+			<td style="text-align:center"><strong>Link</strong></td>
+			<td style="text-align:center"><strong>Depth</strong></td>
+			<td style="text-align:center"><strong>#XOR</strong></td>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/aes-invmixcols/aes-invmixcols-xor121-depth5.circ.txt">circ</a></td>
+			<td style="text-align:center"><strong>5</strong></td>
+			<td style="text-align:center">121</td>
+		</tr>
+		<tr>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/aes-invmixcols/aes-invmixcols-xor107-depth6.circ.txt">circ</a></td>
+			<td style="text-align:center">6</td>
+			<td style="text-align:center">107</td>
+		</tr>
+		<tr>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/aes-invmixcols/aes-invmixcols-xor102-depth7.circ.txt">circ</a></td>
+			<td style="text-align:center">7</td>
+			<td style="text-align:center">102</td>
+		</tr>
+		<tr>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/aes-invmixcols/aes-invmixcols-xor96-depth8.circ.txt">circ</a></td>
+			<td style="text-align:center">8</td>
+			<td style="text-align:center">96</td>
+		</tr>
+		<tr>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/aes-invmixcols/aes-invmixcols-xor95-depth9.circ.txt">circ</a></td>
+			<td style="text-align:center">9</td>
+			<td style="text-align:center">95</td>
+		</tr>
+		<tr>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/aes/aes-invmixcols/aes-invmixcols-xor91-depth15.circ.txt">circ</a></td>
+			<td style="text-align:center">15</td>
+			<td style="text-align:center"><strong>91</strong></td>
+		</tr>
+	</tbody>
+</table>
+
+<p>&nbsp;</p>
+
+<p>&nbsp;</p>
+</div>
+</div>
+</div>
+
+<div class="panel panel-default">
+<div class="panel-heading" id="heading1792081586490_1" role="tab">
+<div class="panel-title"><a aria-controls="collapse1792081586490_1" aria-expanded="false" class="collapsed" data-parent="#collapse1792081586490" data-target="#collapse1792081586490_1" data-toggle="collapse" href="javascript:void(0)">SHA256 </a></div>
+</div>
+
+<div aria-labelledby="heading1792081586490_1" class="collapse panel-collapse" id="collapse1792081586490_1" role="tabpanel">
+<div class="panel-body">
+<table border="1" cellpadding="1" cellspacing="1" style="width:650px">
+	<tbody>
+		<tr>
+			<td><strong>SHA256</strong></td>
+			<td><strong>Links</strong></td>
+			<td><strong>#AND</strong></td>
+			<td><strong>#NOT</strong></td>
+			<td><strong>#XNOR</strong></td>
+			<td><strong>#XOR</strong></td>
+			<td><strong>#Gates</strong></td>
+			<td><strong>Depth</strong></td>
+			<td><strong>AND-Depth</strong></td>
+		</tr>
+		<tr>
+			<td>SHA256 (input 512)</td>
+			<td><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/sha/sha256-input512.slp">SLP</a></td>
+			<td>22 385</td>
+			<td>355</td>
+			<td>3894</td>
+			<td>89 248</td>
+			<td>115 882</td>
+			<td>5403</td>
+			<td>1604</td>
+		</tr>
+		<tr>
+			<td>SHA256 (iv256+input512)</td>
+			<td><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/sha/sha256-iv256%2Binput512.slp">SLP</a></td>
+			<td>22 632</td>
+			<td>13</td>
+			<td>2840</td>
+			<td>92 802</td>
+			<td>118 287</td>
+			<td>5458</td>
+			<td>1607</td>
+		</tr>
+	</tbody>
+</table>
+</div>
+</div>
+</div>
+
+<div class="panel panel-default">
+<div class="panel-heading" id="heading1792081586490_2" role="tab">
+<div class="panel-title"><a aria-controls="collapse1792081586490_2" aria-expanded="false" class="collapsed" data-parent="#collapse1792081586490" data-target="#collapse1792081586490_2" data-toggle="collapse" href="javascript:void(0)">Finite field multiplication </a></div>
+</div>
+
+<div aria-labelledby="heading1792081586490_2" class="collapse panel-collapse" id="collapse1792081586490_2" role="tabpanel">
+<div class="panel-body">
+<table border="1" style="width:600px">
+	<thead>
+		<tr>
+			<td style="text-align:center"><strong>Multiplication in field</strong></td>
+			<td style="text-align:center"><strong>Links</strong></td>
+			<td style="text-align:center"><strong>#ANDs</strong></td>
+			<td style="text-align:center"><strong>#XORs</strong></td>
+			<td style="text-align:center"><strong>#Gates</strong></td>
+			<td style="text-align:center"><strong>Depth</strong></td>
+		</tr>
+		<tr>
+			<td>GF(2<sup>6</sup>) mod x<sup>6</sup> + x<sup>3</sup> + 1</td>
+			<td><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/gf/gf64-630-mult.slp">SLP</a>, <a href="/CSRC/media/Projects/Circuit-Complexity/documents/slp_630.pdf">Graph</a></td>
+			<td style="text-align:center">27</td>
+			<td style="text-align:center">30</td>
+			<td style="text-align:center">57</td>
+			<td style="text-align:center">5</td>
+		</tr>
+		<tr>
+			<td>GF(2<sup>7</sup>) mod x<sup>7</sup> + x<sup>3</sup> + 1</td>
+			<td><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/gf/gf128-730-mult.slp">SLP</a>, <a href="/CSRC/media/Projects/Circuit-Complexity/documents/slp_740.pdf">Graph</a></td>
+			<td style="text-align:center">40</td>
+			<td style="text-align:center">45</td>
+			<td style="text-align:center">85</td>
+			<td style="text-align:center">5</td>
+		</tr>
+		<tr>
+			<td>GF(2<sup>7</sup>) mod x<sup>7</sup> + x<sup>4</sup> + 1</td>
+			<td><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/gf/gf128-740-mult.slp">SLP</a>, <a href="/CSRC/media/Projects/Circuit-Complexity/documents/slp_730.pdf">Graph</a></td>
+			<td style="text-align:center">40</td>
+			<td style="text-align:center">44</td>
+			<td style="text-align:center">84</td>
+			<td style="text-align:center">5</td>
+		</tr>
+		<tr>
+			<td>GF(2<sup>8</sup>) mod x<sup>8</sup> + x<sup>4</sup>&nbsp;+ x<sup>3</sup> + x + 1</td>
+			<td><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/gf/gf256-84310-mult.slp">SLP</a></td>
+			<td style="text-align:center">48</td>
+			<td style="text-align:center">69</td>
+			<td style="text-align:center">117</td>
+			<td style="text-align:center">6</td>
+		</tr>
+	</thead>
+</table>
+</div>
+</div>
+</div>
+
+<div class="panel panel-default">
+<div class="panel-heading" id="heading1792081586490_3" role="tab">
+<div class="panel-title"><a aria-controls="collapse1792081586490_3" aria-expanded="false" class="collapsed" data-parent="#collapse1792081586490" data-target="#collapse1792081586490_3" data-toggle="collapse" href="javascript:void(0)">Binary polynomial multiplication </a></div>
+</div>
+
+<div aria-labelledby="heading1792081586490_3" class="collapse panel-collapse" id="collapse1792081586490_3" role="tabpanel">
+<div class="panel-body">
+<p>Circuits for multiplying two <em>n</em>-terms (degree <em>n</em>-1) polynomials.</p>
+
+<table border="1" style="width:600px">
+	<thead>
+		<tr>
+			<td style="text-align:center"><strong>#Terms (<em>n</em>)</strong></td>
+			<td style="text-align:center"><strong>Links</strong></td>
+			<td style="text-align:center"><strong>#ANDs</strong></td>
+			<td style="text-align:center"><strong>#XORs</strong></td>
+			<td style="text-align:center"><strong>#Gates</strong></td>
+			<td style="text-align:center"><strong>Depth</strong></td>
+			<td style="text-align:center"><strong>AND-Depth</strong></td>
+		</tr>
+		<tr>
+			<td style="text-align:center">11</td>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/polymult/bin-poly-mult-11.slp">SLP</a>, <a href="/CSRC/media/Projects/Circuit-Complexity/documents/CMT11verbose.pdf">Graph</a></td>
+			<td style="text-align:center">78</td>
+			<td style="text-align:center">108</td>
+			<td style="text-align:center">186</td>
+			<td style="text-align:center">7</td>
+			<td style="text-align:center">1</td>
+		</tr>
+		<tr>
+			<td style="text-align:center">12</td>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/polymult/bin-poly-mult-12.slp">SLP</a>, <a href="/CSRC/media/Projects/Circuit-Complexity/documents/CMT12verbose.pdf">Graph</a></td>
+			<td style="text-align:center">81</td>
+			<td style="text-align:center">126</td>
+			<td style="text-align:center">207</td>
+			<td style="text-align:center">7</td>
+			<td style="text-align:center">1</td>
+		</tr>
+		<tr>
+			<td style="text-align:center">15</td>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/polymult/Bin-poly-mult-15.slp">SLP</a></td>
+			<td style="text-align:center">117</td>
+			<td style="text-align:center">195</td>
+			<td style="text-align:center">312</td>
+			<td style="text-align:center">9</td>
+			<td style="text-align:center">1</td>
+		</tr>
+		<tr>
+			<td style="text-align:center">16</td>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/polymult/Bin-poly-mult-16.slp">SLP</a>, <a href="/CSRC/media/Projects/Circuit-Complexity/documents/CMT16verbose.pdf">Graph</a></td>
+			<td style="text-align:center">144</td>
+			<td style="text-align:center">205</td>
+			<td style="text-align:center">349</td>
+			<td style="text-align:center">8</td>
+			<td style="text-align:center">1</td>
+		</tr>
+		<tr>
+			<td style="text-align:center">18</td>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/polymult/Bin-poly-mult-18.slp">SLP</a>, <a href="/CSRC/media/Projects/Circuit-Complexity/documents/CMT18verbose.pdf">Graph</a></td>
+			<td style="text-align:center">195</td>
+			<td style="text-align:center">259</td>
+			<td style="text-align:center">454</td>
+			<td style="text-align:center">8</td>
+			<td style="text-align:center">1</td>
+		</tr>
+		<tr>
+			<td style="text-align:center">19</td>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/polymult/Bin-poly-mult-19.slp">SLP</a>, <a href="/CSRC/media/Projects/Circuit-Complexity/documents/CMT19verbose.pdf">Graph</a></td>
+			<td style="text-align:center">214</td>
+			<td style="text-align:center">284</td>
+			<td style="text-align:center">498</td>
+			<td style="text-align:center">8</td>
+			<td style="text-align:center">1</td>
+		</tr>
+		<tr>
+			<td style="text-align:center">20</td>
+			<td style="text-align:center"><a href="https://github.com/usnistgov/Circuits/blob/master/data/slp/polymult/Bin-poly-mult-20.slp">SLP</a>, <a href="/CSRC/media/Projects/Circuit-Complexity/documents/CMT20verbose.pdf">Graph</a></td>
+			<td style="text-align:center">225</td>
+			<td style="text-align:center">302</td>
+			<td style="text-align:center">527</td>
+			<td style="text-align:center">8</td>
+			<td style="text-align:center">1</td>
+		</tr>
+	</thead>
+</table>
+</div>
+</div>
+</div>
+
+<div class="panel panel-default">
+<div class="panel-heading" id="heading1792081586490_4" role="tab">
+<div class="panel-title"><a aria-controls="collapse1792081586490_4" aria-expanded="false" class="collapsed" data-parent="#collapse1792081586490" data-target="#collapse1792081586490_4" data-toggle="collapse" href="javascript:void(0)">Boolean functions </a></div>
+</div>
+
+<div aria-labelledby="heading1792081586490_4" class="collapse panel-collapse" id="collapse1792081586490_4" role="tabpanel">
+<div class="panel-body">
+<p><em>B<sub>n</sub></em> is the set of all boolean functions on <em>n</em>-variables.</p>
+
+<p>MaxMC is the maximum of the MCs of all functions in a class.</p>
+
+<table border="1" style="width:600px">
+	<thead>
+		<tr>
+			<td style="text-align:center"><strong><em>B</em><sub>n</sub></strong></td>
+			<td style="text-align:center"><strong>Links</strong></td>
+			<td style="text-align:center"><strong>MaxMC</strong></td>
+			<td style="text-align:center"><strong>#Classes</strong></td>
+		</tr>
+		<tr>
+			<td style="text-align:center"><em>B</em><sub>4</sub></td>
+			<td><a href="/CSRC/media/Projects/Circuit-Complexity/documents/C4_all.txt">SLPs of All predicates</a></td>
+			<td style="text-align:center">3</td>
+			<td style="text-align:center">8</td>
+		</tr>
+		<tr>
+			<td style="text-align:center"><em>B</em><sub>5</sub></td>
+			<td>(see <em>B</em><sub>6</sub>)</td>
+			<td style="text-align:center">4</td>
+			<td style="text-align:center">48</td>
+		</tr>
+		<tr>
+			<td style="text-align:center"><em>B</em><sub>6</sub></td>
+			<td><a href="https://github.com/usnistgov/Circuits/tree/master/data/slp/n6">SLPs of representatives of all classes</a>, <a href="https://eprint.iacr.org/2018/002.pdf">Paper (ia.cr/2018/002)</a></td>
+			<td style="text-align:center">6</td>
+			<td style="text-align:center">150367</td>
+		</tr>
+	</thead>
+</table>
+</div>
+</div>
+</div>
+
+<div class="panel panel-default">
+<div class="panel-heading" id="heading1792081586490_5" role="tab">
+<div class="panel-title"><a aria-controls="collapse1792081586490_5" aria-expanded="false" class="collapsed" data-parent="#collapse1792081586490" data-target="#collapse1792081586490_5" data-toggle="collapse" href="javascript:void(0)">Linear maps </a></div>
+</div>
+
+<div aria-labelledby="heading1792081586490_5" class="collapse panel-collapse" id="collapse1792081586490_5" role="tabpanel">
+<div class="panel-body">
+<p>A linear map can be represented as a binary matrix, where each entry is a 0 or 1. Each row of the matrix represents an output bit of the linear map; each column corresponds to an input element. If the element M_{i,j} (i.e., in the i-th row and the j-th column) is a 1, then than means that the i-th output of the linear map includes a contribution from the j-th input.</p>
+
+<p>The following tables contain references to circuits of diverse linear maps, including those used in some known ciphers, and various other MDS matrices.</p>
+
+<p><strong>Note:</strong> This is part of ongoing research about circuit optimization. The inclusion of a circuit below does not imply that it is the best currently known for the linear map. The referenced results will be sporadically updated with better circuits and possible update of references. Please send any comments to <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="a0c3c9d2c3d5c9d4ffc3cfcdd0ccc5d8c9d4d9e0cec9d3d48ec7cfd6">[email&#160;protected]</a>.</p>
+
+<p><strong>Legend:</strong></p>
+
+<ul>
+	<li><strong>Name:</strong> when it is the name of a cipher, it means that it is a linear system used within the cipher; otherwise it is based on an acronym of the authors of a corresponding paper.</li>
+	<li>MDS: maximum distance separable</li>
+	<li>[ref] in front of name: reference to the specification of the linear map</li>
+	<li>d-XOR: number of XOR’s required by a trivial implementation that computes each output independently. This is equal to the number of 1’s in the matrix, minus the number of row that contain at least one 1.</li>
+	<li>[ref] for an external circuit: reference to some work that achieves a circuit with the mentioned characteristics #XOR</li>
+	<li>#XORs: number of XORs in the circuit stored in this repository.</li>
+	<li>Depth: depth of the circuit stored in the repository</li>
+	<li>Circ* (under "External result"): although the circuits spec was externally obtained, the file was recompiled by us with additional metadata</li>
+</ul>
+
+<hr>
+<h3>Ciphers-16x16</h3>
+
+<div class="table-responsive">
+<table align="left" border="1" class="table table-condensed table-striped" style="width:850px">
+	<thead>
+		<tr>
+			<th colspan="4" rowspan="1" scope="col" style="background-color:#ffffcc; text-align:center">Linear system</th>
+			<th colspan="5" rowspan="1" scope="col" style="background-color:#ffffcc; text-align:center">External result</th>
+			<th colspan="3" rowspan="1" scope="col" style="background-color:#ffffcc; text-align:center">Our result</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td style="background-color:#ffffcc"><strong>Name</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Spec</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>File</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>D-XOR</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Paper</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Repo</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>#XOR</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Depth</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Circ*</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>#XOR</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Depth</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Circ</strong></td>
+		</tr>
+		<tr>
+			<td>Fides+Midori+Mantis</td>
+			<td><a href="https://doi.org/10.1007/978-3-662-48800-3_17">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/ciphers-16x16/Fides-Midori-Mantis.mat.txt">*.mat.txt</a></td>
+			<td>32</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.188-211">Paper</a></td>
+			<td><a href="https://github.com/rub-hgi/shorter_linear_slps_for_mds_matrices/tree/master/matrices_slp_implementations">Ref</a></td>
+			<td>24</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>24</td>
+			<td>3</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/ciphers-16x16/Fides-Midori-Mantis--XOR=24-rs=1.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>Joltik</td>
+			<td><a href="https://competitions.cr.yp.to/round1/joltikv1.pdf">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/ciphers-16x16/Joltik.mat.txt">*.mat.txt</a></td>
+			<td>72</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>44</td>
+			<td>7</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/ciphers-16x16/Joltik--XOR=44--XZLBZ20.circ.txt">*.circ.txt</a></td>
+			<td>47</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+		</tr>
+		<tr>
+			<td>PrideL0</td>
+			<td><a href="https://doi.org/10.1007/978-3-662-44371-2_4">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/ciphers-16x16/PrideL0.mat.txt">*.mat.txt</a></td>
+			<td>32</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.188-211">Paper</a></td>
+			<td><a href="https://github.com/rub-hgi/shorter_linear_slps_for_mds_matrices/tree/master/matrices_slp_implementations">Ref</a></td>
+			<td>24</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>24</td>
+			<td>4</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/ciphers-16x16/PrideL0--XOR=24-rs=-1.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>PrinceM0</td>
+			<td><a href="https://doi.org/10.1007/978-3-642-34961-4_14">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/ciphers-16x16/PrinceM0.mat.txt">*.mat.txt</a></td>
+			<td>32</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.188-211">Paper</a></td>
+			<td><a href="https://github.com/rub-hgi/shorter_linear_slps_for_mds_matrices/tree/master/matrices_slp_implementations">Ref</a></td>
+			<td>24</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>24</td>
+			<td>4</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/ciphers-16x16/PrinceM0--XOR=24-rs=-1.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>Qarma128</td>
+			<td><a href="https://eprint.iacr.org/2016/444">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/ciphers-16x16/Qarma128.mat.txt">*.mat.txt</a></td>
+			<td>64</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.188-211">Paper</a></td>
+			<td><a href="https://github.com/rub-hgi/shorter_linear_slps_for_mds_matrices/tree/master/matrices_slp_implementations">Ref</a></td>
+			<td>48</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>48</td>
+			<td>6</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/ciphers-16x16/Qarma128--XOR=48-rs=-1.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>Qarma64</td>
+			<td><a href="https://eprint.iacr.org/2016/444">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/ciphers-16x16/Qarma64.mat.txt">*.mat.txt</a></td>
+			<td>32</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.188-211">Paper</a></td>
+			<td><a href="https://github.com/rub-hgi/shorter_linear_slps_for_mds_matrices/tree/master/matrices_slp_implementations">Ref</a></td>
+			<td>24</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>24</td>
+			<td>8</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/ciphers-16x16/Qarma64--XOR=24-rs=-1.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>Skinny</td>
+			<td><a href="https://doi.org/10.1007/978-3-662-53008-5_5">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/ciphers-16x16/Skinny.mat.txt">*.mat.txt</a></td>
+			<td>16</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.188-211">Paper</a></td>
+			<td><a href="https://github.com/rub-hgi/shorter_linear_slps_for_mds_matrices/tree/master/matrices_slp_implementations">Ref</a></td>
+			<td>12</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>12</td>
+			<td>2</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/ciphers-16x16/Skinny--XOR=12-EQUAL=4-rs=-1.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>SmallScaleAES</td>
+			<td><a href="https://doi.org/10.1007/11502760_10">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/ciphers-16x16/SmallScaleAES.mat.txt">*.mat.txt</a></td>
+			<td>72</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>43</td>
+			<td>5</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/ciphers-16x16/SmallScaleAES--XOR=43--XZLBZ20.circ.txt">*.circ.txt</a></td>
+			<td>46</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+		</tr>
+	</tbody>
+</table>
+</div>
+
+<h3>Ciphers-32x32</h3>
+
+<div class="table-responsive">
+<table align="left" border="1" class="table table-condensed table-striped" style="width:850px">
+	<thead>
+		<tr>
+			<th colspan="4" rowspan="1" scope="col" style="background-color:#ffffcc; text-align:center">Linear system</th>
+			<th colspan="5" rowspan="1" scope="col" style="background-color:#ffffcc; text-align:center">External result</th>
+			<th colspan="3" rowspan="1" scope="col" style="background-color:#ffffcc; text-align:center">Our result</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td style="background-color:#ffffcc"><strong>Name</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Spec</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>File</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>D-XOR</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Paper</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Repo</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>#XOR</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Depth</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Circ*</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>#XOR</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Depth</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Circ</strong></td>
+		</tr>
+		<tr>
+			<td>Anubis+ClefiaM0</td>
+			<td><a href="https://doi.org/10.1007/978-3-540-74619-5_12">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/ciphers-32x32/Anubis-ClefiaM0.mat.txt">*.mat.txt</a></td>
+			<td>184</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>98</td>
+			<td>9</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/ciphers-32x32/Anubis-ClefiaM0--XOR=98--XLZBZ20.circ.txt">*.circ.txt</a></td>
+			<td>103</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+		</tr>
+		<tr>
+			<td>ClefiaM1</td>
+			<td><a href="https://doi.org/10.1007/978-3-540-74619-5_12">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/ciphers-32x32/ClefiaM1.mat.txt">*.mat.txt</a></td>
+			<td>208</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>103</td>
+			<td>10</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/ciphers-32x32/ClefiaM1--XOR=103--XLZBZ20.circ.txt">*.circ.txt</a></td>
+			<td>108</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+		</tr>
+		<tr>
+			<td>FoxMu4</td>
+			<td><a href="https://doi.org/10.1007/978-3-540-30564-4_8">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/ciphers-32x32/FoxMu4.mat.txt">*.mat.txt</a></td>
+			<td>219</td>
+			<td><a href="https://doi.org/10.1007/978-3-030-26834-3_7">Paper</a></td>
+			<td>&nbsp;</td>
+			<td>131</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>130</td>
+			<td>13</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/ciphers-32x32/FoxMu4--XOR=130-rs=471.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>Square+AES+Mugi</td>
+			<td><a href="https://doi.org/10.1007/978-3-662-04722-4">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/ciphers-32x32/Square-AES-Mugi.mat.txt">*.mat.txt</a></td>
+			<td>152</td>
+			<td><a href="https://eprint.iacr.org/2019/833.pdf">Paper</a></td>
+			<td>&nbsp;</td>
+			<td>92</td>
+			<td>6</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/ciphers-32x32/Square-AES-Mugi--XOR=92--maximov.circ.txt">*.circ.txt</a></td>
+			<td>94</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+		</tr>
+		<tr>
+			<td>Twofish</td>
+			<td><a href="https://www.schneier.com/wp-content/uploads/2016/02/paper-twofish-paper.pdf">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/ciphers-32x32/Twofish.mat.txt">*.mat.txt</a></td>
+			<td>327</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>111</td>
+			<td>8</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/ciphers-32x32/Twofish--XOR=111--XLZBZ20.circ.txt">*.circ.txt</a></td>
+			<td>121</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+		</tr>
+		<tr>
+			<td>WhirlwindM0</td>
+			<td><a href="https://doi.org/10.1007/s10623-010-9391-y">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/ciphers-32x32/WhirlwindM0.mat.txt">*.mat.txt</a></td>
+			<td>488</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>183</td>
+			<td>14</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/ciphers-32x32/WhirlwindM0--XOR=183--XLZBZ20.circ.txt">*.circ.txt</a></td>
+			<td>185</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+		</tr>
+		<tr>
+			<td>WhirlwindM1</td>
+			<td><a href="https://doi.org/10.1007/s10623-010-9391-y">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/ciphers-32x32/WhirlwindM1.mat.txt">*.mat.txt</a></td>
+			<td>536</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>190</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>187</td>
+			<td>16</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/ciphers-32x32/WhirlwindM1--XOR=187-rs=20-symp=1-2.circ.txt">*.circ.txt</a></td>
+		</tr>
+	</tbody>
+</table>
+</div>
+
+<h3>Ciphers-64x64</h3>
+
+<div class="table-responsive">
+<table align="left" border="1" class="table table-condensed table-striped" style="width:850px">
+	<thead>
+		<tr>
+			<th colspan="4" rowspan="1" scope="col" style="background-color:#ffffcc; text-align:center">Linear system</th>
+			<th colspan="5" rowspan="1" scope="col" style="background-color:#ffffcc; text-align:center">External result</th>
+			<th colspan="3" rowspan="1" scope="col" style="background-color:#ffffcc; text-align:center">Our result</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td style="background-color:#ffffcc"><strong>Name</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Spec</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>File</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>D-XOR</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Paper</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Repo</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>#XOR</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Depth</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Circ*</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>#XOR</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Depth</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Circ</strong></td>
+		</tr>
+		<tr>
+			<td>FoxMu8</td>
+			<td><a href="https://doi.org/10.1007/978-3-540-30564-4_8">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/ciphers-64x64/FoxMu8.mat.txt">*.mat.txt</a></td>
+			<td>1257</td>
+			<td><a href="https://doi.org/10.1007/978-3-030-26834-3_7">Paper</a></td>
+			<td>&nbsp;</td>
+			<td>592</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>540</td>
+			<td>14</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/ciphers-64x64/FoxMu8--XOR=540-rs=1-symp=2.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>Grostl</td>
+			<td><a href="https://www.groestl.info/specification.html">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/ciphers-64x64/Grostl.mat.txt">*.mat.txt</a></td>
+			<td>1112</td>
+			<td><a href="https://doi.org/10.1007/978-3-030-26834-3_7">Paper</a></td>
+			<td>&nbsp;</td>
+			<td>460</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>410</td>
+			<td>12</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/ciphers-64x64/Grostl--XOR=410-rs=2-symp=2.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>Khazad</td>
+			<td><a href="https://www.researchgate.net/publication/228924670_The_Khazad_legacy-level_block_cipher">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/ciphers-64x64/Khazad.mat.txt">*.mat.txt</a></td>
+			<td>1232</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>366</td>
+			<td>18</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/ciphers-64x64/Khazad--XOR=366--XLZBZ20.circ.txt">*.circ.txt</a></td>
+			<td>475</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+		</tr>
+		<tr>
+			<td>Whirlpool+Maelstrom</td>
+			<td><a href="https://doi.org/10.1007/978-1-4419-5906-5_626.">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/ciphers-64x64/Whirlpool-Maelstrom.mat.txt">*.mat.txt</a></td>
+			<td>840</td>
+			<td><a href="https://doi.org/10.1007/978-3-030-26834-3_7">Paper</a></td>
+			<td>&nbsp;</td>
+			<td>464</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>425</td>
+			<td>11</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/ciphers-64x64/Whirlpool-Maelstrom--XOR=425-rs=4-symp=2.circ.txt">*.circ.txt</a></td>
+		</tr>
+	</tbody>
+</table>
+</div>
+
+<h3>Ciphers-128x128</h3>
+
+<div class="table-responsive">
+<table align="left" border="1" class="table table-condensed table-striped" style="width:850px">
+	<thead>
+		<tr>
+			<th colspan="4" rowspan="1" scope="col" style="background-color:#ffffcc; text-align:center">Linear system</th>
+			<th colspan="5" rowspan="1" scope="col" style="background-color:#ffffcc; text-align:center">External result</th>
+			<th colspan="3" rowspan="1" scope="col" style="background-color:#ffffcc; text-align:center">Our result</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td style="background-color:#ffffcc"><strong>Name</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Spec</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>File</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>D-XOR</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Paper</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Repo</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>#XOR</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Depth</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Circ*</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>#XOR</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Depth</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Circ</strong></td>
+		</tr>
+		<tr>
+			<td>Aria</td>
+			<td><a href="https://datatracker.ietf.org/doc/html/rfc5794">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/ciphers-128x128/Aria.mat.txt">*.mat.txt</a></td>
+			<td>768</td>
+			<td><a href="https://doi.org/10.1007/978-3-030-26834-3_7">Paper</a></td>
+			<td>&nbsp;</td>
+			<td>392</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>387</td>
+			<td>7</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/ciphers-128x128/Aria--XOR=387-rs=48-symp=2.circ.txt">*.circ.txt</a></td>
+		</tr>
+	</tbody>
+</table>
+</div>
+
+<h3>mds-4x4-GF16</h3>
+
+<div class="table-responsive">
+<table align="left" border="1" class="table table-condensed table-striped" style="width:850px">
+	<thead>
+		<tr>
+			<th colspan="4" rowspan="1" scope="col" style="background-color:#ffffcc; text-align:center">Linear system</th>
+			<th colspan="5" rowspan="1" scope="col" style="background-color:#ffffcc; text-align:center">External result</th>
+			<th colspan="3" rowspan="1" scope="col" style="background-color:#ffffcc; text-align:center">Our result</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td style="background-color:#ffffcc"><strong>Name</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Spec</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>File</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>D-XOR</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Paper</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Repo</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>#XOR</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Depth</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Circ*</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>#XOR</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Depth</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Circ</strong></td>
+		</tr>
+		<tr>
+			<td>BKL16-4x4-GF16</td>
+			<td><a href="https://doi.org/10.1007/978-3-662-53018-4_23">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-4x4-GF16/BKL16-4x4-GF16.mat.txt">*.mat.txt</a></td>
+			<td>64</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>41</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>41</td>
+			<td>5</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-4x4-GF16/BKL16-4x4-GF16--XOR=41-rs=2657.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>JPST17-4x4-GF16</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.130-168">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-4x4-GF16/JPST17-4x4-GF16.mat.txt">*.mat.txt</a></td>
+			<td>61</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>41</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>40</td>
+			<td>6</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-4x4-GF16/JPST17-4x4-GF16--XOR=40-rs=217-nd=4-2.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>KLSW17-M-4x4-GF16</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.188-211">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-4x4-GF16/KLSW17-M-4x4-GF16.mat.txt">*.mat.txt</a></td>
+			<td>92</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.188-211">Paper</a></td>
+			<td><a href="https://github.com/rub-hgi/shorter_linear_slps_for_mds_matrices/tree/master/matrices_slp_implementations">Ref</a></td>
+			<td>36</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>36</td>
+			<td>8</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-4x4-GF16/KLSW17-M-4x4-GF16--XOR=36-rs=1.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>LS16-4x4-GF16</td>
+			<td><a href="https://doi.org/10.1007/978-3-662-52993-5_6">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-4x4-GF16/LS16-4x4-GF16.mat.txt">*.mat.txt</a></td>
+			<td>60</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.188-211">Paper</a></td>
+			<td><a href="https://github.com/rub-hgi/shorter_linear_slps_for_mds_matrices/tree/master/matrices_slp_implementations">Ref</a></td>
+			<td>44</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>44</td>
+			<td>4</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-4x4-GF16/LS16-4x4-GF16--XOR=44-rs=178.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>LW16-4x4-GF16</td>
+			<td><a href="https://doi.org/10.1007/978-3-662-52993-5_7">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-4x4-GF16/LW16-4x4-GF16.mat.txt">*.mat.txt</a></td>
+			<td>60</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.188-211">Paper</a></td>
+			<td><a href="https://github.com/rub-hgi/shorter_linear_slps_for_mds_matrices/tree/master/matrices_slp_implementations">Ref</a></td>
+			<td>44</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>44</td>
+			<td>4</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-4x4-GF16/LW16-4x4-GF16--XOR=44-rs=109.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>SKOP15-4x4-GF16</td>
+			<td><a href="https://doi.org/10.1007/978-3-662-48116-5_23">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-4x4-GF16/SKOP15-4x4-GF16.mat.txt">*.mat.txt</a></td>
+			<td>68</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>44</td>
+			<td>7</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-4x4-GF16/SKOP15-4x4-GF16--XOR=44--XZLBZ20.circ.txt">*.circ.txt</a></td>
+			<td>46</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+		</tr>
+		<tr>
+			<td>SS16-4x4-GF16</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2016.i1.95-113">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-4x4-GF16/SS16-4x4-GF16.mat.txt">*.mat.txt</a></td>
+			<td>58</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>41</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>41</td>
+			<td>5</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-4x4-GF16/SS16-4x4-GF16--XOR=41-rs=111.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>JPST17-4x4-GF16-inv</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.130-168">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-4x4-GF16/JPST17-4x4-GF16-inv.mat.txt">*.mat.txt</a></td>
+			<td>68</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>41</td>
+			<td>6</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-4x4-GF16/JPST17-4x4-GF16-inv--XOR=41--XZLBZ20.circ.txt">*.circ.txt</a></td>
+			<td>43</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+		</tr>
+		<tr>
+			<td>LW16-4x4-GF16-inv</td>
+			<td><a href="https://doi.org/10.1007/978-3-662-52993-5_7">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-4x4-GF16/LW16-4x4-GF16-inv.mat.txt">*.mat.txt</a></td>
+			<td>72</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>44</td>
+			<td>6</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-4x4-GF16/LW16-4x4-GF16-inv--XOR=44--XZLBZ20.circ.txt">*.circ.txt</a></td>
+			<td>45</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+		</tr>
+		<tr>
+			<td>SKOP15-4x4-GF16-inv</td>
+			<td><a href="https://doi.org/10.1007/978-3-662-48116-5_23">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-4x4-GF16/SKOP15-4x4-GF16-inv.mat.txt">*.mat.txt</a></td>
+			<td>72</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>44</td>
+			<td>8</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-4x4-GF16/SKOP15-4x4-GF16-inv--XOR=44--XZLBZ20.circ.txt">*.circ.txt</a></td>
+			<td>46</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+		</tr>
+		<tr>
+			<td>SS16-4x4-GF16-inv</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2016.i1.95-113">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-4x4-GF16/SS16-4x4-GF16-inv.mat.txt">*.mat.txt</a></td>
+			<td>64</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>38</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>38</td>
+			<td>6</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-4x4-GF16/SS16-4x4-GF16-inv--XOR=38-rs=120.circ.txt">*.circ.txt</a></td>
+		</tr>
+	</tbody>
+</table>
+</div>
+
+<h3>mds-8x8-GF16</h3>
+
+<div class="table-responsive">
+<table align="left" border="1" class="table table-condensed table-striped" style="width:850px">
+	<thead>
+		<tr>
+			<th colspan="4" rowspan="1" scope="col" style="background-color:#ffffcc; text-align:center">Linear system</th>
+			<th colspan="5" rowspan="1" scope="col" style="background-color:#ffffcc; text-align:center">External result</th>
+			<th colspan="3" rowspan="1" scope="col" style="background-color:#ffffcc; text-align:center">Our result</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td style="background-color:#ffffcc"><strong>Name</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Spec</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>File</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>D-XOR</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Paper</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Repo</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>#XOR</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Depth</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Circ*</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>#XOR</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Depth</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Circ</strong></td>
+		</tr>
+		<tr>
+			<td>KLSW17-M-8x8-GF16-0x13</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.188-211">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-8x8-GF16/KLSW17-M-8x8-GF16-0x13.mat.txt">*.mat.txt</a></td>
+			<td>456</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.188-211">Paper</a></td>
+			<td><a href="https://github.com/rub-hgi/shorter_linear_slps_for_mds_matrices/tree/master/matrices_slp_implementations">Ref</a></td>
+			<td>196</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>175</td>
+			<td>12</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-8x8-GF16/KLSW17-M-8x8-GF16-0x13--XOR=175-rs=10.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>SKOP15-8x8-GF16</td>
+			<td><a href="https://doi.org/10.1007/978-3-662-48116-5_23">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-8x8-GF16/SKOP15-8x8-GF16.mat.txt">*.mat.txt</a></td>
+			<td>432</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>170</td>
+			<td>19</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-8x8-GF16/SKOP15-8x8-GF16--XOR=170--XZLBZ20.circ.txt">*.circ.txt</a></td>
+			<td>173</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+		</tr>
+		<tr>
+			<td>SS17-8x8-GF16</td>
+			<td><a href="https://doi.org/10.1007/978-3-319-59870-3_1">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-8x8-GF16/SS17-8x8-GF16.mat.txt">*.mat.txt</a></td>
+			<td>394</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>182</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>178</td>
+			<td>10</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-8x8-GF16/SS17-8x8-GF16--XOR=178-rs=1103-symp=1.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>KLSW17-M-8X8-GF16-0x13-inv</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.188-211">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-8x8-GF16/KLSW17-M-8X8-GF16-0x13-inv.mat.txt">*.mat.txt</a></td>
+			<td>540</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.188-211">Paper</a></td>
+			<td><a href="https://github.com/rub-hgi/shorter_linear_slps_for_mds_matrices/tree/master/matrices_slp_implementations">Ref</a></td>
+			<td>212</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>176</td>
+			<td>12</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-8x8-GF16/KLSW17-M-8x8-GF16-0x13-inv--XOR=176-rs=1-symp=2-3.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>SKOP15-8x8-GF16-inv</td>
+			<td><a href="https://doi.org/10.1007/978-3-662-48116-5_23">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-8x8-GF16/SKOP15-8x8-GF16-inv.mat.txt">*.mat.txt</a></td>
+			<td>512</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>185</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>180</td>
+			<td>12</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-8x8-GF16/SKOP15-8x8-GF16-inv--XOR=180-rs=1-d=1.circ.txt">*.circ.txt</a></td>
+		</tr>
+	</tbody>
+</table>
+</div>
+
+<h3>mds-4x4-GF256</h3>
+
+<div class="table-responsive">
+<table align="left" border="1" class="table table-condensed table-striped" style="width:850px">
+	<thead>
+		<tr>
+			<th colspan="4" rowspan="1" scope="col" style="background-color:#ffffcc; text-align:center">Linear system</th>
+			<th colspan="5" rowspan="1" scope="col" style="background-color:#ffffcc; text-align:center">External result</th>
+			<th colspan="3" rowspan="1" scope="col" style="background-color:#ffffcc; text-align:center">Our result</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td style="background-color:#ffffcc"><strong>Name</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Spec</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>File</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>D-XOR</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Paper</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Repo</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>#XOR</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Depth</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Circ*</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>#XOR</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Depth</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Circ</strong></td>
+		</tr>
+		<tr>
+			<td>BKL16-4x4-GF256</td>
+			<td><a href="https://doi.org/10.1007/978-3-662-53018-4_23">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-4x4-GF256/BKL16-4x4-GF256.mat.txt">*.mat.txt</a></td>
+			<td>136</td>
+			<td><a href="https://doi.org/10.1007/978-3-030-26834-3_7">Paper</a></td>
+			<td>&nbsp;</td>
+			<td>108</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>107</td>
+			<td>6</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-4x4-GF256/BKL16-4x4-GF256--XOR=107-rs=18-d=1.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>JPST17-4x4-GF256</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.130-168">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-4x4-GF256/JPST17-4x4-GF256.mat.txt">*.mat.txt</a></td>
+			<td>122</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>82</td>
+			<td>7</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-4x4-GF256/JPST17-4x4-GF256--XOR=82--XZLBZ20.circ.txt">*.circ.txt</a></td>
+			<td>83</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+		</tr>
+		<tr>
+			<td>KLSW17-M-4x4-GF256</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.188-211">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-4x4-GF256/KLSW17-M-4x4-GF256.mat.txt">*.mat.txt</a></td>
+			<td>184</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.188-211">Paper</a></td>
+			<td><a href="https://github.com/rub-hgi/shorter_linear_slps_for_mds_matrices/tree/master/matrices_slp_implementations">Ref</a></td>
+			<td>72</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>72</td>
+			<td>7</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-4x4-GF256/KLSW17-M-4x4-GF256--XOR=72-rs=1.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>LS16-4x4-GF256</td>
+			<td><a href="https://doi.org/10.1007/978-3-662-52993-5_6">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-4x4-GF256/LS16-4x4-GF256.mat.txt">*.mat.txt</a></td>
+			<td>128</td>
+			<td><a href="https://doi.org/10.1007/978-3-030-26834-3_7">Paper</a></td>
+			<td>&nbsp;</td>
+			<td>110</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>109</td>
+			<td>5</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-4x4-GF256/LS16-4x4-GF256--XOR=109-rs=3933.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>LW16-4x4-GF256</td>
+			<td><a href="https://doi.org/10.1007/978-3-662-52993-5_7">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-4x4-GF256/LW16-4x4-GF256.mat.txt">*.mat.txt</a></td>
+			<td>106</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.188-211">Paper</a></td>
+			<td><a href="https://github.com/rub-hgi/shorter_linear_slps_for_mds_matrices/tree/master/matrices_slp_implementations">Ref</a></td>
+			<td>102</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>100</td>
+			<td>6</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-4x4-GF256/LW16-4x4-GF256--XOR=100-rs=572.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>SKOP15-4x4-GF256</td>
+			<td><a href="https://doi.org/10.1007/978-3-662-48116-5_23">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-4x4-GF256/SKOP15-4x4-GF256.mat.txt">*.mat.txt</a></td>
+			<td>136</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>90</td>
+			<td>6</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-4x4-GF256/SKOP15-4x4-GF256--XOR=90--XZLBZ20.circ.txt">*.circ.txt</a></td>
+			<td>95</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+		</tr>
+		<tr>
+			<td>SS16-4x4-GF256</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2016.i1.95-113">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-4x4-GF256/SS16-4x4-GF256.mat.txt">*.mat.txt</a></td>
+			<td>123</td>
+			<td><a href="https://doi.org/10.1007/978-3-030-26834-3_7">Paper</a></td>
+			<td>&nbsp;</td>
+			<td>104</td>
+			<td>&nbsp;</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-4x4-GF256/SS16-4x4-GF256-inv--XOR=93--XZLBZ20.circ.txt">*.circ.txt</a></td>
+			<td>100</td>
+			<td>6</td>
+			<td>&nbsp;</td>
+		</tr>
+		<tr>
+			<td>JPST17-4x4-GF256-inv</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.130-168">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-4x4-GF256/JPST17-4x4-GF256-inv.mat.txt">*.mat.txt</a></td>
+			<td>136</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>83</td>
+			<td>6</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-4x4-GF256/JPST17-4x4-GF256-inv--XOR=83--XZLBZ20.circ.txt">*.circ.txt</a></td>
+			<td>90</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+		</tr>
+		<tr>
+			<td>KLSW17-M-4x4-GF256-inv</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.188-211">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-4x4-GF256/KLSW17-M-4x4-GF256-inv.mat.txt">*.mat.txt</a></td>
+			<td>128</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.188-211">Paper</a></td>
+			<td><a href="https://github.com/rub-hgi/shorter_linear_slps_for_mds_matrices/tree/master/matrices_slp_implementations">Ref</a></td>
+			<td>84</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>78</td>
+			<td>5</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-4x4-GF256/KLSW17-M-4x4-GF256-inv--XOR=78-rs=14.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>LW16-4x4-GF256-inv-circ</td>
+			<td><a href="https://doi.org/10.1007/978-3-662-52993-5_7">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-4x4-GF256/LW16-4x4-GF256-inv-circ.mat.txt">*.mat.txt</a></td>
+			<td>132</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.188-211">Paper</a></td>
+			<td>&nbsp;</td>
+			<td>97</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>89</td>
+			<td>7</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-4x4-GF256/LW16-4x4-GF256-inv-circ--XOR=89-rs=923.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>LW16-4x4-GF256-inv-had</td>
+			<td><a href="https://doi.org/10.1007/978-3-662-52993-5_7">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-4x4-GF256/LW16-4x4-GF256-inv-had.mat.txt">*.mat.txt</a></td>
+			<td>136</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>87</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>87</td>
+			<td>5</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-4x4-GF256/LW16-4x4-GF256-inv-had--XOR=87-rs=96-d=1.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>SKOP15-4x4-GF256-inv</td>
+			<td><a href="https://doi.org/10.1007/978-3-662-48116-5_23">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-4x4-GF256/SKOP15-4x4-GF256-inv.mat.txt">*.mat.txt</a></td>
+			<td>144</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>91</td>
+			<td>6</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-4x4-GF256/SKOP15-4x4-GF256-inv--XOR=91--XZLBZ20.circ.txt">*.circ.txt</a></td>
+			<td>95</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+		</tr>
+		<tr>
+			<td>SS16-4x4-GF256-inv</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2016.i1.95-113">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-4x4-GF256/SS16-4x4-GF256-inv.mat.txt">*.mat.txt</a></td>
+			<td>160</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>93</td>
+			<td>8</td>
+			<td>&nbsp;</td>
+			<td>100</td>
+			<td>&nbsp;</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-4x4-GF256/SS16-4x4-GF256--XOR=104-rs=80.circ.txt">*.circ.txt</a></td>
+		</tr>
+	</tbody>
+</table>
+</div>
+
+<h3>mds-8x8-GF256</h3>
+
+<div class="table-responsive">
+<table align="left" border="1" class="table table-condensed table-striped" style="width:850px">
+	<thead>
+		<tr>
+			<th colspan="4" rowspan="1" scope="col" style="background-color:#ffffcc; text-align:center">Linear system</th>
+			<th colspan="5" rowspan="1" scope="col" style="background-color:#ffffcc; text-align:center">External result</th>
+			<th colspan="3" rowspan="1" scope="col" style="background-color:#ffffcc; text-align:center">Our result</th>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td style="background-color:#ffffcc"><strong>Name</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Spec</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>File</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>D-XOR</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Paper</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Repo</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>#XOR</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Depth</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Circ*</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>#XOR</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Depth</strong></td>
+			<td style="background-color:#ffffcc; text-align:center"><strong>Circ</strong></td>
+		</tr>
+		<tr>
+			<td>BKL16-8x8-GF256</td>
+			<td><a href="https://doi.org/10.1007/978-3-662-53018-4_23">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-8x8-GF256/BKL16-8x8-GF256.mat.txt">*.mat.txt</a></td>
+			<td>784</td>
+			<td><a href="https://doi.org/10.1007/978-3-030-26834-3_7">Paper</a></td>
+			<td>&nbsp;</td>
+			<td>497</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>465</td>
+			<td>10</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-8x8-GF256/BKL16-8x8-GF256--XOR=465-rs=13-symp=2.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>KLSW17-M-8x8-GF256</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.188-211">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-8x8-GF256/KLSW17-M-8x8-GF256.mat.txt">*.mat.txt</a></td>
+			<td>912</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.188-211">Paper</a></td>
+			<td><a href="https://github.com/rub-hgi/shorter_linear_slps_for_mds_matrices/tree/master/matrices_slp_implementations">Ref</a></td>
+			<td>392</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>364</td>
+			<td>11</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-8x8-GF256/KLSW17-M-8x8-GF256--XOR=364-rs=25-symp=2-2.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>LS16-8x8-GF256</td>
+			<td><a href="https://doi.org/10.1007/978-3-662-52993-5_6">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-8x8-GF256/LS16-8x8-GF256.mat.txt">*.mat.txt</a></td>
+			<td>688</td>
+			<td><a href="https://doi.org/10.1007/978-3-030-26834-3_7">Paper</a></td>
+			<td>&nbsp;</td>
+			<td>443</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>427</td>
+			<td>9</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-8x8-GF256/LS16-8x8-GF256--XOR=427-rs=7-symp=2.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>SKOP15-8x8-GF256</td>
+			<td><a href="https://doi.org/10.1007/978-3-662-48116-5_23">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-8x8-GF256/SKOP15-8x8-GF256.mat.txt">*.mat.txt</a></td>
+			<td>768</td>
+			<td><a href="https://doi.org/10.1007/978-3-030-26834-3_7">Paper</a></td>
+			<td>&nbsp;</td>
+			<td>460</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>445</td>
+			<td>8</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-8x8-GF256/SKOP15-8x8-GF256--XOR=445-rs=1-symp=2.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>SS17-8x8-GF256</td>
+			<td><a href="https://doi.org/10.1007/978-3-319-59870-3_1">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-8x8-GF256/SS17-8x8-GF256.mat.txt">*.mat.txt</a></td>
+			<td>680</td>
+			<td><a href="https://doi.org/10.1007/978-3-030-26834-3_7">Paper</a></td>
+			<td>&nbsp;</td>
+			<td>436</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>418</td>
+			<td>9</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-8x8-GF256/SS17-8x8-GF256--XOR=418-rs=7-symp=2.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>JPST17-8x8-GF256-inv</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.130-168">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-8x8-GF256/JPST17-8x8-GF256-inv.mat.txt">*.mat.txt</a></td>
+			<td>1152</td>
+			<td><a href="https://doi.org/10.1007/978-3-030-26834-3_7">Paper</a></td>
+			<td>&nbsp;</td>
+			<td>591</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>528</td>
+			<td>11</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-8x8-GF256/JPST17-8x8-GF256-inv--XOR=528-rs=3-symp=2.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>KLSW17-M-8x8-GF256-inv</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.188-211">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-8x8-GF256/KLSW17-M-8x8-GF256-inv.mat.txt">*.mat.txt</a></td>
+			<td>1080</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2017.i4.188-211">Paper</a></td>
+			<td><a href="https://github.com/rub-hgi/shorter_linear_slps_for_mds_matrices/tree/master/matrices_slp_implementations">Ref</a></td>
+			<td>424</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+			<td>368</td>
+			<td>12</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-8x8-GF256/KLSW17-M-8x8-GF256-inv--XOR=368-rs=21-symp=2-2.circ.txt">*.circ.txt</a></td>
+		</tr>
+		<tr>
+			<td>SKOP15-8x8-GF256-inv</td>
+			<td><a href="https://doi.org/10.1007/978-3-662-48116-5_23">Paper</a></td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/matrices/mds-8x8-GF256/SKOP15-8x8-GF256-inv.mat.txt">*.mat.txt</a></td>
+			<td>816</td>
+			<td><a href="https://doi.org/10.13154/tosc.v2020.i2.120-145">Paper</a></td>
+			<td><a href="https://github.com/xiangzejun/Optimizing_Implementations_of_Linear_Layers">Ref</a></td>
+			<td>348</td>
+			<td>13</td>
+			<td><a href="https://csrc.nist.gov/CSRC/media/Projects/circuit-complexity/linearmaps/circuits/mds-8x8-GF256/SKOP15-8x8-GF256-inv--XOR=348--XZLBZ20.circ.txt">*.circ.txt</a></td>
+			<td>397</td>
+			<td>&nbsp;</td>
+			<td>&nbsp;</td>
+		</tr>
+	</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+<p>There are additional files showcasing the <strong>a</strong>lgebraic <strong>n</strong>ormal <strong>f</strong>orm (ANF) of some polynomials over GF(2):</p>
+
+<p><a href="https://github.com/usnistgov/Circuits/tree/master/data/ANF">https://github.com/usnistgov/Circuits/tree/master/data/ANF</a></p>
+
+<div aria-multiselectable="true" class="panel-group" id="collapse1792066341844" role="tablist">
+<div class="panel panel-default">
+<div class="panel-heading" id="heading1792066341844_1" role="tab">
+<div class="panel-title"><a aria-controls="collapse1792066341844_1" aria-expanded="false" class="collapsed" data-parent="#collapse1792066341844" data-target="#collapse1792066341844_1" data-toggle="collapse" href="javascript:void(0)">ANF of polynomials over GF2 </a></div>
+</div>
+
+<div aria-labelledby="heading1792066341844_1" class="collapse panel-collapse" id="collapse1792066341844_1" role="tabpanel">
+<div class="panel-body">
+<p><strong>Boolean ANF for polynomials over GF(2), modulo 1+x+x<sup>3</sup>+x<sup>4</sup>:</strong></p>
+
+<div class="table-responsive">
+<table align="left" class="table table-condensed table-striped">
+	<thead>
+		<tr>
+			<td><strong>Abbreviation</strong></td>
+			<td><strong>Link</strong></td>
+			<td><strong># inputs</strong></td>
+			<td><strong># outputs</strong></td>
+			<td><strong>Description</strong></td>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td>inversion</td>
+			<td><a href="https://github.com/usnistgov/Circuits/blob/master/data/ANF/ANF-GF2%5E4-inv.txt">ANF-GF2^4-inv.txt</a></td>
+			<td>4</td>
+			<td>4</td>
+			<td>Inversion of an element over GF2^4</td>
+		</tr>
+		<tr>
+			<td>mod</td>
+			<td><a href="https://github.com/usnistgov/Circuits/blob/master/data/ANF/ANF-GF2%5E4-mod-of-GF2%5E8.txt">ANF-GF2^4-mod-of-GF2^8.txt</a></td>
+			<td>8</td>
+			<td>4</td>
+			<td>Reducing modulo GF2^4 an element from GF2^8</td>
+		</tr>
+		<tr>
+			<td>mult2</td>
+			<td><a href="https://github.com/usnistgov/Circuits/blob/master/data/ANF/ANF-GF2%5E4-mult2.txt">ANF-GF2^4-mult2.txt</a></td>
+			<td>8</td>
+			<td>4</td>
+			<td>Multiplying two polynomials over GF(2^4)</td>
+		</tr>
+		<tr>
+			<td>mult3</td>
+			<td><a href="https://github.com/usnistgov/Circuits/blob/master/data/ANF/ANF-GF2%5E4-mult3.txt">ANF-GF2^4-mult3.txt</a></td>
+			<td>12</td>
+			<td>4</td>
+			<td>Multiplying three polynomials over GF(2^4)</td>
+		</tr>
+		<tr>
+			<td>mult4</td>
+			<td><a href="https://github.com/usnistgov/Circuits/blob/master/data/ANF/ANF-GF2%5E4-mult4.txt">ANF-GF2^4-mult4.txt</a></td>
+			<td>16</td>
+			<td>4</td>
+			<td>Multiplying four polynomials over GF(2^4)</td>
+		</tr>
+	</tbody>
+</table>
+</div>
+
+<p><strong>Boolean ANF for polynomials over GF(2), modulo 1+x+x<sup>3</sup>+x<sup>4</sup>+x<sup>8</sup>:</strong></p>
+
+<div class="table-responsive">
+<table align="left" class="table table-condensed table-striped">
+	<thead>
+		<tr>
+			<td><strong>Abbreviation</strong></td>
+			<td><strong>Link</strong></td>
+			<td><strong># inputs</strong></td>
+			<td><strong># outputs</strong></td>
+			<td><strong>Description</strong></td>
+		</tr>
+	</thead>
+	<tbody>
+		<tr>
+			<td>inv</td>
+			<td><a href="https://github.com/usnistgov/Circuits/blob/master/data/ANF/ANF-GF2%5E8-inv.txt">ANF-GF2^8-inv.txt</a></td>
+			<td>8</td>
+			<td>8</td>
+			<td>Inversion of an element over GF2^8</td>
+		</tr>
+		<tr>
+			<td>mult2</td>
+			<td><a href="https://github.com/usnistgov/Circuits/blob/master/data/ANF/ANF-GF2%5E8-mult2.txt">ANF-GF2^8-mult2.txt</a></td>
+			<td>16</td>
+			<td>8</td>
+			<td>Multiplying two polynomials over GF(2^8)</td>
+		</tr>
+		<tr>
+			<td>mult2</td>
+			<td><a href="https://github.com/usnistgov/Circuits/blob/master/data/ANF/ANF-GF2%5E8-mult3.txt">ANF-GF2^8-mult3.txt</a></td>
+			<td>24</td>
+			<td>8</td>
+			<td>Multiplying three polynomials over GF(2^8)</td>
+		</tr>
+	</tbody>
+</table>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+</p>
+
+
+        </div>
+
+
+        <div class="col-lg-4 hidden-xs hidden-sm hidden-md">
+
+            <div class="project-nav-container">
+                <div class="bs-callout bs-callout-subnav" id="projectLinksContainer-lg">
+<h4><i class="fa fa-link"></i> Project Links</h4>
+<div class="project-icons-container">
+    <span>
+        <a href="/projects/circuit-complexity" id="SideNavOverviewLink">
+            <i class="fa fa-info-circle"></i> Overview
+        </a>
+    </span>
+                <span>
+        <a href="/Projects/circuit-complexity/publications" id="SideNavPubsLink" data-count="23">
+            <i class="fa fa-file-text"></i> Publications
+        </a>
+    </span>
+        <span>
+        <a href="/Projects/circuit-complexity/presentations" id="SideNavPresLink" data-count="12">
+            <i class="fa fa-desktop"></i> Presentations
+        </a>
+    </span>
+</div>
+
+    <h4>Additional Pages</h4>
+    <div id="projectPagesCallout-lg">
+
+<a class="csrc-add-page" data-node-level="0" data-node-order="2" href="/Projects/circuit-complexity/list-of-circuits" id="projPage0" style="border-left: solid 0rem transparent;">List of circuits</a>
+<a class="csrc-add-page" data-node-level="0" data-node-order="3" href="/Projects/circuit-complexity/references" id="projPage1" style="border-left: solid 0rem transparent;">References</a>
+
+
+    </div>
+
+                </div>
+            </div>
+
+    <div class="bs-callout bs-callout-success" id="contactsCallout-lg">
+        <h4><i class="fa fa-user"></i> Contacts</h4>
+            <p id="projContact0"><span class='contact-display'><strong data-field='full-name'> <span data-field='firstname'>Reach the</span>   <span data-field='lastname'>Circuit Complexity team at:</span> </strong><br/><a href="/cdn-cgi/l/email-protection#f093998293859984af939f9d809c9588998489b09e998384de979f86" data-field='email'><span class="__cf_email__" data-cfemail="adcec4dfced8c4d9f2cec2c0ddc1c8d5c4d9d4edc3c4ded983cac2db">[email&#160;protected]</span></a><br/></span></p>
+            <p id="projContact1"><span class='contact-display'><strong data-field='full-name'> <span data-field='firstname'>René</span>   <span data-field='lastname'>Peralta</span> </strong> - <strong data-field='affiliation'><span data-field='affiliation'>NIST</span></strong><br/></span></p>
+            <p id="projContact2"><span class='contact-display'><strong data-field='full-name'> <span data-field='firstname'>Meltem</span>   <span data-field='lastname'>Sönmez Turan</span> </strong> - <strong data-field='affiliation'><span data-field='affiliation'>NIST</span></strong><br/></span></p>
+            <p id="projContact3"><span class='contact-display'><strong data-field='full-name'> <span data-field='firstname'>Luís</span>   <span data-field='lastname'>T. A. N. Brandão</span> </strong> - <strong data-field='affiliation'><span data-field='affiliation'>NIST/Strativia</span></strong><br/></span></p>
+    </div>
+
+
+    <div class="bs-callout bs-callout-danger" id="owningGroupCallout-lg">
+        <h4><i class="fa fa-sitemap"></i> Group</h4>
+        <a href="/Groups/Computer-Security-Division/Cryptographic-Technology">Cryptographic Technology</a>
+    </div>
+
+
+    <div class="bs-callout bs-callout-danger" id="topicsCallout-lg">
+        <h4><i class="fa fa-tag"></i> Topics</h4>
+
+            <p>
+                <strong id="catName0-lg">Security and Privacy:</strong>
+                    <a id="catTopLink0-0-lg" href="/Topics/Security-and-Privacy/cryptography">cryptography</a>            </p>
+            <p>
+                <strong id="catName1-lg">Technologies:</strong>
+                    <a id="catTopLink1-0-lg" href="/Topics/technologies/hardware/circuits">circuits</a>,                     <a id="catTopLink1-1-lg" href="/Topics/technologies/complexity">complexity</a>            </p>
+    </div>
+
+
+    <div class="bs-callout bs-callout-warning" id="relatedProjectsCallout-lg">
+        <h4>Related Projects</h4>
+            <a href="/Projects/cryptographic-standards-and-guidelines" id="relProjLink0">Cryptographic Standards and Guidelines</a><br/>
+            <a href="/Projects/masked-circuits" id="relProjLink1">Masked Circuits for Block-Ciphers</a><br/>
+    </div>
+
+
+        </div>
+
+</div>
+    <div class="row visible-sm visible-xs visible-md">
+
+        <div class="col-sm-12">
+
+<div class="bs-callout bs-callout-subnav" id="projectPagesCallout-sm">
+    <h4>Additional Pages</h4>
+    <p>
+
+<a class="csrc-add-page" data-node-level="0" data-node-order="2" href="/Projects/circuit-complexity/list-of-circuits" id="projPage0-sm" style="border-left: solid 0rem transparent;">List of circuits</a>
+<a class="csrc-add-page" data-node-level="0" data-node-order="3" href="/Projects/circuit-complexity/references" id="projPage1-sm" style="border-left: solid 0rem transparent;">References</a>
+
+
+    </p>
+</div>
+
+
+    <div class="bs-callout bs-callout-subnav" id="contactsCallout-sm">
+        <h4><i class="fa fa-user"></i> Contacts</h4>
+        <p style="padding-left: 15px;">
+            <span id="projContact0-sm"><span class='contact-display'><strong data-field='full-name'> <span data-field='firstname'>Reach the</span>   <span data-field='lastname'>Circuit Complexity team at:</span> </strong><br/><a href="/cdn-cgi/l/email-protection#690a001b0a1c001d360a060419050c11001d102907001a1d470e061f" data-field='email'><span class="__cf_email__" data-cfemail="2b484259485e425f744844465b474e53425f526b4542585f054c445d">[email&#160;protected]</span></a><br/></span></span><br/>
+            <span id="projContact1-sm"><span class='contact-display'><strong data-field='full-name'> <span data-field='firstname'>René</span>   <span data-field='lastname'>Peralta</span> </strong> - <strong data-field='affiliation'><span data-field='affiliation'>NIST</span></strong><br/></span></span><br/>
+            <span id="projContact2-sm"><span class='contact-display'><strong data-field='full-name'> <span data-field='firstname'>Meltem</span>   <span data-field='lastname'>Sönmez Turan</span> </strong> - <strong data-field='affiliation'><span data-field='affiliation'>NIST</span></strong><br/></span></span><br/>
+            <span id="projContact3-sm"><span class='contact-display'><strong data-field='full-name'> <span data-field='firstname'>Luís</span>   <span data-field='lastname'>T. A. N. Brandão</span> </strong> - <strong data-field='affiliation'><span data-field='affiliation'>NIST/Strativia</span></strong><br/></span></span><br/>
+        </p>
+    </div>
+
+
+    <div class="bs-callout bs-callout-danger" id="owningGroupCallout-sm">
+        <h4><i class="fa fa-sitemap"></i> Group</h4>
+        <a href="/Groups/Computer-Security-Division/Cryptographic-Technology">Cryptographic Technology</a>
+    </div>
+
+
+    <div class="bs-callout bs-callout-danger" id="topicsCallout-sm">
+        <h4><i class="fa fa-tag"></i> Topics</h4>
+
+            <p>
+                <strong id="catName0-sm">Security and Privacy:</strong>
+                    <a id="catTopLink0-0-sm" href="/Topics/Security-and-Privacy/cryptography">cryptography</a>            </p>
+            <p>
+                <strong id="catName1-sm">Technologies:</strong>
+                    <a id="catTopLink1-0-sm" href="/Topics/technologies/hardware/circuits">circuits</a>,                     <a id="catTopLink1-1-sm" href="/Topics/technologies/complexity">complexity</a>            </p>
+    </div>
+
+
+    <div class="bs-callout bs-callout-warning" id="relatedProjectsCallout-sm">
+        <h4>Related Projects</h4>
+        <p>
+            <a href="/Projects/cryptographic-standards-and-guidelines" id="relProjLink0-sm">Cryptographic Standards and Guidelines</a><br/>
+            <a href="/Projects/masked-circuits" id="relProjLink1-sm">Masked Circuits for Block-Ciphers</a><br/>
+        </p>
+    </div>
+
+
+        </div>
+
+    </div>
+
+<div class="row">
+    <div class="col-md-12 historical-data-area" id="historical-data-area">
+
+            <span>Created <span id="page-created-date">December 29, 2016</span>, Updated <span id="page-updated-date">October 15, 2026</span></span>
+    </div>
+</div>
+
+
+
+
+
+
+        <div id="footer-pusher"></div>
+
+    </div>
+
+    
+
+    <footer id="footer">
+    <div class="container">
+
+        <div class="row">
+            <div class="col-sm-6">
+                <span class="hidden-xs">
+                    <a href="https://www.nist.gov" title="National Institute of Standards and Technology" rel="home" target='_blank' rel="noopener noreferrer" class="footer-nist-logo" id="footer-nist-logo-link">
+                        <img src="/CSRC/Media/images/nist-logo-brand-white.svg" alt="National Institute of Standards and Technology logo" id="footer-nist-logo" />
+                    </a>
+                </span>
+
+                <div class="row footer-contact-container">
+                    <div class="col-sm-12" id="footer-address">
+                        <strong>HEADQUARTERS</strong><br>
+                        100 Bureau Drive<br>
+                        Gaithersburg, MD 20899
+                    </div>
+                </div>
+            </div>
+            <div class="col-sm-6">
+                <ul class="social-list text-right" style="display: block;">
+                    <li class="field-item service-twitter list-horiz">
+                        <a href="https://x.com/NISTCyber" class="social-btn social-btn--large extlink ext" id="footer-social-twitter-link">
+                            <i class="fa-brands fa-x-twitter fa-fw"><span class="element-invisible">X</span></i><span class="ext"><span class="element-invisible"> (link is external)</span></span>
+                        </a>
+                    </li>
+                    <li class="field-item service-facebook list-horiz">
+                        <a href="https://www.facebook.com/NIST" class="social-btn social-btn--large extlink ext" id="footer-social-facebook-link">
+                            <i class="fa fa-facebook fa-fw"><span class="element-invisible">facebook</span></i><span class="ext"><span class="element-invisible"> (link is external)</span></span>
+                        </a>
+
+                    </li>
+                    <li class="field-item service-linkedin list-horiz">
+                        <a href="https://www.linkedin.com/company/nist" class="social-btn social-btn--large extlink ext" id="footer-social-linkedin-link">
+                            <i class="fa fa-linkedin fa-fw"><span class="element-invisible">linkedin</span></i><span class="ext"><span class="element-invisible"> (link is external)</span></span>
+                        </a>
+
+                    </li>
+                    <li class="field-item service-instagram list-horiz">
+                        <a href="https://www.instagram.com/usnistgov/" class="social-btn social-btn--large extlink ext" id="footer-social-instagram-link">
+                            <i class="fa fa-instagram fa-fw"><span class="element-invisible">instagram</span></i>
+                            <span class="ext"><span class="element-invisible"> (link is external)</span></span>
+                        </a>
+
+                    </li>
+                    <li class="field-item service-youtube list-horiz">
+                        <a href="https://www.youtube.com/user/USNISTGOV" class="social-btn social-btn--large extlink ext" id="footer-social-youtube-link">
+                            <i class="fa fa-youtube fa-fw"><span class="element-invisible">youtube</span></i><span class="ext"><span class="element-invisible"> (link is external)</span></span>
+                        </a>
+
+                    </li>
+                    <li class="field-item service-rss list-horiz">
+                        <a href="https://www.nist.gov/news-events/nist-rss-feeds" class="social-btn social-btn--large extlink" id="footer-social-rss-link">
+                            <i class="fa fa-rss fa-fw"><span class="element-invisible">rss</span></i>
+                        </a>
+
+                    </li>
+                    <li class="field-item service-govdelivery list-horiz last">
+                        <a href="https://public.govdelivery.com/accounts/USNIST/subscriber/new?qsp=USNIST_3" class="social-btn social-btn--large extlink ext" title="Subscribe to CSRC and publication updates, and other NIST cybersecurity news" id="footer-social-govdelivery-link">
+                            <i class="fa fa-envelope fa-fw"><span class="element-invisible">govdelivery</span></i><span class="ext"><span class="element-invisible"> (link is external)</span></span>
+                        </a>
+                    </li>
+                </ul>
+                <p class="text-right">
+                    Want updates about CSRC and our publications?
+                    <a href="https://public.govdelivery.com/accounts/USNIST/subscriber/new?qsp=USNIST_3" class="btn btn-lg btn-primary" style="background-color: #12659c!important; border-color: #12659c!important;" id="footer-subscribe-link">Subscribe</a>
+                </p>
+            </div>
+        </div>
+        <div class="row hidden-sm hidden-md hidden-lg">
+            <div class="col-sm-12">
+                <a href="https://www.nist.gov" title="National Institute of Standards and Technology" rel="home" target='_blank' rel="noopener noreferrer" class="footer-nist-logo" id="footer-bottom-nist-logo-link">
+                    <img src="/CSRC/Media/images/logo_rev.png" alt="National Institute of Standards and Technology logo" id="footer-bottom-nist-logo" />
+                </a>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-sm-6">
+                <p>
+                    <a href="/about/contact" id="footer-contact-us-link">Contact Us</a> |
+                    <a href="https://www.nist.gov/about-nist/visit" style="display: inline-block;" id="footer-org-link">Our Other Offices</a>
+                </p>
+            </div>
+            <div class="col-sm-6">
+                <span class="pull-right text-right">
+                    Send inquiries to <a href="/cdn-cgi/l/email-protection#6c0f1f1e0f4105021d19051e152c02051f18420b031a531f190e06090f18512f3f3e2f4c25021d19051e15" style="display: inline-block;" id="footer-inquiries-link"><span class="__cf_email__" data-cfemail="89eafafbeaa4e0e7f8fce0fbf0c9e7e0fafda7eee6ff">[email&#160;protected]</span></a>
+                </span>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="footer-bottom-links-container" id="footer-bottom-links-container">
+                <ul>
+                  <li><a href="https://www.nist.gov/privacy-policy">Site Privacy</a></li>
+                  <li><a href="https://www.nist.gov/oism/accessibility">Accessibility</a></li>
+                  <li><a href="https://www.nist.gov/privacy">Privacy Program</a></li>
+                  <li><a href="https://www.nist.gov/oism/copyrights">Copyrights</a></li>
+                  <li><a href="https://www.commerce.gov/vulnerability-disclosure-policy">Vulnerability Disclosure</a></li>
+                  <li><a href="https://www.nist.gov/no-fear-act-policy">No Fear Act Policy</a></li>
+                  <li><a href="https://www.nist.gov/foia">FOIA</a></li>
+                  <li><a href="https://www.nist.gov/environmental-policy-statement">Environmental Policy</a></li>
+                  <li><a href="https://www.nist.gov/summary-report-scientific-integrity">Scientific Integrity</a></li>
+                  <li><a href="https://www.nist.gov/nist-information-quality-standards">Information Quality Standards</a></li>
+                  <li><a href="https://www.commerce.gov/">Commerce.gov</a></li>
+                  <li><a href="https://www.science.gov/">Science.gov</a></li>
+                  <li><a href="https://www.usa.gov/">USA.gov</a></li>
+                  <li><a href="https://vote.gov/">Vote.gov</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</footer>
+
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="text/javascript" src="/dist/js/quick-collapse.js"></script>
+<script type="text/javascript" src="/dist/app.bundle.js"></script>
+<!-- USWDS Bottom -->
+<script type="text/javascript" src="/dist/uswds/js/uswds.min.js"></script>
+
+    
+    <script type="text/javascript" src="/dist/projects.bundle.js"></script>
+
+    
+
+
+    <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/vce701823e78c4301a35b7e07294d87301792088814092" integrity="sha512-UKNk8GbxkABxKcXYuLkO16EleLGUkcvJWtpSNmExE0Too3ZaFAxTscNWEc1OdAv5/BikHawapSCaiD2XCmp+Bw==" data-cf-beacon='{"version":"2024.11.0","token":"9ef5b487afff42a68917b2d63593a474","spa":2}' crossorigin="anonymous"></script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4c154908fc4c33e',t:'MTc5MjI2MTM2Mw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

@@ -1,0 +1,520 @@
+\documentclass[11pt]{article}
+\usepackage[letterpaper,margin=.85in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern,microtype,amsmath,amssymb,booktabs,array}
+\usepackage{xcolor,enumitem,fancyhdr}
+\usepackage[hyphens]{url}
+\usepackage{hyperref}
+\definecolor{navy}{HTML}{17324D}
+\definecolor{teal}{HTML}{176B73}
+\hypersetup{colorlinks=true,linkcolor=navy,urlcolor=teal,citecolor=teal,
+ pdftitle={Hierarchical ORAM: Current Construction, AWS Cost, and Latency}}
+\setlength{\parindent}{0pt}\setlength{\parskip}{5pt}
+\setlength{\emergencystretch}{2em}\setlength{\headheight}{14pt}
+\setlist{nosep,leftmargin=1.6em}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\small\textcolor{navy}{Hierarchical ORAM on AWS}}
+\fancyhead[R]{\small Current construction and deployment}
+\fancyfoot[C]{\thepage}
+\begin{document}
+{\color{teal}\large TECHNICAL REPORT\par}
+{\color{navy}\LARGE\bfseries Hierarchical ORAM:\\Communication, AWS Cost, and Latency\par}
+17 October 2026\quad$\cdot$\quad Single projected AES per lookup
+
+\section*{Result}
+%%RESULTPROSE%%
+
+%%SUMMARY%%
+
+These are newly sized and simulated deployments of the same construction:
+one address PRF per occupied table, private random dummy addresses,
+short-output AES pruning in both lookup and rebuilding, 64-entry lookup
+buckets, and Boolean fingerprints with packed payloads. All resource and
+price tables below use this protocol. There is no separate dummy PRF or
+dummy epoch key. The budget charges both parties and all seven stored
+states; each query runs against one ready state.
+
+When a few hundred milliseconds are acceptable, $B=2048$ is the cheaper
+tested choice. $B=1024$ provides more latency margin. Rebuilding and
+prefetching remain the larger worker pool. The predictions assume that
+loading/transferring circuit material dominates CPU computation. They are
+conditional analytical results and finite deterministic traces, not AWS
+benchmarks or latency guarantees. All MB/GB/TB are decimal; MiB/GiB are binary.
+
+\section{The current construction}
+\subsection{Tables, reads, and representations}
+The branching factor is two. Logical table capacities are
+$n=B,2B,\ldots,N$; each table has $2n$ main slots, grouped into
+$m_n=2n/64$ lookup buckets, plus one global stash $G(n)$. The base is a
+hash table of capacity $B$, not a dense stash. A lower table is occupied
+half of a binary-counter cycle; the largest table is always occupied.
+With $L=\log_2(N/B)$, the mean number of occupied tables is $A=L/2+1$.
+
+Hash each application key once to a secret 128-bit canonical fingerprint
+using a PRF. The numerical workload assumes a fixed 32-byte application
+key, charged as two AES-CMAC encryptions and its shared input \cite{nist-cmac}. A bitonic
+sort deduplicates the batch once; saved private comparison controls support
+final result propagation and inverse routing. There is no recursive
+position map and no repetition of request deduplication at hierarchy levels.
+
+Visit occupied tables from small to large. In each, reveal one selected
+bucket address and privately scan that bucket and the global stash. A
+match clears the entry's occupancy flag. Once a request has matched, later
+tables receive dummy probes. Reinsert one representative per deduplicated
+request, including a keyed absent tombstone when appropriate. The retained
+query fingerprint supplies the reinsertion key, so a second copy need not
+be extracted from the matching entry. Shared buckets and stashes receive
+one combined batch update, not conflicting per-query writes.
+
+Each entry holds a 128-bit fingerprint and two Boolean flags (occupied and
+present), with one 16-byte label per bit per party. Its 256-bit payload is
+a 32-byte XOR share per party. This is an explicit word-OT representation;
+two ordinary GC labels do not encode an arbitrary 256-bit value. The
+persistent per-party entry size is
+\[
+ E=16(128+2)+32=2112\text{ bytes}.
+\]
+We use 32 bytes per half-gate AND and 160 bytes per packed conditional swap
+(80 in each direction). A Boolean conditional swap costs one AND per
+moved bit. Therefore a record swap costs
+\[
+ \underbrace{4096}_{128\text{-bit key}}+
+ \underbrace{64}_{\text{two flags}}+
+ \underbrace{160}_{\text{payload}}=4320\text{ bytes},
+\]
+plus 32 bytes per retained routing bit. The persistent fingerprint remains
+Boolean throughout this costed construction, including rebuilding.
+
+Fingerprint equality uses 127 ANDs per scanned slot. Match, occupancy,
+active-request, and present handling have a 134-AND/slot allowance in the
+ledger, including equality. The allowance is conservative over a 130-AND
+core using one-hot XOR reductions. Packed extraction is charged separately
+at 160 bytes per candidate slot. Every lookup still scans a bucket and
+stash at every occupied table, including after a hit.
+
+\subsection{Rebuilding and recursive refinement}
+A carry rebuilds capacity $n$ once per $2n$ requests; the largest table
+rebuilds once per $N$. Rebuilds are blocking for that state. Availability
+comes from other independent states, without a deamortized ORAM algorithm.
+The stages, including data movement, are:
+\begin{enumerate}
+\item Compact source main arrays. At the largest rebuild, discard absent
+tombstones. Append old stash entries and compact again to readmit them.
+\item Retain a public $n$ positions and compute fresh secret routing tags
+under the destination table's new epoch key. Dummy positions still receive
+fixed-shape work. Spread the compacted slots into half-full 512-slot buckets.
+\item Run the binary 512-slot butterfly. A MergeSplit planner consumes only
+one routing bit per slot, but its secret controls move the complete entry
+and all unconsumed routing bits through ORCompact switches.
+\item Refine each 512-slot parent into eight 64-slot leaves. Plan per-leaf
+membership, identify excess entries, collect them once into a 64-slot local
+stash, then recursively partition the feasible remainder. A public retained
+mask is inverse-routed to identify which original slots remain in each leaf.
+\item Compact all local residual stashes into the table's global stash,
+with a fixed public capacity and a charged overflow check.
+\end{enumerate}
+For a power-of-two $q$-slot ORCompact, the ledger uses $q\log_2q/2$ swaps
+and a constructive planner allowance $q\log_2q-q/2-\log_2q+1$ ANDs. These
+are the project's cost derivation, not gate counts quoted from the paper.
+The routing method follows the supplied Microrama and ORCompact sources
+\cite{construction,orcompact}.
+
+Global stash capacities are selected using a Chernoff/Poisson residual
+bound and rounded to multiples of eight. At $B=1024$, the base stash is
+56 slots and the largest stashes are 112/264 slots for $N=2^{28}/2^{32}$.
+These capacities and the overflow checks are included in read and rebuild
+costs. Their existing failure accounting uses $Q=2^{32}$ accesses;
+extending the failure budget to a full year remains a stated validation
+task, rather than an implicit annual guarantee.
+
+\section{One PRF and private dummy addresses}
+For every visit, each party samples a fresh private $t_n$-bit share,
+where $t_n=\log_2(2n/64)$. Inside the circuit, form
+$r=r_G\oplus r_E$ and reveal only
+\[
+ j=\operatorname{mux}(\mathrm{active},H_{K_{n,e}}(x),r).
+\]
+The dummy address is not opened separately. If both parties already knew
+it, comparing it with $j$ would identify dummy visits. Generate and input
+shares for every visit, regardless of the hidden active flag. Our shared
+input allowance is $64t_n$ bytes: $48t_n$ forward and $16t_n$ reverse.
+The $t_n$-AND address mux is separately included in lookup logic.
+
+The shares and their input labels can be prepared with the next circuit
+batch, so no extra dependent online coin-toss round is assumed. Prefetch
+accounts for both traffic directions and conservatively reserves the full
+input transcript in RAM. It does not treat that transcript as garbled
+gate bytes. The real-address PRFs can be computed before previous-table
+hit bits are available; only output selection depends on those bits.
+
+The address PRF is full-round AES-128 followed by a fixed public output
+projection. Keep output bytes $(0,13,10,7)$, concatenated in that order,
+and take the first $t$ bits in a fixed bit order. These are zero-based byte
+positions in AES column-major serialization. Inverting the final
+ShiftRows maps the selected bytes to one round-9 column. For $t\leq32$,
+all 16 S-boxes in rounds 1--8, four in round 9, and $\lceil t/8\rceil$
+in round 10 suffice. Using the same 32-AND S-box as the full 5120-AND
+datapath gives the upper bound
+\[
+ g(t)=32\left(128+4+\left\lceil t/8\right\rceil\right).
+\]
+MixColumns and AddRoundKey are linear. No AES round is removed and both
+lookup and rebuilding use the identical projection
+\cite{nist-fips197,nist-aes}. We charge a complete S-box even for a partly
+used final byte. A completed full-output circuit would still cost 5120
+ANDs; this saving requires pruning the unused computations.
+
+%%PRUNING%%
+
+Canonical fingerprints remain 128 bits. The two initial CMAC block
+encryptions remain full-output AES, and each table epoch receives a fresh
+independent secret address key with a full 1280-AND key schedule and shared
+key input. There is no separate dummy key. For weights $w_n=1/2$ at lower
+tables and $w_N=1$, the amortized PRF datapath charge is
+\[
+ C_{\rm PRF}=327680+64\sum_n w_n g(t_n),
+\]
+because the lookup weight and $n/\mathrm{rebuildInterval}(n)$ both equal
+$w_n$. Private dummy inputs add $64\sum_nw_nt_n$ bytes/query. Epoch-key
+setup and inputs add $49152/B$ bytes/query: 48 at $B=1024$, 24 at $B=2048$.
+
+Hash reuse already occurs within one table: one projected output supplies
+all butterfly and refinement address bits. Reusing address prefixes across
+tables or epochs can expose correlations and the hidden real-to-dummy
+transition; independent contexts are retained. Carrying an extra 128-bit
+Boolean hash through every swap costs another 4096 bytes/swap. One saved
+projected AES pays for only 33.25--34 such extra swaps. This makes that
+straightforward full-tag retention strategy unattractive, without ruling
+out a separately proved packed or selectively retained representation.
+
+\section{Communication breakdown and circuit interfaces}
+%%COMMUNICATION%%
+
+Rebuilding contributes 10.883/14.662 MB/query at $B=1024$, more than half
+the useful total. Boolean fingerprint movement alone contributes
+7.911/10.685 MB/query. Payload movement is small by comparison. The next
+table exposes the rebuild stages so that source compaction, recursive
+splitting, stash readmission, and residual collection are all visible.
+
+%%STAGES%%
+
+The cost requires compatible circuit composition: a common session-wide
+Free-XOR offset with odd color bit, unique gate/wire namespaces, and direct
+import of committed state-wire pairs. Immutable fingerprints and expanded
+keys may feed fresh circuits. Mutable occupancy outputs receive fresh
+wire pairs; changed values must never reuse the old pair. These are
+requirements on the eventual compiler and implementation.
+
+Prefetched query ports also need fresh pairs. With common offset $\Delta$,
+a translation from $W^b=W^0\oplus b\Delta$ to $V^b$ uses one public
+16-byte value $T=W^0\oplus V^0$. Reserve two 128-wire ports per occupied
+table, totaling 4096 bytes: one for the PRF/stash lane and one for the
+selected bucket equality lane. Cold stages without a bucket cache need
+at most the first port; retaining both is conservative. Every cached
+version and every query translation is single-use.
+
+If instead each kernel independently re-encodes all persistent inputs,
+generic two-row unary bridges add approximately 5.849/8.279 MB/query at
+$B=1024$, before further internal boundaries. The priced construction uses
+direct state composition; this overhead cannot simply be ignored by an
+implementation using unrelated labels. Cache binding and batch finalization
+remain compilation/security-composition TODOs.
+
+\section{Caching and the AWS resource bottleneck}
+\subsection{Small-table RAM caches and lookahead}
+Cache the small tables near the batch-sized base, through capacity $2^{16}$.
+Queue fresh immutable-fingerprint equality circuits and keep their state
+in RAM. Keep each table's global stash state and one future batch of its
+stash, PRF, and private-randomness material in RAM at every level. The
+remaining occupancy/present/active finalizer is generated dynamically.
+
+A table of logical capacity $n$ lasts $n$ requests while present and has
+$2n/64$ buckets, so a bucket receives 32 accesses on average over its
+lifetime. That is not a useful per-batch upper bound. At the base with
+$B=1024$, there are only 32 buckets and a mean of 32 accesses per bucket
+in that single batch. A four-version queue covers at most 12.5\% of those
+requests. A larger adaptive queue is needed near the base.
+
+With $X\sim\operatorname{Binomial}(B,1/m_n)$, choose the smallest queue
+width $w$ satisfying $m_n\Pr[X>w]$ below the table's share of a $10^{-3}$
+batch any-miss budget. At $B=1024$, the seven widths are
+$[59,37,24,17,12,9,7]$. This is a performance budget under the ideal-PRF
+independent-address model, not an ORAM failure probability. Duplicates are
+removed before real probes; padded inactive requests get independent
+private dummy addresses.
+
+%%CACHE%%
+
+The RAM table conservatively reserves the full 134-AND bucket allowance;
+the prefetched immutable equality component uses 127 ANDs/slot. Useful
+prefetched bytes remain in total communication. Add only unused versions
+at table retirement and input bridges. Skip the final refill before a
+publicly known retirement. Cold buckets load state on demand and receive
+fresh circuits streamed to RAM; no cold-bucket GC disk queues are part of
+the priced deployment.
+
+\subsection{Network, EBS, and memory accounting}
+Use \texttt{c6in.32xlarge}, with 256 GiB RAM, 200 Gbps network per direction,
+and 100 Gbps aggregate EBS bandwidth \cite{aws-compute,aws-network}. The
+modeled active rates per worker are
+\begin{align*}
+ C_{\rm NIC}&=25\cdot0.65\cdot0.70=11.375\ {\rm GB/s},\\
+ C_{\rm EBS}&=12.5\cdot0.65=8.125\ {\rm GB/s},\\
+ C_{\rm DRAM}&=56\ {\rm GB/s}.
+\end{align*}
+The NIC factors are network and distributed efficiency. The DRAM rate is
+an explicit effective-loading proxy, not an AWS specification. Pool sizing
+then limits modeled mean utilization to 70\%; this factor is not applied
+again to active service durations. All traffic receives 5\% framing.
+
+Charge half the modeled external record read/write boundary volume as
+intra-party sends and receives in each party's limiting NIC direction.
+This assumes a distributed storage owner sends records to workers; gp3
+is not assumed to support cross-host multi-attach. Actual gather/scatter
+may differ. If this internal volume is $I$ per party per direction, both
+parties together send $2I$, not $4I$: counting each matching receive again
+would double-count network traffic.
+
+%%NETWORK%%
+
+If $F$ is cross-party forward traffic, the limiting directional capacity
+uses $1.05(F+I)$, not the all-network sum. The reverse direction includes
+packed OTs and private-randomness input traffic and is checked separately.
+State I/O and DRAM loads are not extra 2PC communication, although remotely
+transferring a record is network traffic as represented by $I$.
+
+%%CAPACITY%%
+
+Retain each 1024-slot MergeSplit and 512-slot refinement kernel in a small
+RAM tile. Materialize only the outer butterfly boundaries; source
+compactions, stash readmission, and global residual collection still incur
+their charged large-array passes. A conservative separate source/final
+boundary pass is also included. Keeping inner switches local is essential:
+
+%%IO%%
+
+The complete state does not fit in the small-table cache: it is
+2.268/36.284 TB per party per state at $B=1024$. With tiled movement and
+fresh GC streaming, network transfer remains the main aggregate throughput
+limit. Counting two GC-memory passes, full switch-level record movement,
+and source/final boundary traffic, no rebuilt level in the tested cases
+requires more than 32.92 GB/s per worker to keep up with its modeled
+NIC/EBS service. This is below the 56 GB/s DRAM assumption. EBS or DRAM
+can still determine individual read-stage service.
+Spilling every switch layer or writing/rereading all GCs changes the
+bottleneck. Planner labels, OT matrices, state update amplification, and
+cache-owner distribution require implementation measurements.
+
+\section{Fleet scheduling and annual cost}
+\subsection{Worker pools and independent states}
+There are $F$ foreground and $R$ background workers per party. Each pool
+jointly serves one job at a time. The foreground pool handles a batch;
+the background pool performs that state's rebuild and prepares its next
+circuit batch. Background jobs use preemptive shortest remaining work,
+allowing a small rebuild of another state to interrupt a large rebuild.
+A state stays unavailable until its whole rebuild and prefill finish.
+This changes scheduling across states, not the within-state ORAM algorithm.
+
+States start warm at evenly spaced valid public counter offsets. Dispatch
+to the oldest ready state, queueing if none is available. The model uses a
+static lookup database: independent states contain the same logical data
+but evolve their own ORAM placements. Each request changes one state and
+is charged once. Application updates that must reach every state require
+an additional consistency protocol and are outside this workload.
+
+Pool sizes are chosen separately so mean foreground and background
+occupancy, including modeled round/load waits, stay at or below 70\%.
+The full binary-counter trace is then simulated. Each run spans two global
+$N/B$ batch cycles: about 14.91 hours at $N=2^{28}$ or 9.94 days at
+$N=2^{32}$. The admission queue is included in the reported latency.
+
+Seven states are used for the headline results. Five states are a useful
+smaller deployment comparison, using exactly the same current protocol
+and worker pools; they still exhibit occasional multi-second stalls in
+the larger-database traces. Additional states cost storage and cache
+capacity, not seven copies of the worker fleet:
+
+%%STATES%%
+
+The maxima are observations over two largest-table rebuild starts per
+trace. They are neither worst-case proofs nor annual tail guarantees.
+Cache misses, failures, bursty arrivals, and real checkpoint/suspension
+costs are not sampled. The preemption and storage models are assumptions
+to validate in a prototype.
+
+\subsection{AWS prices and storage reservations}
+Use the official us-east-1 price snapshot published 15 October 2026 and
+checked 17 October: Linux On-Demand \texttt{c6in.32xlarge} at \$7.2576/hour;
+gp3 capacity \$0.08/GiB-month; added throughput \$0.04/(MiB/s)-month; and
+added IOPS \$0.005/IOPS-month \cite{aws-prices,aws-gp3}. The feed's
+throughput unit is GiB/s-month and is divided by 1024. Annualization uses
+8760 instance hours and 12 storage-billing months.
+
+Each worker receives eight gp3 volumes, each provisioned at 1491 MiB/s
+and 23,842 IOPS. This buys 12.507 GB/s aggregate raw throughput per worker,
+enough for the 12.5 GB/s modeled raw instance ceiling at 64 KiB operations.
+Each volume is at least 48 GiB for the IOPS/capacity constraint. The service
+model subsequently applies the 65\% EBS efficiency. Paying only average
+throughput would not support the modeled active rebuild rate.
+
+Reserve, per state and party, the persistent state $P$ plus
+\[
+ S=1.25\,[4N(2112+16t_N)]
+\]
+bytes of scratch: one largest tagged source array and 25\% working-space
+allowance. Reserving scratch for all seven states permits suspended
+rebuilds to retain work. This is a policy, not a proven maximum live-set
+bound. The per-party volumes are striped/distributed logically; internal
+record traffic is already charged rather than assuming direct shared disks.
+
+For total workers $K_G+K_E=2(F+R)$, volumes $v$, capacity $D_v$ GiB,
+throughput $T_v$ MiB/s, and IOPS $J_v$, the annual budget is
+\[
+ C_{\rm year}=63576.576(K_G+K_E)+
+ \sum_v[0.96D_v+0.48(T_v-125)_++0.06(J_v-3000)_+].
+\]
+Both parties use private addresses in the same Availability Zone, so this
+transfer placement has no separate EC2 regional data-transfer charge
+\cite{aws-transfer}. Cross-AZ placement would need a different budget.
+
+%%BUDGET%%
+
+%%RAM%%
+
+The annualization is steady-state at 10,000 queries/s, or 315.36 billion
+queries/year. Initial database construction, cache warmup, client/application
+transport, application computation, taxes, and replica-update consistency
+are excluded. This is a semi-honest steady-state ledger; base-OT setup and
+malicious-security checks are outside its scope. CPU is excluded by the
+requested assumption. Each billed
+fleet must still meet the advertised NIC/EBS rates in the actual placement;
+both NIC cards and multiple flows are required for the modeled aggregate
+network rate \cite{aws-network}.
+
+\section{Query latency and batch size}
+A central batcher receives 10,000 requests/s. For deterministic arrivals,
+the mean batch-fill delay is $(B-1)/(2q)$: 51.15 ms at $B=1024$, 102.35 ms
+at $B=2048$. It is not multiplied by the number of states. Splitting arrivals
+into seven independent batchers would give a different fill delay.
+
+At each dependent table stage, service is the maximum of NIC transfer,
+EBS loading (including one 0.5 ms fixed wave allowance when needed), and
+DRAM loading. Those per-stage maxima are summed. Taking one maximum over
+the entire hierarchy would hide a level-local storage bottleneck. The
+state/stash reads within a table are assumed parallel.
+
+Read packed-value selection can wait until all metadata reads finish and
+run as one batched OT layer. A parallel segmented propagation tree uses
+at most $2\log_2B+1$ packed layers; inverse bitonic routing uses
+$\log_2B(\log_2B+1)/2$. With $k=\log_2B$, the model's mean
+RTT-equivalent dependency allowance is
+\[
+ U=2+A+(2k+1)+k(k+1)/2.
+\]
+Each unit costs 0.2 ms in the primary scenario. This is an explicit
+scheduling allowance, not a proof of the exact compiled protocol's round
+count. Preprocessed OT does not remove dependent online packed products.
+The reported query latencies include fill, active service, and the finite
+trace's admission queue.
+
+%%LATENCYSENS%%
+
+The effect of changing batch size is visible directly in the communication
+ledger. Smaller batches save on the one-time bitonic work but add hierarchy
+levels, rebuild frequency, and a larger fraction of fixed round/load delay.
+
+%%BATCH%%
+
+Reducing $B$ from 1024 to 512 saves only about 0.083 MB/query in the frontend;
+total useful communication increases. In the resized five-state tests,
+$B=512$ needs 59/78 workers per party and costs \$9.35M/\$13.11M annually,
+with mean latency about 60--61 ms. It is not a cost-saving choice for the
+stated tolerance. The headline seven-state $B=2048$ deployments save about
+13--14\% versus $B=1024$ and retain sub-430 ms observed maxima in these
+traces. Smaller batches remain relevant if a substantially tighter latency
+target is imposed.
+
+\clearpage
+\section{Validation and remaining work}
+All current resource paths consume the same materialized single-PRF case.
+The annual model and report renderer reject a schedule stamped with a
+different address protocol, preventing old traces from silently entering
+new tables. Thirty-five tests, including six ORCompact/refinement checks,
+cover direction conservation, private dummy
+input prefetch in both directions, cache lifecycle, stagewise latency,
+counter carries, headroom, price units, storage/state charging, label
+translations, complete entry movement, and stale-schedule rejection.
+
+The pruned AES computations match 32 independent native-AES key/plaintext
+vectors for one through four projected bytes and ordinary prefixes, plus
+a full AES known-answer test. The 32-AND S-box cost is held fixed so the
+projection saving is isolated; newer S-box circuits are not silently
+substituted. Functional pruning and ledger tests are not a compiled GC
+benchmark or a security proof for the full composition.
+
+The outstanding tasks are concrete: compile and validate the label/cache
+interfaces and shared-bucket finalizer; implement the global planner's
+external-memory schedule; measure directional NIC throughput, effective
+DRAM loads, and EBS IOPS/waves; test real background preemption and bursty
+arrivals; and extend the overflow/fingerprint failure accounting from
+$2^{32}$ accesses to the annual workload. A year here is about 73.4 times
+that horizon. The current numerical capacities must not be presented as
+already proving an annual failure target.
+
+Packing fingerprints only while moving them is a possible further
+optimization, but its conversion/composition kernels and new I/O schedule
+are not implemented. It is not included in any table in this report.
+The priced construction uses Boolean fingerprints and packed values
+consistently throughout.
+
+\appendix
+\section{Reproduction}
+From the repository root, with Python, NumPy, and SciPy available:
+\begin{verbatim}
+python -m mpc_cost.hierarchical_throughput
+python -m mpc_cost.hierarchical_communication_audit
+python -m mpc_cost.hierarchical_prf_optimization
+python -m mpc_cost.hierarchical_schedule
+python -m mpc_cost.hierarchical_schedule --suite variants
+python -m mpc_cost.hierarchical_annual
+python -m unittest discover -s mpc_cost -t . -p "test_hierarchical*.py"
+python -m mpc_cost.render_hierarchical_throughput_report
+\end{verbatim}
+The scheduling commands rerun the full deterministic traces rather than
+scaling an old price or latency by a byte-saving percentage. Current
+case construction is in \texttt{hierarchical\_address.py}; decomposition,
+trace, and price results are stored separately under \texttt{mpc\_cost/results}.
+The original split ledger remains a reproducible input to the explicit
+current-case transformation. It is not the protocol used for the final
+resource tables. The standalone LaTeX includes all numerical tables and
+needs no project-specific inputs to compile.
+
+\clearpage
+\begin{thebibliography}{99}
+\bibitem{construction} Microrama. User-supplied ongoing paper and the
+project's Binary Hierarchical ORAM for Interactive Two-Party Computation
+construction ledger, 17 October 2026.
+\bibitem{orcompact} IACR ePrint 2022/1333. User-supplied ORCompact source,
+Sections 3, 5.1, and Appendix B. \url{https://eprint.iacr.org/2022/1333}
+\bibitem{nist-fips197} NIST. FIPS 197, Advanced Encryption Standard (AES),
+updated May 2023. Sections 3.4 and 5.1.
+\url{https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.197-upd1.pdf}
+\bibitem{nist-aes} NIST. Circuit Complexity: List of Circuits. AES circuit
+and S-box gate counts. Accessed 17 October 2026.
+\url{https://csrc.nist.gov/projects/circuit-complexity/list-of-circuits}
+\bibitem{nist-cmac} NIST. SP 800-38B: The CMAC Mode for Authentication.
+\url{https://csrc.nist.gov/pubs/sp/800/38/b/upd1/final}
+\bibitem{aws-compute} AWS. Specifications for EC2 compute optimized instances.
+\url{https://docs.aws.amazon.com/ec2/latest/instancetypes/co.html}
+\bibitem{aws-network} AWS. EC2 instance network bandwidth.
+\url{https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-network-bandwidth.html}
+\bibitem{aws-gp3} AWS. EBS General Purpose SSD volumes.
+\url{https://docs.aws.amazon.com/ebs/latest/userguide/general-purpose.html}
+\bibitem{aws-prices} AWS. AmazonEC2 us-east-1 public price list, version
+20261015191316, published 15 October 2026. Selected rows and SKU identifiers
+saved in \texttt{aws\_hierarchical\_prices\_2026-10-17.json}.
+\url{https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/us-east-1/index.csv}
+\bibitem{aws-transfer} AWS. Billing and metering for VPC owners and participants.
+\url{https://docs.aws.amazon.com/vpc/latest/userguide/vpc-share-billing.html}
+\end{thebibliography}
+\end{document}

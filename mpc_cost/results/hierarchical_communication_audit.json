@@ -1,0 +1,429 @@
+{
+  "baseline": "Boolean 128-bit fingerprints and 2 flags; packed 256-bit payloads; fresh table-epoch PRFs",
+  "cases": [
+    {
+      "log_records": 28,
+      "batch": 1024,
+      "child_z": 64,
+      "address_scheme": "single_projected_aes_private_dummy_v1",
+      "useful": {
+        "application_key_input": 16384,
+        "application_fingerprint_prf": 327680,
+        "deduplication_and_result_propagation": 459035.15625,
+        "lookup_single_real_prf": 1374208.0,
+        "lookup_fingerprint_equality": 5624576.0,
+        "lookup_other_boolean_work": 315920.0,
+        "lookup_packed_payload": 221440.0,
+        "lookup_address_disclosure": 36.125,
+        "rebuild_boolean_movement": 8691860.0,
+        "rebuild_routing_prfs": 1374208.0,
+        "rebuild_planners_and_checks": 507770.718914032,
+        "rebuild_epoch_key_setup_and_inputs": 48.0,
+        "rebuild_packed_payload": 309010.0,
+        "lookup_private_dummy_randomness_inputs": 9248.0
+      },
+      "useful_total": 19231424.000164032,
+      "rebuild_stages": {
+        "source_main_compaction": {
+          "metadata_gc": 979680.0,
+          "planner_gc": 14719.65625,
+          "payload_ot": 37680.0,
+          "total": 1032079.65625
+        },
+        "source_stash_readmission": {
+          "metadata_gc": 827840.0,
+          "planner_gc": 12431.81250011921,
+          "payload_ot": 31840.0,
+          "total": 872111.8125001192
+        },
+        "parent_butterfly": {
+          "metadata_gc": 5396160.0,
+          "planner_gc": 318546.15625,
+          "payload_ot": 183200.0,
+          "total": 5897906.15625
+        },
+        "local_refinement": {
+          "metadata_gc": 1397440.0,
+          "planner_gc": 160588.75,
+          "payload_ot": 52800.0,
+          "total": 1610828.75
+        },
+        "global_residual_collection": {
+          "metadata_gc": 90740.0,
+          "planner_gc": 1355.7500001192093,
+          "payload_ot": 3490.0,
+          "total": 95585.75000011921
+        },
+        "fresh_hashes_and_key_setup": {
+          "total": 1374256.0
+        },
+        "remaining_checks": {
+          "total": 128.59391379356384
+        }
+      },
+      "rebuild_fields": {
+        "key_gc": 7910656.0,
+        "flags_gc": 123604.0,
+        "transient_tag_gc": 657600.0,
+        "payload_ot": 309010.0
+      },
+      "prf": {
+        "initial_aes_calls": 2,
+        "lookup_aes_calls": 10.0,
+        "rebuild_aes_calls": 10.0,
+        "datapath_bytes": 3076096.0,
+        "extra_initial_aes_block_bytes": 163840,
+        "full_hierarchy_independent_address_bits": 266
+      },
+      "deployment": {
+        "cache_waste_forward": 412496.0540323075,
+        "query_bridges_forward": 40960.0,
+        "unframed_interparty_forward": 19410787.22607134,
+        "unframed_interparty_reverse": 274092.828125,
+        "framed_interparty_total": 20669124.056906156,
+        "internal_per_party_per_direction": 3442828.034696579,
+        "internal_all_parties_total_sends": 6885656.069393158,
+        "framed_network_total_sends": 27899062.929768972,
+        "bottleneck_nic_direction_per_party": 23996296.023806315,
+        "note": "Count network sends once, not both sender and receiver. Each party internally sends and receives I."
+      },
+      "unrelated_labels_sensitivity": {
+        "read": 5757440.0,
+        "rebuild": 91748.55319023132,
+        "total": 5849188.553190231,
+        "extra_input_ports_only": true
+      },
+      "full_extra_128bit_tag_sensitivity": {
+        "extra_movement": 7910656.0,
+        "maximum_rebuild_prf_saving": 1374208.0,
+        "one_saved_aes_break_even_extra_swaps": 33.75
+      },
+      "optional_packed_fingerprint_rebuild": {
+        "removed_key_gc": 7910656.0,
+        "extra_word_ot": 123604.0,
+        "key_reinput": 246210.07397460938,
+        "total": 11690582.074138641,
+        "rebuilding": 3342054.7928886414,
+        "status": "Separate uncompiled representation variant; no revised AWS prices claimed."
+      }
+    },
+    {
+      "log_records": 28,
+      "batch": 2048,
+      "child_z": 64,
+      "address_scheme": "single_projected_aes_private_dummy_v1",
+      "useful": {
+        "application_key_input": 16384,
+        "application_fingerprint_prf": 327680,
+        "deduplication_and_result_propagation": 549853.578125,
+        "lookup_single_real_prf": 1306112.0,
+        "lookup_fingerprint_equality": 5331968.0,
+        "lookup_other_boolean_work": 299648.0,
+        "lookup_packed_payload": 209920.0,
+        "lookup_address_disclosure": 35.5,
+        "rebuild_boolean_movement": 8528868.0,
+        "rebuild_routing_prfs": 1306112.0,
+        "rebuild_planners_and_checks": 496225.30484199524,
+        "rebuild_epoch_key_setup_and_inputs": 24.0,
+        "rebuild_packed_payload": 302850.0,
+        "lookup_private_dummy_randomness_inputs": 9088.0
+      },
+      "useful_total": 18684768.382966995,
+      "rebuild_stages": {
+        "source_main_compaction": {
+          "metadata_gc": 956800.0,
+          "planner_gc": 14383.8125,
+          "payload_ot": 36800.0,
+          "total": 1007983.8125
+        },
+        "source_stash_readmission": {
+          "metadata_gc": 802880.0,
+          "planner_gc": 12063.89843761921,
+          "payload_ot": 30880.0,
+          "total": 845823.8984376192
+        },
+        "parent_butterfly": {
+          "metadata_gc": 5352960.0,
+          "planner_gc": 315764.09375,
+          "payload_ot": 181600.0,
+          "total": 5850324.09375
+        },
+        "local_refinement": {
+          "metadata_gc": 1327568.0,
+          "planner_gc": 152559.3125,
+          "payload_ot": 50160.0,
+          "total": 1530287.3125
+        },
+        "global_residual_collection": {
+          "metadata_gc": 88660.0,
+          "planner_gc": 1325.8593751192093,
+          "payload_ot": 3410.0,
+          "total": 93395.85937511921
+        },
+        "fresh_hashes_and_key_setup": {
+          "total": 1306136.0
+        },
+        "remaining_checks": {
+          "total": 128.32827925682068
+        }
+      },
+      "rebuild_fields": {
+        "key_gc": 7752960.0,
+        "flags_gc": 121140.0,
+        "transient_tag_gc": 654768.0,
+        "payload_ot": 302850.0
+      },
+      "prf": {
+        "initial_aes_calls": 2,
+        "lookup_aes_calls": 9.5,
+        "rebuild_aes_calls": 9.5,
+        "datapath_bytes": 2939904.0,
+        "extra_initial_aes_block_bytes": 163840,
+        "full_hierarchy_independent_address_bits": 261
+      },
+      "deployment": {
+        "cache_waste_forward": 410464.01870492415,
+        "query_bridges_forward": 38912.0,
+        "unframed_interparty_forward": 18868492.76885942,
+        "unframed_interparty_reverse": 265651.6328125,
+        "framed_interparty_total": 20090851.621755518,
+        "internal_per_party_per_direction": 3383318.2755069733,
+        "internal_all_parties_total_sends": 6766636.5510139465,
+        "framed_network_total_sends": 27195820.000320163,
+        "bottleneck_nic_direction_per_party": 23364401.596584715,
+        "note": "Count network sends once, not both sender and receiver. Each party internally sends and receives I."
+      },
+      "unrelated_labels_sensitivity": {
+        "read": 5457920.0,
+        "rebuild": 87474.7850894928,
+        "total": 5545394.785089493,
+        "extra_input_ports_only": true
+      },
+      "full_extra_128bit_tag_sensitivity": {
+        "extra_movement": 7752960.0,
+        "maximum_rebuild_prf_saving": 1306112.0,
+        "one_saved_aes_break_even_extra_swaps": 33.75
+      },
+      "optional_packed_fingerprint_rebuild": {
+        "removed_key_gc": 7752960.0,
+        "extra_word_ot": 121140.0,
+        "key_reinput": 233698.03833007812,
+        "total": 11286646.421297073,
+        "rebuilding": 3235957.3431720734,
+        "status": "Separate uncompiled representation variant; no revised AWS prices claimed."
+      }
+    },
+    {
+      "log_records": 32,
+      "batch": 1024,
+      "child_z": 64,
+      "address_scheme": "single_projected_aes_private_dummy_v1",
+      "useful": {
+        "application_key_input": 16384,
+        "application_fingerprint_prf": 327680,
+        "deduplication_and_result_propagation": 459035.15625,
+        "lookup_single_real_prf": 1652736.0,
+        "lookup_fingerprint_equality": 7981696.0,
+        "lookup_other_boolean_work": 447792.0,
+        "lookup_packed_payload": 314240.0,
+        "lookup_address_disclosure": 49.375,
+        "rebuild_boolean_movement": 11912748.0,
+        "rebuild_routing_prfs": 1652736.0,
+        "rebuild_planners_and_checks": 679557.4062658548,
+        "rebuild_epoch_key_setup_and_inputs": 48.0,
+        "rebuild_packed_payload": 417390.0,
+        "lookup_private_dummy_randomness_inputs": 12640.0
+      },
+      "useful_total": 25874731.937515855,
+      "rebuild_stages": {
+        "source_main_compaction": {
+          "metadata_gc": 1266720.0,
+          "planner_gc": 19071.65625,
+          "payload_ot": 48720.0,
+          "total": 1334511.65625
+        },
+        "source_stash_readmission": {
+          "metadata_gc": 1098240.0,
+          "planner_gc": 16527.81250000745,
+          "payload_ot": 42240.0,
+          "total": 1157007.8125000075
+        },
+        "parent_butterfly": {
+          "metadata_gc": 7749440.0,
+          "planner_gc": 449303.09375,
+          "payload_ot": 258400.0,
+          "total": 8457143.09375
+        },
+        "local_refinement": {
+          "metadata_gc": 1676928.0,
+          "planner_gc": 192706.5,
+          "payload_ot": 63360.0,
+          "total": 1932994.5
+        },
+        "global_residual_collection": {
+          "metadata_gc": 121420.0,
+          "planner_gc": 1819.7500000074506,
+          "payload_ot": 4670.0,
+          "total": 127909.75000000745
+        },
+        "fresh_hashes_and_key_setup": {
+          "total": 1652784.0
+        },
+        "remaining_checks": {
+          "total": 128.59376583993435
+        }
+      },
+      "rebuild_fields": {
+        "key_gc": 10685184.0,
+        "flags_gc": 166956.0,
+        "transient_tag_gc": 1060608.0,
+        "payload_ot": 417390.0
+      },
+      "prf": {
+        "initial_aes_calls": 2,
+        "lookup_aes_calls": 12.0,
+        "rebuild_aes_calls": 12.0,
+        "datapath_bytes": 3633152.0,
+        "extra_initial_aes_block_bytes": 163840,
+        "full_hierarchy_independent_address_bits": 368
+      },
+      "deployment": {
+        "cache_waste_forward": 412496.0540323075,
+        "query_bridges_forward": 49152.0,
+        "unframed_interparty_forward": 25960842.538423162,
+        "unframed_interparty_reverse": 375537.453125,
+        "framed_interparty_total": 27653198.991125572,
+        "internal_per_party_per_direction": 4566188.034893274,
+        "internal_all_parties_total_sends": 9132376.069786549,
+        "framed_network_total_sends": 37242193.86440145,
+        "bottleneck_nic_direction_per_party": 32053382.10198226,
+        "note": "Count network sends once, not both sender and receiver. Each party internally sends and receives I."
+      },
+      "unrelated_labels_sensitivity": {
+        "read": 8170240.0,
+        "rebuild": 108388.55357766151,
+        "total": 8278628.5535776615,
+        "extra_input_ports_only": true
+      },
+      "full_extra_128bit_tag_sensitivity": {
+        "extra_movement": 10685184.0,
+        "maximum_rebuild_prf_saving": 1652736.0,
+        "one_saved_aes_break_even_extra_swaps": 34.0
+      },
+      "optional_packed_fingerprint_rebuild": {
+        "removed_key_gc": 10685184.0,
+        "extra_word_ot": 166956.0,
+        "key_reinput": 295362.0747375488,
+        "total": 15651866.012253404,
+        "rebuilding": 4439613.481003404,
+        "status": "Separate uncompiled representation variant; no revised AWS prices claimed."
+      }
+    },
+    {
+      "log_records": 32,
+      "batch": 2048,
+      "child_z": 64,
+      "address_scheme": "single_projected_aes_private_dummy_v1",
+      "useful": {
+        "application_key_input": 16384,
+        "application_fingerprint_prf": 327680,
+        "deduplication_and_result_propagation": 549853.578125,
+        "lookup_single_real_prf": 1584640.0,
+        "lookup_fingerprint_equality": 7689088.0,
+        "lookup_other_boolean_work": 431520.0,
+        "lookup_packed_payload": 302720.0,
+        "lookup_address_disclosure": 48.75,
+        "rebuild_boolean_movement": 11749756.0,
+        "rebuild_routing_prfs": 1584640.0,
+        "rebuild_planners_and_checks": 668011.9922027588,
+        "rebuild_epoch_key_setup_and_inputs": 24.0,
+        "rebuild_packed_payload": 411230.0,
+        "lookup_private_dummy_randomness_inputs": 12480.0
+      },
+      "useful_total": 25328076.32032776,
+      "rebuild_stages": {
+        "source_main_compaction": {
+          "metadata_gc": 1243840.0,
+          "planner_gc": 18735.8125,
+          "payload_ot": 47840.0,
+          "total": 1310415.8125
+        },
+        "source_stash_readmission": {
+          "metadata_gc": 1073280.0,
+          "planner_gc": 16159.89843750745,
+          "payload_ot": 41280.0,
+          "total": 1130719.8984375075
+        },
+        "parent_butterfly": {
+          "metadata_gc": 7706240.0,
+          "planner_gc": 446521.03125,
+          "payload_ot": 256800.0,
+          "total": 8409561.03125
+        },
+        "local_refinement": {
+          "metadata_gc": 1607056.0,
+          "planner_gc": 184677.0625,
+          "payload_ot": 60720.0,
+          "total": 1852453.0625
+        },
+        "global_residual_collection": {
+          "metadata_gc": 119340.0,
+          "planner_gc": 1789.8593750074506,
+          "payload_ot": 4590.0,
+          "total": 125719.85937500745
+        },
+        "fresh_hashes_and_key_setup": {
+          "total": 1584664.0
+        },
+        "remaining_checks": {
+          "total": 128.3281402438879
+        }
+      },
+      "rebuild_fields": {
+        "key_gc": 10527488.0,
+        "flags_gc": 164492.0,
+        "transient_tag_gc": 1057776.0,
+        "payload_ot": 411230.0
+      },
+      "prf": {
+        "initial_aes_calls": 2,
+        "lookup_aes_calls": 11.5,
+        "rebuild_aes_calls": 11.5,
+        "datapath_bytes": 3496960.0,
+        "extra_initial_aes_block_bytes": 163840,
+        "full_hierarchy_independent_address_bits": 363
+      },
+      "deployment": {
+        "cache_waste_forward": 410464.01870492415,
+        "query_bridges_forward": 47104.0,
+        "unframed_interparty_forward": 25418548.081220184,
+        "unframed_interparty_reverse": 367096.2578125,
+        "framed_interparty_total": 27074926.55598432,
+        "internal_per_party_per_direction": 4506678.275703669,
+        "internal_all_parties_total_sends": 9013356.551407337,
+        "framed_network_total_sends": 36538950.93496202,
+        "bottleneck_nic_direction_per_party": 31421487.674770046,
+        "note": "Count network sends once, not both sender and receiver. Each party internally sends and receives I."
+      },
+      "unrelated_labels_sensitivity": {
+        "read": 7870720.0,
+        "rebuild": 104114.78547692299,
+        "total": 7974834.785476923,
+        "extra_input_ports_only": true
+      },
+      "full_extra_128bit_tag_sensitivity": {
+        "extra_movement": 10527488.0,
+        "maximum_rebuild_prf_saving": 1584640.0,
+        "one_saved_aes_break_even_extra_swaps": 34.0
+      },
+      "optional_packed_fingerprint_rebuild": {
+        "removed_key_gc": 10527488.0,
+        "extra_word_ot": 164492.0,
+        "key_reinput": 282850.0390930176,
+        "total": 15247930.359420776,
+        "rebuilding": 4333516.031295776,
+        "status": "Separate uncompiled representation variant; no revised AWS prices claimed."
+      }
+    }
+  ]
+}

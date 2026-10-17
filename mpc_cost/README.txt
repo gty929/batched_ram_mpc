@@ -1,6 +1,139 @@
 MPC KEY-VALUE DATABASE COST MODEL
 ===============================
 
+17 October 2026: current single-PRF AWS fleet and latency report
+--------------------------------------------------------------
+The current communication construction supersedes the two-PRF reference
+below. Dummy addresses are fresh private XOR-shared randomness, charged at
+64 bytes per address bit. One real-address AES and the existing output mux
+suffice; the dummy epoch key is removed. Independent real table-epoch keys
+and the 128-bit canonical fingerprint remain unchanged.
+
+Project AES onto output bytes (0,13,10,7), then take the needed address bits.
+All ten rounds remain. Byte-dependency pruning needs 128+4+ceil(t/8) S-boxes
+for t<=32, or 4256--4352 ANDs with the existing 32-AND S-box. This is an
+upper bound charging full final S-boxes, not a claim of optimal pruning.
+Both rebuild and lookup use this projection. Corrected useful traffic:
+  B1024: 19.231424 / 25.874732 MB/query for N=2^28 / 2^32.
+  B2048: 18.684768 / 25.328076 MB/query for N=2^28 / 2^32.
+All AWS tables have now been resized and resimulated with these costs.
+The current self-contained report is output/pdf/hierarchical_aws_throughput.pdf.
+It removes superseded schemes and old fleet/latency tables. Seven-state
+results at 10,000 queries/s, for N=2^28 / 2^32:
+  B1024: 42 / 56 workers per party; $6.692M / $9.967M per year, both parties;
+         mean 121.0 / 121.8 ms, p99 180.4 / 180.4 ms.
+  B2048: 36 / 48 workers per party; $5.746M / $8.706M per year, both parties;
+         mean 241.0 / 239.2 ms, p99 362.6 / 358.3 ms.
+The headline deployment includes scratch, peak provisioned gp3 I/O, cache
+refills, and private dummy-input material in both directions. Independent
+states share worker pools. These are finite-trace/model results, not AWS
+measurements or annual tail guarantees. The current address protocol is
+stamped into each saved trace; pricing and report rendering reject stale
+protocol stamps. Historical notes below are retained only as a changelog.
+
+  python -m mpc_cost.hierarchical_prf_optimization
+  python -m mpc_cost.hierarchical_throughput
+  python -m mpc_cost.hierarchical_communication_audit
+  python -m mpc_cost.hierarchical_schedule
+  python -m mpc_cost.hierarchical_schedule --suite variants
+  python -m mpc_cost.hierarchical_annual
+  python -m unittest mpc_cost.test_hierarchical_prf_optimization -v
+  python -m mpc_cost.render_hierarchical_throughput_report
+
+Ledger: results/hierarchical_prf_optimization.json. Four tests check retained
+AES rounds and outputs against 32 independent native-AES vectors, gate-count
+bounds, private randomness, key removal, and both communication directions.
+
+17 October 2026: communication and representation audit
+------------------------------------------------------
+Historical two-PRF reference, superseded for useful bytes by the correction.
+The AWS report now has a complete useful-byte and deployment-byte audit.
+The existing baseline already moves each 128-bit fingerprint as Boolean
+wires, plus two flags and retained routing bits; only values use packed OTs.
+No lookup/rebuild PRF was missing: B1024 PRF datapaths cost 5.243/6.226 MB/query
+at N=2^28/2^32, while key-only rebuild movement costs 7.911/10.685 MB/query.
+Useful total remains 21.389/28.455 MB/query (B1024) or 20.733/27.799 (B2048).
+
+Direct state-wire composition with one Free-XOR offset is now an explicit
+interface requirement. The existing 4096-byte query bridge budget covers
+two same-offset 128-wire relabeling ports. Generic unrelated-state-label
+bridges would instead add 5.849/8.279 MB/query at B1024. The report separates
+this sensitivity from the baseline, and prices extra hash-bit retention.
+
+A separate uncompiled variant packs fingerprints only during rebuild
+movement, then pays all key re-input conversions. Its projected useful
+totals are 13.848/18.232 MB/query (B1024) and 13.335/17.719 (B2048).
+It is not used to revise AWS prices without a new I/O and worker schedule.
+
+  python -m mpc_cost.hierarchical_communication_audit
+  python -m unittest mpc_cost.test_hierarchical_communication_audit -v
+  python -m mpc_cost.render_hierarchical_throughput_report
+
+Ledger: results/hierarchical_communication_audit.json. Five independent audit
+checks supplement the earlier 19 throughput, latency, schedule and price tests.
+
+17 October 2026: hierarchical annual cost and query latency
+----------------------------------------------------------
+The same hierarchical_aws_throughput.pdf now includes a full annual budget
+and a finite rebuild-aware pooled schedule. At 10,000 queries/s, batch 1024,
+five independently evolving states, and RAM preloading of small buckets plus
+all shared-stash/PRF material, N=2^28/2^32 costs $7.30M/$10.59M annually for
+both parties. Modeled mean query latency is 122/119 ms; p99 is 182/177 ms.
+Batch 512 lowers mean to 61/61 ms but costs $10.14M/$14.21M. The primary
+assumptions are 0.2 ms RTT-equivalents, 0.5 ms cold EBS delay, and charged
+intra-party redistribution. Rare trace maxima are 0.582/5.745 s at batch 1024;
+these are conditional finite traces, not AWS benchmarks or annual SLAs.
+
+Seven states with the same worker pools reduce the observed maxima below
+215 ms and cost $7.323M/$10.912M. With a few-hundred-millisecond tolerance,
+batch 2048 with seven states is the cheaper tested candidate: $6.219M/$9.336M,
+mean 244/243 ms, p99 366/363 ms, and finite-trace maxima 434/435 ms.
+Smaller batches save frontend work but add more read/rebuild work overall.
+
+Annual cost includes EC2, five copies of persistent state and explicit rebuild
+scratch, and eight gp3 volumes/worker provisioned for full instance EBS peak
+bandwidth with 64 KiB I/O. Both parties use private addresses in the same AZ.
+Prices come from official AWS rows published 2026-10-15, checked 2026-10-17.
+CPU is excluded. The original Q=2^32 probability budget needs recalibration
+before claiming the same failure guarantee for 315.36 billion queries/year.
+
+  python -m mpc_cost.hierarchical_schedule
+  python -m mpc_cost.hierarchical_schedule --suite variants
+  python -m mpc_cost.hierarchical_annual
+  python -m unittest mpc_cost.test_hierarchical_throughput mpc_cost.test_hierarchical_latency mpc_cost.test_hierarchical_schedule mpc_cost.test_hierarchical_annual -v
+  python -m mpc_cost.render_hierarchical_throughput_report
+
+The schedule command runs millions of batches. Results: hierarchical_schedule.json
+and hierarchical_annual.json under results/. Model modules separately expose
+ready-state stage latency, queue scheduling, and annual provisioning.
+
+17 October 2026: hierarchical AWS throughput and circuit caching
+---------------------------------------------------------------
+CPU evaluation/garbling is omitted by assumption. The new analysis separates
+directional GC traffic, tiled state I/O, fresh-circuit prefetch, and rebuild
+availability. It includes small-table RAM caching and batch-aware per-bucket
+lookahead, plus an immutable-equality cache interface with explicit bridges.
+
+  ../output/pdf/hierarchical_aws_throughput.pdf
+  ../output/latex/hierarchical_aws_throughput.tex
+
+At B=1024 and 64-entry leaves, adaptive caching through capacity 2^16 gives
+29/38 interparty-NIC hosts per party at N=2^28/2^32, before internal routing
+and replica scheduling. Tiled EBS plus the small-state cache needs 17/24
+hosts by byte capacity. Four prefetched circuits are insufficient at the
+base: its mean bucket demand is 32 requests within a single batch.
+Preloading four equality versions for every cold bucket on evaluator EBS
+raises the interparty fleet to 29/39 hosts per party and needs 17.45/279.27 TB
+of cold GC queues per independent state. This remains NIC-limited by bytes.
+
+  python -m mpc_cost.hierarchical_throughput
+  python -m unittest mpc_cost.test_hierarchical_throughput -v
+  python -m mpc_cost.render_hierarchical_throughput_report
+
+Ledger: results/hierarchical_throughput.json. Cache calculations need SciPy.
+This is a transfer/loading model, not a measured fleet or latency guarantee.
+The standalone LaTeX compiles with pdfLaTeX.
+
 17 October 2026: hierarchical ORAM alternative report
 ----------------------------------------------------
 New self-contained analysis of binary mutable hierarchical ORAM, 512-slot

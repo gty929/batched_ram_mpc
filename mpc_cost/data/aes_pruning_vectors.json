@@ -1,0 +1,165 @@
+﻿{
+    "source":  "System.Security.Cryptography.Aes ECB, independent Windows implementation; deterministic public test data",
+    "vectors":  [
+                    {
+                        "key":  "8cafbb70e40e70f2d2ce3facb9027b9c",
+                        "plaintext":  "7d893bd933f7ae988a454f6225b958e1",
+                        "ciphertext":  "5bd5bb636cbbb18b84c9e4a19440d1b3"
+                    },
+                    {
+                        "key":  "ccebe779646cb2faf25ddb5c6297651b",
+                        "plaintext":  "abd2783150ac7d940123e59ebe0ecc18",
+                        "ciphertext":  "5a6a01c123f1130009e51763bdb5a7ae"
+                    },
+                    {
+                        "key":  "755edfce1b013810d640e6d61b5136f3",
+                        "plaintext":  "df33b653402691206e52784187133ce4",
+                        "ciphertext":  "ab2a18f91418c3504513d4602480ec73"
+                    },
+                    {
+                        "key":  "90c3e704b89700aa9a685a10c5a779b0",
+                        "plaintext":  "edf2bf8b5779d74ecdbe5fc889f788c2",
+                        "ciphertext":  "48ad4e6b0c0ac5e7e33574e089fc7181"
+                    },
+                    {
+                        "key":  "0402455869313a48320cb9d8cb805ac7",
+                        "plaintext":  "d9c7549554b08d16eb9836f9373820a2",
+                        "ciphertext":  "0a5273344164f920338320b7d45d0f79"
+                    },
+                    {
+                        "key":  "df980cc3612046bbb777584ac0ff824c",
+                        "plaintext":  "6498eec1a3f36e53752e6cd1fa4110f9",
+                        "ciphertext":  "2f98940c620e625335e00a29fc99db39"
+                    },
+                    {
+                        "key":  "eb16f933739765b98098dedd584256ec",
+                        "plaintext":  "15ea959f4a5fffeb2ab94e32b475c076",
+                        "ciphertext":  "a8623d5d15fc272207a3219bc49a5e4c"
+                    },
+                    {
+                        "key":  "665e5faa054ed8cc3235400a1590fa33",
+                        "plaintext":  "d87fbb10ab71af8c160d09ba4932040b",
+                        "ciphertext":  "0429b2d837a9100bd8132acbc6e3fbe5"
+                    },
+                    {
+                        "key":  "d86777fae2ace6c611c86c151ef5d699",
+                        "plaintext":  "be1a5a34baafcaf4afd294f8451e83ff",
+                        "ciphertext":  "8a3518fad4b7caea22508b83842677df"
+                    },
+                    {
+                        "key":  "303531ad1900502c99f4ffe305996e20",
+                        "plaintext":  "366ffb2ed8d050289d824b1018ee81f2",
+                        "ciphertext":  "28a9602489c3f6a182775c4f07833641"
+                    },
+                    {
+                        "key":  "446ce5e9c32980beca2e9bc6b0e7ef15",
+                        "plaintext":  "6473c1d52255275fe4091097b54014ab",
+                        "ciphertext":  "fb90ba4108167d38fe7e496168911f6a"
+                    },
+                    {
+                        "key":  "720c9e98b4855c0def3d64aa358a78b6",
+                        "plaintext":  "9235aba42cabcfef458504ba19e90889",
+                        "ciphertext":  "a573182c7eb376142631f8e20a28d2d5"
+                    },
+                    {
+                        "key":  "19ef53a3485760df16b4e6e5f17d2959",
+                        "plaintext":  "905a047f956f7ec63caf532e80a2f305",
+                        "ciphertext":  "b9d2cf8dbe7ad0f0108504e95b0758ae"
+                    },
+                    {
+                        "key":  "34da904537d46d3ad5cb8d77c5eafec7",
+                        "plaintext":  "5bab29bfe489f4aa718c669804315f74",
+                        "ciphertext":  "64b0d3a6efc9bdd8aca6453b528645f8"
+                    },
+                    {
+                        "key":  "c0e0b116ece422bbecc9aac9e1070152",
+                        "plaintext":  "b18bd2d5783420abe5e6d4aa6dd536a3",
+                        "ciphertext":  "10f8489ddde1a5a2062aa6a6beafd40c"
+                    },
+                    {
+                        "key":  "6c19b6e438e7da77886dd21ade2bc86a",
+                        "plaintext":  "8b14e7785e89fc8bbf06310610774d16",
+                        "ciphertext":  "478b500dc3d17683765e3a0b2747ef4e"
+                    },
+                    {
+                        "key":  "92075cc8501c19cab05b4c0a6106ccb9",
+                        "plaintext":  "1d691f59eebe44e21d2a2532b5d46711",
+                        "ciphertext":  "48cbd24edb538fdf55bc22197cf8d0cc"
+                    },
+                    {
+                        "key":  "20bc87d7ceff1a6efa1cc7033df12ab9",
+                        "plaintext":  "3a77e8a658f428d4c279ab25f7e614dc",
+                        "ciphertext":  "90c3af1859e2b2c54e9b647899675fba"
+                    },
+                    {
+                        "key":  "f43beaa57ef4ea1e4fb05ed1f640a52b",
+                        "plaintext":  "006bf83debc1b82b93b3155454f47714",
+                        "ciphertext":  "faee12066524619bc796505c4e570248"
+                    },
+                    {
+                        "key":  "08eb0f0107843b458cca56a79556de81",
+                        "plaintext":  "d47f248bedd6f13282be11cadf96c95b",
+                        "ciphertext":  "4c46844fb7becf872e305071a6685ca8"
+                    },
+                    {
+                        "key":  "394ac90b31a3247c30b2b1206a11953c",
+                        "plaintext":  "d59380d4d0eb2631fadc7e48727066f6",
+                        "ciphertext":  "6a8af9d8d3341ef3265b2943014e0bb3"
+                    },
+                    {
+                        "key":  "00fb6d4b8dd250305ba85b3b25d0c771",
+                        "plaintext":  "29d4f54b15f58a4e2497115525db09bf",
+                        "ciphertext":  "898c3e7942d13e2386db2a73ce8a14cb"
+                    },
+                    {
+                        "key":  "4bba206fa34aaf02425078288feb0b29",
+                        "plaintext":  "140c1f9e7b1be10b701f27f6c1fb0b80",
+                        "ciphertext":  "7aa514ac8661e97b569ebb110dfc8264"
+                    },
+                    {
+                        "key":  "9e9cef6bb058cede25f309c57c62bf39",
+                        "plaintext":  "8ce74018bb6b4330d914ff8323b94047",
+                        "ciphertext":  "e46bfac4493572ad1607b55ac9e66625"
+                    },
+                    {
+                        "key":  "44f889f2fba079bc3e407888111b8f0d",
+                        "plaintext":  "60ee6adabaf3c43358be929b584abb6c",
+                        "ciphertext":  "b218b43d51f044188e4ffe14618981ba"
+                    },
+                    {
+                        "key":  "b2c18083d8cc3deb6e84d97bf2bb1ebd",
+                        "plaintext":  "85f123354f668c513456993d0ddd63f3",
+                        "ciphertext":  "6e8efb1ab64f238bf55af04d9518a1de"
+                    },
+                    {
+                        "key":  "850cd6509b0b3593b17e6b361949409d",
+                        "plaintext":  "9fd5166727861d4b352f4e8232ffdd91",
+                        "ciphertext":  "8d3e9e1d72944b6882feb846acc92f6b"
+                    },
+                    {
+                        "key":  "20e6f5e6e5ce2279bc9083d0fb5537eb",
+                        "plaintext":  "15fc9e38c6fccbffef8a1a6bbcb260b1",
+                        "ciphertext":  "2eb6e0aec7f833c56df8468c9c422b03"
+                    },
+                    {
+                        "key":  "a0da1632535ab7d0b39caa97024c50e0",
+                        "plaintext":  "f7636c3661a4ca231af6f65ab4b6bc09",
+                        "ciphertext":  "44ad1d7e5914c5b9994201957be95d0a"
+                    },
+                    {
+                        "key":  "2fd230213f0497bb44cd852a5134fca2",
+                        "plaintext":  "3a3a7359452a50fb0ff2185d635c1cfc",
+                        "ciphertext":  "54ba4322ed94d177c3fdf8649621a5b0"
+                    },
+                    {
+                        "key":  "e0a067301c2ea0f2cbb1f1931fa0d1e6",
+                        "plaintext":  "f954207a4363c3058134114cec3a57e8",
+                        "ciphertext":  "c944d48f5f35f2e9ed5a5a99f5406a88"
+                    },
+                    {
+                        "key":  "b1894ab1cccc860b99808e9438bddc6f",
+                        "plaintext":  "2032630f3ca1b97ddc62aee81d540690",
+                        "ciphertext":  "6752ff2ea680570f349439fa50c81741"
+                    }
+                ]
+}

@@ -1,0 +1,1412 @@
+{
+  "description": "Single-PRF lookup and short-output AES correction to the reference ledger.\n\nThis module retains an independent delta ledger against the old two-PRF\nconstruction. Current AWS schedules use hierarchical_address.current_case.\nOutput projection is standard AES-128 followed by a fixed public projection;\nno AES rounds are removed. S-box-level dead-code elimination gives upper\nbounds using the same 32-AND S-box as the original 5120-AND datapath.\n",
+  "projection_bytes": [
+    0,
+    13,
+    10,
+    7
+  ],
+  "assumptions": {
+    "dummy": "Fresh private XOR shares, 64 input bytes per address bit",
+    "prf": "Independent secret table-epoch AES key; single real address computation",
+    "projection": "Public fixed output projection; all 10 AES rounds retained",
+    "gates": "S-box-level upper bound, 32 AND per full S-box; no partial S-box pruning",
+    "canonical": "Unchanged full 128-bit AES-CMAC fingerprint; 32-byte application key"
+  },
+  "one_full_prf": [
+    {
+      "log_records": 28,
+      "batch": 1024,
+      "child_z": 64,
+      "pruned_aes": false,
+      "reference_total": 21389008.000164032,
+      "useful": {
+        "application_key_input": 16384,
+        "application_fingerprint_prf": 327680,
+        "deduplication_and_result_propagation": 459035.15625,
+        "lookup_fingerprint_equality": 5624576.0,
+        "lookup_other_boolean_work": 315920.0,
+        "lookup_packed_payload": 221440.0,
+        "lookup_address_disclosure": 36.125,
+        "rebuild_boolean_movement": 8691860.0,
+        "rebuild_routing_prfs": 1638400.0,
+        "rebuild_planners_and_checks": 507770.718914032,
+        "rebuild_epoch_key_setup_and_inputs": 48.0,
+        "rebuild_packed_payload": 309010.0,
+        "lookup_single_real_prf": 1638400.0,
+        "lookup_private_dummy_randomness_inputs": 9248.0
+      },
+      "total": 19759808.000164032,
+      "saved": 1629200.0,
+      "saved_fraction": 0.07616996543212784,
+      "weighted_address_bits": 144.5,
+      "lookup_prf": 1638400.0,
+      "rebuild_prf": 1638400.0,
+      "all_prf_datapaths": 3604480.0,
+      "dummy_random_input": 9248.0,
+      "epoch_setup_saving": 48.0,
+      "rebuilding": 11147088.718914032,
+      "input_mux_instead_of_private_address_extra": 27088.0,
+      "optional_packed_key_total": 12218966.074138641,
+      "deployment": {
+        "cache_waste_forward": 412496.0540323075,
+        "query_bridges_forward": 40960.0,
+        "unframed_interparty_forward": 19939171.22607134,
+        "unframed_interparty_reverse": 274092.828125,
+        "framed_interparty_total": 21223927.256906155,
+        "internal_per_party_per_direction": 3442828.034696579,
+        "internal_all_parties_total_sends": 6885656.069393158,
+        "framed_network_total_sends": 28453866.12976897,
+        "bottleneck_nic_direction_per_party": 24551099.223806314,
+        "note": "Count network sends once, not both sender and receiver. Each party internally sends and receives I."
+      },
+      "rows": [
+        {
+          "log_capacity": 10,
+          "address_bits": 5,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 11,
+          "address_bits": 6,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 12,
+          "address_bits": 7,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 13,
+          "address_bits": 8,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 14,
+          "address_bits": 9,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 15,
+          "address_bits": 10,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 16,
+          "address_bits": 11,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 17,
+          "address_bits": 12,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 18,
+          "address_bits": 13,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 19,
+          "address_bits": 14,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 20,
+          "address_bits": 15,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 21,
+          "address_bits": 16,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 22,
+          "address_bits": 17,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 23,
+          "address_bits": 18,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 24,
+          "address_bits": 19,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 25,
+          "address_bits": 20,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 26,
+          "address_bits": 21,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 27,
+          "address_bits": 22,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 28,
+          "address_bits": 23,
+          "lookup_weight": 1,
+          "prf_ands": 5120
+        }
+      ],
+      "address_scheme": "single_projected_aes_private_dummy_v1",
+      "annual_status": "Current fleet/latency and prices are in hierarchical_schedule*.json and hierarchical_annual.json."
+    },
+    {
+      "log_records": 32,
+      "batch": 1024,
+      "child_z": 64,
+      "pruned_aes": false,
+      "reference_total": 28454907.937515855,
+      "useful": {
+        "application_key_input": 16384,
+        "application_fingerprint_prf": 327680,
+        "deduplication_and_result_propagation": 459035.15625,
+        "lookup_fingerprint_equality": 7981696.0,
+        "lookup_other_boolean_work": 447792.0,
+        "lookup_packed_payload": 314240.0,
+        "lookup_address_disclosure": 49.375,
+        "rebuild_boolean_movement": 11912748.0,
+        "rebuild_routing_prfs": 1966080.0,
+        "rebuild_planners_and_checks": 679557.4062658548,
+        "rebuild_epoch_key_setup_and_inputs": 48.0,
+        "rebuild_packed_payload": 417390.0,
+        "lookup_single_real_prf": 1966080.0,
+        "lookup_private_dummy_randomness_inputs": 12640.0
+      },
+      "total": 26501419.937515855,
+      "saved": 1953488.0,
+      "saved_fraction": 0.06865205834753241,
+      "weighted_address_bits": 197.5,
+      "lookup_prf": 1966080.0,
+      "rebuild_prf": 1966080.0,
+      "all_prf_datapaths": 4259840.0,
+      "dummy_random_input": 12640.0,
+      "epoch_setup_saving": 48.0,
+      "rebuilding": 14975823.406265855,
+      "input_mux_instead_of_private_address_extra": 30192.0,
+      "optional_packed_key_total": 16278554.012253404,
+      "deployment": {
+        "cache_waste_forward": 412496.0540323075,
+        "query_bridges_forward": 49152.0,
+        "unframed_interparty_forward": 26587530.538423162,
+        "unframed_interparty_reverse": 375537.453125,
+        "framed_interparty_total": 28311221.39112557,
+        "internal_per_party_per_direction": 4566188.034893274,
+        "internal_all_parties_total_sends": 9132376.069786549,
+        "framed_network_total_sends": 37900216.26440145,
+        "bottleneck_nic_direction_per_party": 32711404.50198226,
+        "note": "Count network sends once, not both sender and receiver. Each party internally sends and receives I."
+      },
+      "rows": [
+        {
+          "log_capacity": 10,
+          "address_bits": 5,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 11,
+          "address_bits": 6,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 12,
+          "address_bits": 7,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 13,
+          "address_bits": 8,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 14,
+          "address_bits": 9,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 15,
+          "address_bits": 10,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 16,
+          "address_bits": 11,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 17,
+          "address_bits": 12,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 18,
+          "address_bits": 13,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 19,
+          "address_bits": 14,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 20,
+          "address_bits": 15,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 21,
+          "address_bits": 16,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 22,
+          "address_bits": 17,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 23,
+          "address_bits": 18,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 24,
+          "address_bits": 19,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 25,
+          "address_bits": 20,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 26,
+          "address_bits": 21,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 27,
+          "address_bits": 22,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 28,
+          "address_bits": 23,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 29,
+          "address_bits": 24,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 30,
+          "address_bits": 25,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 31,
+          "address_bits": 26,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 32,
+          "address_bits": 27,
+          "lookup_weight": 1,
+          "prf_ands": 5120
+        }
+      ],
+      "address_scheme": "single_projected_aes_private_dummy_v1",
+      "annual_status": "Current fleet/latency and prices are in hierarchical_schedule*.json and hierarchical_annual.json."
+    },
+    {
+      "log_records": 28,
+      "batch": 2048,
+      "child_z": 64,
+      "pruned_aes": false,
+      "reference_total": 20732920.382966995,
+      "useful": {
+        "application_key_input": 16384,
+        "application_fingerprint_prf": 327680,
+        "deduplication_and_result_propagation": 549853.578125,
+        "lookup_fingerprint_equality": 5331968.0,
+        "lookup_other_boolean_work": 299648.0,
+        "lookup_packed_payload": 209920.0,
+        "lookup_address_disclosure": 35.5,
+        "rebuild_boolean_movement": 8528868.0,
+        "rebuild_routing_prfs": 1556480.0,
+        "rebuild_planners_and_checks": 496225.30484199524,
+        "rebuild_epoch_key_setup_and_inputs": 24.0,
+        "rebuild_packed_payload": 302850.0,
+        "lookup_single_real_prf": 1556480.0,
+        "lookup_private_dummy_randomness_inputs": 9088.0
+      },
+      "total": 19185504.382966995,
+      "saved": 1547416.0,
+      "saved_fraction": 0.07463569875429943,
+      "weighted_address_bits": 142.0,
+      "lookup_prf": 1556480.0,
+      "rebuild_prf": 1556480.0,
+      "all_prf_datapaths": 3440640.0,
+      "dummy_random_input": 9088.0,
+      "epoch_setup_saving": 24.0,
+      "rebuilding": 10884447.304841995,
+      "input_mux_instead_of_private_address_extra": 25280.0,
+      "optional_packed_key_total": 11787382.421297073,
+      "deployment": {
+        "cache_waste_forward": 410464.01870492415,
+        "query_bridges_forward": 38912.0,
+        "unframed_interparty_forward": 19369228.76885942,
+        "unframed_interparty_reverse": 265651.6328125,
+        "framed_interparty_total": 20616624.421755515,
+        "internal_per_party_per_direction": 3383318.2755069733,
+        "internal_all_parties_total_sends": 6766636.5510139465,
+        "framed_network_total_sends": 27721592.80032016,
+        "bottleneck_nic_direction_per_party": 23890174.396584712,
+        "note": "Count network sends once, not both sender and receiver. Each party internally sends and receives I."
+      },
+      "rows": [
+        {
+          "log_capacity": 11,
+          "address_bits": 6,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 12,
+          "address_bits": 7,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 13,
+          "address_bits": 8,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 14,
+          "address_bits": 9,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 15,
+          "address_bits": 10,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 16,
+          "address_bits": 11,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 17,
+          "address_bits": 12,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 18,
+          "address_bits": 13,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 19,
+          "address_bits": 14,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 20,
+          "address_bits": 15,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 21,
+          "address_bits": 16,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 22,
+          "address_bits": 17,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 23,
+          "address_bits": 18,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 24,
+          "address_bits": 19,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 25,
+          "address_bits": 20,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 26,
+          "address_bits": 21,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 27,
+          "address_bits": 22,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 28,
+          "address_bits": 23,
+          "lookup_weight": 1,
+          "prf_ands": 5120
+        }
+      ],
+      "address_scheme": "single_projected_aes_private_dummy_v1",
+      "annual_status": "Current fleet/latency and prices are in hierarchical_schedule*.json and hierarchical_annual.json."
+    },
+    {
+      "log_records": 32,
+      "batch": 2048,
+      "child_z": 64,
+      "pruned_aes": false,
+      "reference_total": 27798820.32032776,
+      "useful": {
+        "application_key_input": 16384,
+        "application_fingerprint_prf": 327680,
+        "deduplication_and_result_propagation": 549853.578125,
+        "lookup_fingerprint_equality": 7689088.0,
+        "lookup_other_boolean_work": 431520.0,
+        "lookup_packed_payload": 302720.0,
+        "lookup_address_disclosure": 48.75,
+        "rebuild_boolean_movement": 11749756.0,
+        "rebuild_routing_prfs": 1884160.0,
+        "rebuild_planners_and_checks": 668011.9922027588,
+        "rebuild_epoch_key_setup_and_inputs": 24.0,
+        "rebuild_packed_payload": 411230.0,
+        "lookup_single_real_prf": 1884160.0,
+        "lookup_private_dummy_randomness_inputs": 12480.0
+      },
+      "total": 25927116.32032776,
+      "saved": 1871704.0,
+      "saved_fraction": 0.06733033914505093,
+      "weighted_address_bits": 195.0,
+      "lookup_prf": 1884160.0,
+      "rebuild_prf": 1884160.0,
+      "all_prf_datapaths": 4096000.0,
+      "dummy_random_input": 12480.0,
+      "epoch_setup_saving": 24.0,
+      "rebuilding": 14713181.992202759,
+      "input_mux_instead_of_private_address_extra": 28384.0,
+      "optional_packed_key_total": 15846970.359420776,
+      "deployment": {
+        "cache_waste_forward": 410464.01870492415,
+        "query_bridges_forward": 47104.0,
+        "unframed_interparty_forward": 26017588.081220184,
+        "unframed_interparty_reverse": 367096.2578125,
+        "framed_interparty_total": 27703918.55598432,
+        "internal_per_party_per_direction": 4506678.275703669,
+        "internal_all_parties_total_sends": 9013356.551407337,
+        "framed_network_total_sends": 37167942.93496202,
+        "bottleneck_nic_direction_per_party": 32050479.67477005,
+        "note": "Count network sends once, not both sender and receiver. Each party internally sends and receives I."
+      },
+      "rows": [
+        {
+          "log_capacity": 11,
+          "address_bits": 6,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 12,
+          "address_bits": 7,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 13,
+          "address_bits": 8,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 14,
+          "address_bits": 9,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 15,
+          "address_bits": 10,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 16,
+          "address_bits": 11,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 17,
+          "address_bits": 12,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 18,
+          "address_bits": 13,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 19,
+          "address_bits": 14,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 20,
+          "address_bits": 15,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 21,
+          "address_bits": 16,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 22,
+          "address_bits": 17,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 23,
+          "address_bits": 18,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 24,
+          "address_bits": 19,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 25,
+          "address_bits": 20,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 26,
+          "address_bits": 21,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 27,
+          "address_bits": 22,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 28,
+          "address_bits": 23,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 29,
+          "address_bits": 24,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 30,
+          "address_bits": 25,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 31,
+          "address_bits": 26,
+          "lookup_weight": 0.5,
+          "prf_ands": 5120
+        },
+        {
+          "log_capacity": 32,
+          "address_bits": 27,
+          "lookup_weight": 1,
+          "prf_ands": 5120
+        }
+      ],
+      "address_scheme": "single_projected_aes_private_dummy_v1",
+      "annual_status": "Current fleet/latency and prices are in hierarchical_schedule*.json and hierarchical_annual.json."
+    }
+  ],
+  "one_projected_prf": [
+    {
+      "log_records": 28,
+      "batch": 1024,
+      "child_z": 64,
+      "pruned_aes": true,
+      "reference_total": 21389008.000164032,
+      "useful": {
+        "application_key_input": 16384,
+        "application_fingerprint_prf": 327680,
+        "deduplication_and_result_propagation": 459035.15625,
+        "lookup_fingerprint_equality": 5624576.0,
+        "lookup_other_boolean_work": 315920.0,
+        "lookup_packed_payload": 221440.0,
+        "lookup_address_disclosure": 36.125,
+        "rebuild_boolean_movement": 8691860.0,
+        "rebuild_routing_prfs": 1374208.0,
+        "rebuild_planners_and_checks": 507770.718914032,
+        "rebuild_epoch_key_setup_and_inputs": 48.0,
+        "rebuild_packed_payload": 309010.0,
+        "lookup_single_real_prf": 1374208.0,
+        "lookup_private_dummy_randomness_inputs": 9248.0
+      },
+      "total": 19231424.000164032,
+      "saved": 2157584.0,
+      "saved_fraction": 0.10087349539461832,
+      "weighted_address_bits": 144.5,
+      "lookup_prf": 1374208.0,
+      "rebuild_prf": 1374208.0,
+      "all_prf_datapaths": 3076096.0,
+      "dummy_random_input": 9248.0,
+      "epoch_setup_saving": 48.0,
+      "rebuilding": 10882896.718914032,
+      "input_mux_instead_of_private_address_extra": 27088.0,
+      "optional_packed_key_total": 11690582.074138641,
+      "deployment": {
+        "cache_waste_forward": 412496.0540323075,
+        "query_bridges_forward": 40960.0,
+        "unframed_interparty_forward": 19410787.22607134,
+        "unframed_interparty_reverse": 274092.828125,
+        "framed_interparty_total": 20669124.056906156,
+        "internal_per_party_per_direction": 3442828.034696579,
+        "internal_all_parties_total_sends": 6885656.069393158,
+        "framed_network_total_sends": 27899062.929768972,
+        "bottleneck_nic_direction_per_party": 23996296.023806315,
+        "note": "Count network sends once, not both sender and receiver. Each party internally sends and receives I."
+      },
+      "rows": [
+        {
+          "log_capacity": 10,
+          "address_bits": 5,
+          "lookup_weight": 0.5,
+          "prf_ands": 4256
+        },
+        {
+          "log_capacity": 11,
+          "address_bits": 6,
+          "lookup_weight": 0.5,
+          "prf_ands": 4256
+        },
+        {
+          "log_capacity": 12,
+          "address_bits": 7,
+          "lookup_weight": 0.5,
+          "prf_ands": 4256
+        },
+        {
+          "log_capacity": 13,
+          "address_bits": 8,
+          "lookup_weight": 0.5,
+          "prf_ands": 4256
+        },
+        {
+          "log_capacity": 14,
+          "address_bits": 9,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 15,
+          "address_bits": 10,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 16,
+          "address_bits": 11,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 17,
+          "address_bits": 12,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 18,
+          "address_bits": 13,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 19,
+          "address_bits": 14,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 20,
+          "address_bits": 15,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 21,
+          "address_bits": 16,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 22,
+          "address_bits": 17,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 23,
+          "address_bits": 18,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 24,
+          "address_bits": 19,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 25,
+          "address_bits": 20,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 26,
+          "address_bits": 21,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 27,
+          "address_bits": 22,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 28,
+          "address_bits": 23,
+          "lookup_weight": 1,
+          "prf_ands": 4320
+        }
+      ],
+      "address_scheme": "single_projected_aes_private_dummy_v1",
+      "annual_status": "Current fleet/latency and prices are in hierarchical_schedule*.json and hierarchical_annual.json."
+    },
+    {
+      "log_records": 32,
+      "batch": 1024,
+      "child_z": 64,
+      "pruned_aes": true,
+      "reference_total": 28454907.937515855,
+      "useful": {
+        "application_key_input": 16384,
+        "application_fingerprint_prf": 327680,
+        "deduplication_and_result_propagation": 459035.15625,
+        "lookup_fingerprint_equality": 7981696.0,
+        "lookup_other_boolean_work": 447792.0,
+        "lookup_packed_payload": 314240.0,
+        "lookup_address_disclosure": 49.375,
+        "rebuild_boolean_movement": 11912748.0,
+        "rebuild_routing_prfs": 1652736.0,
+        "rebuild_planners_and_checks": 679557.4062658548,
+        "rebuild_epoch_key_setup_and_inputs": 48.0,
+        "rebuild_packed_payload": 417390.0,
+        "lookup_single_real_prf": 1652736.0,
+        "lookup_private_dummy_randomness_inputs": 12640.0
+      },
+      "total": 25874731.937515855,
+      "saved": 2580176.0,
+      "saved_fraction": 0.09067595669842998,
+      "weighted_address_bits": 197.5,
+      "lookup_prf": 1652736.0,
+      "rebuild_prf": 1652736.0,
+      "all_prf_datapaths": 3633152.0,
+      "dummy_random_input": 12640.0,
+      "epoch_setup_saving": 48.0,
+      "rebuilding": 14662479.406265855,
+      "input_mux_instead_of_private_address_extra": 30192.0,
+      "optional_packed_key_total": 15651866.012253404,
+      "deployment": {
+        "cache_waste_forward": 412496.0540323075,
+        "query_bridges_forward": 49152.0,
+        "unframed_interparty_forward": 25960842.538423162,
+        "unframed_interparty_reverse": 375537.453125,
+        "framed_interparty_total": 27653198.99112557,
+        "internal_per_party_per_direction": 4566188.034893274,
+        "internal_all_parties_total_sends": 9132376.069786549,
+        "framed_network_total_sends": 37242193.86440145,
+        "bottleneck_nic_direction_per_party": 32053382.101982262,
+        "note": "Count network sends once, not both sender and receiver. Each party internally sends and receives I."
+      },
+      "rows": [
+        {
+          "log_capacity": 10,
+          "address_bits": 5,
+          "lookup_weight": 0.5,
+          "prf_ands": 4256
+        },
+        {
+          "log_capacity": 11,
+          "address_bits": 6,
+          "lookup_weight": 0.5,
+          "prf_ands": 4256
+        },
+        {
+          "log_capacity": 12,
+          "address_bits": 7,
+          "lookup_weight": 0.5,
+          "prf_ands": 4256
+        },
+        {
+          "log_capacity": 13,
+          "address_bits": 8,
+          "lookup_weight": 0.5,
+          "prf_ands": 4256
+        },
+        {
+          "log_capacity": 14,
+          "address_bits": 9,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 15,
+          "address_bits": 10,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 16,
+          "address_bits": 11,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 17,
+          "address_bits": 12,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 18,
+          "address_bits": 13,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 19,
+          "address_bits": 14,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 20,
+          "address_bits": 15,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 21,
+          "address_bits": 16,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 22,
+          "address_bits": 17,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 23,
+          "address_bits": 18,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 24,
+          "address_bits": 19,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 25,
+          "address_bits": 20,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 26,
+          "address_bits": 21,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 27,
+          "address_bits": 22,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 28,
+          "address_bits": 23,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 29,
+          "address_bits": 24,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 30,
+          "address_bits": 25,
+          "lookup_weight": 0.5,
+          "prf_ands": 4352
+        },
+        {
+          "log_capacity": 31,
+          "address_bits": 26,
+          "lookup_weight": 0.5,
+          "prf_ands": 4352
+        },
+        {
+          "log_capacity": 32,
+          "address_bits": 27,
+          "lookup_weight": 1,
+          "prf_ands": 4352
+        }
+      ],
+      "address_scheme": "single_projected_aes_private_dummy_v1",
+      "annual_status": "Current fleet/latency and prices are in hierarchical_schedule*.json and hierarchical_annual.json."
+    },
+    {
+      "log_records": 28,
+      "batch": 2048,
+      "child_z": 64,
+      "pruned_aes": true,
+      "reference_total": 20732920.382966995,
+      "useful": {
+        "application_key_input": 16384,
+        "application_fingerprint_prf": 327680,
+        "deduplication_and_result_propagation": 549853.578125,
+        "lookup_fingerprint_equality": 5331968.0,
+        "lookup_other_boolean_work": 299648.0,
+        "lookup_packed_payload": 209920.0,
+        "lookup_address_disclosure": 35.5,
+        "rebuild_boolean_movement": 8528868.0,
+        "rebuild_routing_prfs": 1306112.0,
+        "rebuild_planners_and_checks": 496225.30484199524,
+        "rebuild_epoch_key_setup_and_inputs": 24.0,
+        "rebuild_packed_payload": 302850.0,
+        "lookup_single_real_prf": 1306112.0,
+        "lookup_private_dummy_randomness_inputs": 9088.0
+      },
+      "total": 18684768.382966995,
+      "saved": 2048152.0,
+      "saved_fraction": 0.09878743380901833,
+      "weighted_address_bits": 142.0,
+      "lookup_prf": 1306112.0,
+      "rebuild_prf": 1306112.0,
+      "all_prf_datapaths": 2939904.0,
+      "dummy_random_input": 9088.0,
+      "epoch_setup_saving": 24.0,
+      "rebuilding": 10634079.304841995,
+      "input_mux_instead_of_private_address_extra": 25280.0,
+      "optional_packed_key_total": 11286646.421297073,
+      "deployment": {
+        "cache_waste_forward": 410464.01870492415,
+        "query_bridges_forward": 38912.0,
+        "unframed_interparty_forward": 18868492.76885942,
+        "unframed_interparty_reverse": 265651.6328125,
+        "framed_interparty_total": 20090851.621755514,
+        "internal_per_party_per_direction": 3383318.2755069733,
+        "internal_all_parties_total_sends": 6766636.5510139465,
+        "framed_network_total_sends": 27195820.00032016,
+        "bottleneck_nic_direction_per_party": 23364401.596584715,
+        "note": "Count network sends once, not both sender and receiver. Each party internally sends and receives I."
+      },
+      "rows": [
+        {
+          "log_capacity": 11,
+          "address_bits": 6,
+          "lookup_weight": 0.5,
+          "prf_ands": 4256
+        },
+        {
+          "log_capacity": 12,
+          "address_bits": 7,
+          "lookup_weight": 0.5,
+          "prf_ands": 4256
+        },
+        {
+          "log_capacity": 13,
+          "address_bits": 8,
+          "lookup_weight": 0.5,
+          "prf_ands": 4256
+        },
+        {
+          "log_capacity": 14,
+          "address_bits": 9,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 15,
+          "address_bits": 10,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 16,
+          "address_bits": 11,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 17,
+          "address_bits": 12,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 18,
+          "address_bits": 13,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 19,
+          "address_bits": 14,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 20,
+          "address_bits": 15,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 21,
+          "address_bits": 16,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 22,
+          "address_bits": 17,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 23,
+          "address_bits": 18,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 24,
+          "address_bits": 19,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 25,
+          "address_bits": 20,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 26,
+          "address_bits": 21,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 27,
+          "address_bits": 22,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 28,
+          "address_bits": 23,
+          "lookup_weight": 1,
+          "prf_ands": 4320
+        }
+      ],
+      "address_scheme": "single_projected_aes_private_dummy_v1",
+      "annual_status": "Current fleet/latency and prices are in hierarchical_schedule*.json and hierarchical_annual.json."
+    },
+    {
+      "log_records": 32,
+      "batch": 2048,
+      "child_z": 64,
+      "pruned_aes": true,
+      "reference_total": 27798820.32032776,
+      "useful": {
+        "application_key_input": 16384,
+        "application_fingerprint_prf": 327680,
+        "deduplication_and_result_propagation": 549853.578125,
+        "lookup_fingerprint_equality": 7689088.0,
+        "lookup_other_boolean_work": 431520.0,
+        "lookup_packed_payload": 302720.0,
+        "lookup_address_disclosure": 48.75,
+        "rebuild_boolean_movement": 11749756.0,
+        "rebuild_routing_prfs": 1584640.0,
+        "rebuild_planners_and_checks": 668011.9922027588,
+        "rebuild_epoch_key_setup_and_inputs": 24.0,
+        "rebuild_packed_payload": 411230.0,
+        "lookup_single_real_prf": 1584640.0,
+        "lookup_private_dummy_randomness_inputs": 12480.0
+      },
+      "total": 25328076.32032776,
+      "saved": 2470744.0,
+      "saved_fraction": 0.08887945501030059,
+      "weighted_address_bits": 195.0,
+      "lookup_prf": 1584640.0,
+      "rebuild_prf": 1584640.0,
+      "all_prf_datapaths": 3496960.0,
+      "dummy_random_input": 12480.0,
+      "epoch_setup_saving": 24.0,
+      "rebuilding": 14413661.992202759,
+      "input_mux_instead_of_private_address_extra": 28384.0,
+      "optional_packed_key_total": 15247930.359420776,
+      "deployment": {
+        "cache_waste_forward": 410464.01870492415,
+        "query_bridges_forward": 47104.0,
+        "unframed_interparty_forward": 25418548.081220184,
+        "unframed_interparty_reverse": 367096.2578125,
+        "framed_interparty_total": 27074926.55598432,
+        "internal_per_party_per_direction": 4506678.275703669,
+        "internal_all_parties_total_sends": 9013356.551407337,
+        "framed_network_total_sends": 36538950.93496202,
+        "bottleneck_nic_direction_per_party": 31421487.67477005,
+        "note": "Count network sends once, not both sender and receiver. Each party internally sends and receives I."
+      },
+      "rows": [
+        {
+          "log_capacity": 11,
+          "address_bits": 6,
+          "lookup_weight": 0.5,
+          "prf_ands": 4256
+        },
+        {
+          "log_capacity": 12,
+          "address_bits": 7,
+          "lookup_weight": 0.5,
+          "prf_ands": 4256
+        },
+        {
+          "log_capacity": 13,
+          "address_bits": 8,
+          "lookup_weight": 0.5,
+          "prf_ands": 4256
+        },
+        {
+          "log_capacity": 14,
+          "address_bits": 9,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 15,
+          "address_bits": 10,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 16,
+          "address_bits": 11,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 17,
+          "address_bits": 12,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 18,
+          "address_bits": 13,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 19,
+          "address_bits": 14,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 20,
+          "address_bits": 15,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 21,
+          "address_bits": 16,
+          "lookup_weight": 0.5,
+          "prf_ands": 4288
+        },
+        {
+          "log_capacity": 22,
+          "address_bits": 17,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 23,
+          "address_bits": 18,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 24,
+          "address_bits": 19,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 25,
+          "address_bits": 20,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 26,
+          "address_bits": 21,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 27,
+          "address_bits": 22,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 28,
+          "address_bits": 23,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 29,
+          "address_bits": 24,
+          "lookup_weight": 0.5,
+          "prf_ands": 4320
+        },
+        {
+          "log_capacity": 30,
+          "address_bits": 25,
+          "lookup_weight": 0.5,
+          "prf_ands": 4352
+        },
+        {
+          "log_capacity": 31,
+          "address_bits": 26,
+          "lookup_weight": 0.5,
+          "prf_ands": 4352
+        },
+        {
+          "log_capacity": 32,
+          "address_bits": 27,
+          "lookup_weight": 1,
+          "prf_ands": 4352
+        }
+      ],
+      "address_scheme": "single_projected_aes_private_dummy_v1",
+      "annual_status": "Current fleet/latency and prices are in hierarchical_schedule*.json and hierarchical_annual.json."
+    }
+  ]
+}

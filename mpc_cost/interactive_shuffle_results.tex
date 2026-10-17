@@ -1,0 +1,155 @@
+\subsection{Batch and recursion search}
+The search enumerates $B\in\{8,16,32,64,128,256\}$,
+$F\in\{4,8,16,32\}$, and requested base cutoffs
+$\{16,32,64,128,256,512,1024,2048,4096\}$: 216 combinations per database
+size. Each row below selects the cheapest network/state/I/O configuration
+at that batch size. Both final selections use $B=32$, $F=4$, and an actual
+base map of 2048 entries. The requested cutoff may have several equivalent
+values; the actual instantiated base is what matters. Small batches lose
+amortization of the fixed 128-record pool slack. Larger batches grow the
+remaining padded sorting networks. Consequently the objective is not
+monotone in batch size.
+
+\begin{center}\small
+\begin{tabular}{lrrrrrr}\toprule
+$B$ & $F_{28}/F_{32}$ & MB/q, 28 & MB/q, 32 & \$/yr, 28 & \$/yr, 32 & $\tau_B$ limit (ms)\\\midrule
+8 & 4/4 & 342.7 & 429.9 & \$55.89M & \$71.97M & 0.56\\
+16 & 4/4 & 395.4 & 494.2 & \$64.30M & \$82.26M & 1.12\\
+32 & 4/4 & 237.8 & 301.3 & \$39.05M & \$51.40M & 2.24\\
+64 & 4/8 & 273.3 & 342.2 & \$44.70M & \$57.83M & 4.48\\
+128 & 8/8 & 314.9 & 392.5 & \$51.30M & \$65.88M & 8.96\\
+256 & 8/8 & 366.0 & 454.3 & \$59.37M & \$75.60M & 17.92\\
+\bottomrule\end{tabular}
+\end{center}
+
+Traffic includes both directions and 5\% framing;
+prices exclude CPU sizing. The final column is the one-state batch reuse
+limit, not a predicted service time. Padding effects and the fixed slack
+make this an optimum of the selected implementation template, not a lower
+bound for OPRAM.
+
+\subsection{Instantiated recursive trees}
+Every selected tree has a 317-record pool, $r=6$, and a shuffle of 349
+records. The final map has 2048 scalar entries of 11 bits. The table lists
+each tree's address width $h$, payload width $D$, complete record width $W$,
+and lower-path length $L=h-5$.
+
+\begin{center}\small
+\begin{tabular}{lrrrrrrrr}\toprule
+Level & $h_{28}$ & $D_{28}$ & $W_{28}$ & $L_{28}$ & $h_{32}$ & $D_{32}$ & $W_{32}$ & $L_{32}$\\\midrule
+0 & 29 & 513 & 572 & 24 & 33 & 513 & 580 & 28\\
+1 & 27 & 116 & 171 & 22 & 31 & 132 & 195 & 26\\
+2 & 25 & 108 & 159 & 20 & 29 & 124 & 183 & 24\\
+3 & 23 & 100 & 147 & 18 & 27 & 116 & 171 & 22\\
+4 & 21 & 92 & 135 & 16 & 25 & 108 & 159 & 20\\
+5 & 19 & 84 & 123 & 14 & 23 & 100 & 147 & 18\\
+6 & 17 & 76 & 111 & 12 & 21 & 92 & 135 & 16\\
+7 & 15 & 68 & 99 & 10 & 19 & 84 & 123 & 14\\
+8 & 13 & 60 & 87 & 8 & 17 & 76 & 111 & 12\\
+9 & 11 & 52 & 75 & 6 & 15 & 68 & 99 & 10\\
+10 & -- & -- & -- & -- & 13 & 60 & 87 & 8\\
+11 & -- & -- & -- & -- & 11 & 52 & 75 & 6\\
+\bottomrule\end{tabular}
+\end{center}
+
+There are 10/12 dependent path-disclosure stages.
+Choosing fanout 8 for the larger database offers a latency/storage tradeoff;
+the selected fanout 4 minimizes the stated aggregate price objective, which
+does not price round-trip latency.
+
+\subsection{Ordinary garbled-circuit work}
+The following rows are millions of ANDs per complete query, already summed
+over both tables and every recursive level. They exclude OT and shuffle
+messages, which are accounted separately.
+
+\begin{center}\small
+\begin{tabular}{lrr}\toprule
+Component (million AND/query) & $2^{28}$ & $2^{32}$\\\midrule
+Request grouping and private result routing & 0.082943 & 0.103014\\
+Lower-path retrieval and clearing & 0.205776 & 0.288648\\
+Pool UID matching and tags & 0.139480 & 0.182592\\
+Eviction-candidate depth & 0.008725 & 0.011517\\
+Pool eviction selection & 3.270576 & 4.008054\\
+Pool cleanup & 1.723449 & 2.110749\\
+Lower-subtree eviction & 1.479984 & 2.071104\\
+Duplicate-masked path selection & 0.000400 & 0.000528\\
+Coalesced recursive-map updates & 0.015771 & 0.021057\\
+Fused flat position-map exchange & 0.054744 & 0.054744\\
+Dictionary key match and value selection & 0.005129 & 0.005129\\
+AES-CMAC query frontend & 0.010240 & 0.010240\\
+\textbf{Total} & \textbf{6.997218} & \textbf{8.867375}\\
+\bottomrule\end{tabular}
+\end{center}
+
+For $N=2^{28}$, eviction selection and pool cleanup account for 71.4\% of ordinary ANDs.
+
+For $N=2^{32}$, eviction selection and pool cleanup account for 69.0\% of ordinary ANDs.
+
+These retained phases dominate after retrieval has been
+improved. Optimizing the shuffle alone cannot remove them.
+
+\subsection{Pool protocol: all costs, not only online bytes}
+The main pool terms below include both tables and all trees, per query.
+Re-input is charged even for the data already moved by the shuffle; these
+are distinct operations. The unframed total is comparable to the old pool
+phase only, not to the entire query.
+
+\begin{center}\small
+\begin{tabular}{lrr}\toprule
+Pool component (MB/query) & $2^{28}$ & $2^{32}$\\\midrule
+Metadata match tables & 4.463360 & 5.842944\\
+Online masked arrays & 0.009772 & 0.011997\\
+Offline switch corrections & 0.147280 & 0.180812\\
+OT-extension allowance & 0.052600 & 0.063120\\
+Tag-share opening & 0.000327 & 0.000393\\
+GC re-input, both directions & 2.343884 & 2.882740\\
+Total pool retrieval & 7.017224 & 8.982006\\
+\bottomrule\end{tabular}
+\end{center}
+
+\subsection{Complete directional communication}
+
+\begin{center}\small
+\begin{tabular}{lrr}\toprule
+Traffic component (MB/query) & $2^{28}$ & $2^{32}$\\\midrule
+Garbled tables, forward & 223.910968 & 283.756016\\
+Pool re-input, forward & 1.757913 & 2.162055\\
+Pool re-input, reverse & 0.585971 & 0.720685\\
+Shuffle + tags, both directions & 0.209980 & 0.256322\\
+Query shares, both directions & 0.016384 & 0.016384\\
+Fresh-position inputs, both directions & 0.025600 & 0.033792\\
+Old-path disclosure, both directions & 0.000100 & 0.000132\\
+\midrule Forward, after framing & 237.095679 & 300.388127\\
+Reverse, after framing & 0.736582 & 0.904529\\
+\textbf{Total, after framing} & \textbf{237.832261} & \textbf{301.292656}\\
+\bottomrule\end{tabular}
+\end{center}
+
+PRF setup is 6400 ANDs plus 8192 input bytes per
+initialized state, before framing, and is not amortized into these per-query
+rows. At an epoch of $T$ queries, add $(32\cdot6400+8192)/T$ bytes per query
+before framing, together with any state handoff. Base OT and initial database
+construction remain separate.
+
+\subsection{Packed-value sensitivity without an unsupported gate discount}
+A 256-bit ordinary Boolean value uses 4096 label bytes per party. A
+two-carrier representation would use 32 bytes. For $M_{\rm value}$ physical
+data/stash slots, the conditional state saving is exactly
+$4064M_{\rm value}$ bytes per party. Recursive leaf labels are unchanged.
+
+\begin{center}\small
+\begin{tabular}{lrr}\toprule
+State per party (TB) & $2^{28}$ & $2^{32}$\\\midrule
+Primary Boolean representation & 64.699 & 1,061.578\\
+Conditional two-carrier values & 38.517 & 642.665\\
+\bottomrule\end{tabular}
+\end{center}
+
+This is a storage sensitivity, not a complete second
+deployment estimate. A packed backend must specify how shared values enter
+and leave its encoding and what a secret-controlled move costs. The present
+shuffle transports ordinary XOR shares; the Boolean color-bit conversion does
+not prove a conversion for two opaque carriers. The earlier hypothetical
+``two half-gate equivalents per value move'' cannot be included without those
+interfaces. Ordinary compact XOR-share storage is another valid design
+direction, but needs re-input accounting on every subsequently touched field.

@@ -1,0 +1,153 @@
+2.2. Byte-sliced Merge-split
+Routing inside registers. Our main observation is that AVX-
+512 can do more than move records as a whole. If we split
+each record into bytes, one 512-bit register can hold the same
+byte of 64 records. One permutation instruction, given an
+index vector, then rearranges this byte of all the records at
+once. Applying the same indices to each byte position rear-
+ranges the whole records. We therefore use buckets of 64 slots
+for our butterfly network. A merge-split then loads its two
+input buckets from fixed locations, rearranges their records
+in registers, and stores the two outputs at fixed locations. The
+secret routing affects only the permutation indices, which stay
+in registers, so the merge-split accesses the same memory
+locations regardless of where its records go.
+Byte-sliced layout. If each record were stored contiguously,
+a merge-split would have to collect the same byte from 64
+records, one load per record, before each permutation. We
+instead store the buckets themselves byte-sliced (Figure 1):
+the same byte position of all 64 slots is contiguous, so one
+vector load fetches that byte for every slot. The hash tables
+stay in this layout, so a merge-split loads its registers and
+stores its outputs without converting any record. With w bytes
+per slot, a bucket has w byte lines, each one 512-bit vector,
+and a separate 64-bit occupancy mask. The mask identifies
+real records, and the remaining slots are dummies. Each slot
+contains a key, value, metadata that can mark the key absent,
+and routing tag. A whole record occupies one column across
+the byte lines. A lookup checks all 64 slots of a bucket at once
+by comparing each key byte line with a register filled with
+the corresponding byte of the requested key. It then extracts
+the value with one byte permutation per value line, indexed
+by the matching slot.
+For a merge-split of buckets X and Y , we compute two
+index vectors, π0 and π1, from the current routing-tag bit and
+the occupancy masks. For each byte position, we load one byte
+line from each input bucket. The two-source byte permutation
+VPERMT2B selects each of its 64 output bytes from the 128
+bytes in these two input registers [34]. Applying π0 produces
+one output bucket’s byte line, and applying π1 produces the
+other’s. The same two index vectors serve all w byte lines, so
+each tag moves with its record. These permutations replace the
+compaction or sorting network of depth at least log Z within
+a conventional merge-split.
+We size the tables for 32 records per bucket in expectation,
+retaining the nominal half load used in prior butterfly-network
+constructions [18]. Small buckets overflow frequently, so
+we give each stage a fixed-capacity residual stash for the
+records that do not fit, adapting NanoGRAM’s overflow col-
+lection [21]. Section 2.4 describes these stashes and their
+overflow bounds.
+Planning the permutations. Output d ∈{0, 1} keeps the
+records of X whose tag bit is d in their current slots and fills
+its free slots, in order, with the corresponding records of Y .
+Records of Y that do not fit go to the stage’s residual stash
+(Section 2.4). A direct implementation would compress the
+selected bytes of Y and expand them into the free slots of
+each output, which takes four compress/expand instructions
+per byte position across the two outputs. We instead apply
+one compress and one expand to slot indices, once for each
+index vector (Figure 2). For each output, compress packs the
+0
+1
+2
+· · ·
+62
+63
+slot
+Key byte 0
+· · ·
+Key byte 1
+· · ·
+Value byte
+· · ·
+Tag byte
+· · ·
+...
+one 512-bit
+vector
+one record
+= one column
+Occupancy
+one 64-bit mask per bucket
+Plan once
+tag bit and
+occupancy masks
+→indices π0, π1
+for each byte line j
+Xj
+Yj
+VPERMT2B
+VPERMT2B
+X′
+j
+Y ′
+j
+π0
+π1
+Two VPERMT2B per pair of byte lines, reusing π0, π1 for all w lines
+Figure 1: Byte-sliced layout and merge-split. A bucket
+stores each byte position of its 64 slots in one 512-bit
+vector, so each row is one byte line and each record is one
+column. A merge-split of buckets X and Y plans its slot
+selection once, as the index vectors π0 and π1, and applies it
+to all w byte lines.
+Input: buckets X and Y , each with byte lines Xj, Yj and a 64-bit
+occupancy mask; tag bit b; stage-b residual stash Sb
+Output: X and Y rewritten in place as outputs 0 and 1; overflow
+appended to Sb
+1: I ←(0, . . . , 63); J ←(64, . . . , 127)
+▷slots of X, Y
+2: for d ∈{0, 1} do
+▷plan in registers
+3:
+xd, yd ←occupied slots of X, Y whose tag bit b is d
+4:
+(Qd, Fd) ←MATCHSLOTS(yd, ¬xd)
+5:
+πd ←EXPAND(I, Fd, COMPRESS(J, Qd))
+6:
+Od ←xd ∨Fd
+▷output occupancy
+7: end for
+8: E ←(y0 ∧¬Q0) ∨(y1 ∧¬Q1)
+▷records that do not fit
+9: STASHAPPEND(Sb, Y, E)
+10: for each byte line j, in public order do
+11:
+r ←LOAD(Xj); s ←LOAD(Yj)
+12:
+STORE(Xj, PERMUTE2(r, s, π0, O0))
+13:
+STORE(Yj, PERMUTE2(r, s, π1, O1))
+14: end for
+15: set the occupancy masks of X and Y to O0 and O1
+MATCHSLOTS(q, f) pairs the set bits of q with those of f in increasing order,
+as many as fit, and returns the paired subsets of q and f. COMPRESS(v, q)
+packs lanes q of v into consecutive low lanes. EXPAND(v, f, p) writes the
+packed lanes p into lanes f of v. PERMUTE2(r, s, π, O) sets each output lane
+i ∈O to lane π[i] of r∥s and zeros the other lanes. STASHAPPEND(S, Y, E)
+appends slots E of Y to the fixed-capacity stash S and fails if they do not
+fit. Its memory trace depends only on public capacities: it visits its prescribed
+storage in S even when E is empty.
+Figure 2: Byte-sliced merge-split at stage b.
+selected slot indices of Y , and expand places them in the free
+output positions, which gives πd. Apart from computing the
+masks and indices and handling residuals, a merge-split then
+needs only two VPERMT2B instructions per byte position, one
+for each output.
+Constant-time register permutations. Our merge-split’s
+memory accesses are deterministic: it loads and stores the
+byte lines of its two buckets in a fixed order and never
+branches on secret data. The secret routing tags reach only
+4

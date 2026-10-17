@@ -1,0 +1,35 @@
+\subsection{Selected annual budgets}
+\begin{center}\small
+\begin{tabular}{lrr}\toprule
+Both-party cost unless stated & $2^{28}$ & $2^{32}$\\\midrule
+NIC hosts per party & 298 & 378\\
+Additional capacity/I/O EC2/year & \$0.00M & \$0.00M\\
+Network-sized EC2/year & \$37.89M & \$48.06M\\
+SSD capacity/year & \$0.12M & \$1.90M\\
+Modeled persistent I/O/year & \$1.04M & \$1.43M\\
+\textbf{Combined annual capacity budget} & \textbf{\$39.05M} & \textbf{\$51.40M}\\
+Persistent R+W/query/party (MB) & 18.777 & 25.919\\
+State capacity, both parties (TB) & 129.399 & 2,123.157\\
+\bottomrule\end{tabular}
+\end{center}
+
+The minimum streaming buffer allowance is 64 MiB per
+party. It is not the total RAM requirement: workers, in-flight circuit labels,
+OT matrices, shuffle correlations, network buffers, and eviction scratch must
+be provisioned. No full-horizon garbled program is retained.
+
+\subsection{Known-work CPU sensitivity}
+At the following assumed effective ordinary-AND rates per node, take the
+maximum of NIC, storage/I/O, and ordinary-gate host counts. These figures
+include the stated state and I/O budgets, but \emph{exclude} the additional
+CPU cost of OT, shuffle, free-XOR, serialization, and distributed execution.
+They therefore are not complete CPU-priced service budgets.
+
+\begin{center}\small
+\begin{tabular}{lrrrr}\toprule
+Million AND/s/node & Hosts/party, 28 & Hosts/party, 32 & \$/yr, 28 & \$/yr, 32\\\midrule
+50 & 1400 & 1774 & \$179.17M & \$228.90M\\
+200 & 350 & 444 & \$45.66M & \$59.79M\\
+1,000 & 298 & 378 & \$39.05M & \$51.40M\\
+\bottomrule\end{tabular}
+\end{center}

@@ -1,0 +1,252 @@
+\section{Interactive pool retrieval: protocol and security conditions}
+\label{sec:interactive-pool-protocol}
+
+This section specifies a replacement for \emph{pool retrieval}, conditional on
+the surrounding Circuit OPRAM modules maintaining their existing invariants.
+It is not a new proof of the complete ORAM construction.  The replacement uses
+two-party secret-shared shuffling~\cite{cgp2020,osn2021}: the parties obtain
+fresh XOR shares of a common random permutation of the records, while neither
+party learns the composed permutation.  Both parties remain semi-honest, and
+the application key and intermediate records remain secret shared.  The
+ORAM architecture, recursive request processing, and eviction obligations
+remain those of the surrounding construction~\cite{chan2017}.
+
+\subsection{Interface and invariants}
+
+Fix one recursive level and one batch.  Let $P$ be the public pool capacity,
+$B$ the public batch size, and $u$ the number of UID bits at this level.  A
+pool record contains a validity bit, UID, current leaf label, and payload.
+The pool is a \emph{multiset stored in an array}; physical positions carry no
+meaning needed by subsequent pool processing.  The following are required.
+
+\begin{enumerate}
+\item At most one valid record in the union of the pool and the lower tree
+has a given UID.  Invalid records may contain arbitrary stale fields.  When
+overlapping public paths are fetched, repeated appearances of one physical
+tree slot are aliases, not additional independent live records.
+\item Existing private conflict processing supplies a representative bit
+$r_j$ for each request $j\in\{1,\ldots,B\}$.  There is at most one
+representative per UID, and representatives have distinct UIDs.  Duplicate
+group membership and result propagation remain secret.
+\item Each requested live block is obtained from exactly one of the pool
+and its fetched lower path.  Invalid and nonrepresentative requests are
+masked.  The surrounding algorithm privately combines these possibilities
+and clears each actual source once.
+\item Later eviction and cleanup consume records through their secret
+metadata, rather than interpreting a pool position as a fixed tree node.
+If an implementation instead assigns persistent semantics to pool slots,
+it must first change that interface or pay for inverse routing.
+\end{enumerate}
+
+These are interface conditions to verify in an implementation, not additional
+leakage permissions.  In particular, the parties must not disclose whether
+a request hit the pool, the lower tree, or a dummy.
+
+\subsection{Match, tag, shuffle, and extract}
+
+The tag alphabet is $\{0,1,\ldots,B\}$, with zero denoting an unselected row.
+A tag has $t=\lceil\log_2(B+1)\rceil$ bits.  Tags identify public request
+\emph{slots} in the current processing order; they do not disclose UIDs or
+secret duplicate groups.  The following procedure is executed separately
+at each recursive level, with fresh shuffling randomness.
+
+\begin{quote}\small
+\textbf{Input:} $P$ secret records $x_i$, and $B$ secret requests
+$(q_j,r_j)$ in the surrounding circuit's current order.
+
+\textbf{1. Private matching.} For every $i,j$, compute
+\[
+ e_{ij}=r_j\wedge\operatorname{valid}(x_i)
+              \wedge[\operatorname{UID}(x_i)=q_j],\qquad
+ h_j=\bigoplus_{i=1}^{P}e_{ij}.
+\]
+Set the tag of original row $i$ to the bitwise XOR of the public binary
+constants $j$ for which $e_{ij}=1$.  There is at most one such $j$.
+
+\textbf{2. Dummy completion.} Append one invalid record $d_j$ per request.
+Give $d_j$ tag $j$ if $h_j=0$, and tag zero otherwise.  Its other fields
+have the same fixed width and sharing representation as an ordinary record.
+Nonrepresentatives have $h_j=0$ and therefore receive their own dummy.
+
+\textbf{3. Secret shuffle.} Jointly shuffle the $n=P+B$ complete
+$(\mathrm{tag},\mathrm{record})$ rows.  Each party samples a private uniform
+permutation; the protocol applies their composition and refreshes shares.
+Use a fresh protocol instance and fresh correlations for this invocation.
+
+\textbf{4. Open tags only.} Reconstruct the shuffled tag column.  For each
+$j$, both parties locally copy their record share at the unique row tagged
+$j$ to output slot $j$.  Neither party reconstructs the record or its
+validity bit.  Output shares remain secret.
+
+\textbf{5. Retain the complement.} Both parties remove all $B$ nonzero-tag
+rows locally and discard the public tags.  Keep the remaining $P$ records
+in their current unordered arrangement.  Continue the existing private
+path/pool result selection, duplicate-result routing, recursive updates,
+and reinsertion/eviction schedule.
+\end{quote}
+
+At every invocation, each nonzero tag occurs exactly once: either its real
+pool record or its dedicated dummy receives it.  Consequently the number
+and pattern of opened tags do not reveal the number of hits.  A single
+common dummy would be incorrect, as repeated opened positions would reveal
+misses or request equality.  Tag assignment happens \emph{before} shuffling,
+so no post-shuffle scan to rediscover dummy positions is needed.
+
+\paragraph{Occupancy and clearing.}
+Let $H$ be the number of representative pool hits.  Removal deletes $H$
+original valid records and $B-H$ appended dummies.  The remaining $H$
+appended dummies replace the removed real records, leaving exactly $P$
+rows.  This extracts and clears the pool sources in one operation.  It is
+not necessary to privately compact the survivors or return them to their
+old slots.  Appending the surrounding algorithm's $B$ refreshed records
+and masked dummy returns gives the usual $P+B$ candidate bound.  The
+existing additional eviction workspace, candidate selection, and cleanup
+are still required; this argument does not reduce their allowances.
+
+\paragraph{Matching cost.}
+Equality of two $u$-bit UIDs can be computed with $u-1$ ANDs, followed by
+two ANDs for validity and representative gating.  Thus $BP(u+1)$ ANDs suffice
+for this matching kernel.  The numerical ledger reserves one additional
+AND per pair, charging $BP(u+2)$ as a conservative interface allowance.
+Unique-hit aggregation is XOR.  Multiplication
+of $e_{ij}$ by a public tag bit is either copying or zero, so forming tags
+adds no payload-wide conditional selection.  This count excludes the
+retained request-conflict module, path matching, and subsequent result
+selection.  If valid-UID uniqueness is not established, XOR is not a
+substitute for a general OR or a first-match selection circuit.
+
+\subsection{Composition with recursion, paths, and updates}
+
+Private request sorting remains part of the protocol.  The opened tag
+returns a result to the same \emph{processing slot} that generated that tag.
+It does not reveal the private sorting permutation.  Returning results to
+the original query order still requires the existing private inverse
+routing or an independently proved alternative.  Public tag extraction
+cannot justify deleting those costs.
+
+At a recursive level, several child requests may refer to one parent
+position-map block.  Deduplication therefore uses that level's block UID,
+not merely the original application key.  The parent block is fetched once;
+its different child offsets are read and updated privately, updates are
+coalesced, and one final parent block is committed.  This shuffle does not
+make concurrent whole-block writes safe.  For a read batch, duplicate
+queries can receive copies of the common result through existing secret
+routing.  Supporting application writes additionally requires the chosen
+operation order to be implemented privately within each duplicate group.
+
+The pool and lower-tree results must be combined using secret hit/validity
+flags.  A no-pool-hit dummy is a placeholder, not evidence of an absent
+dictionary key.  Likewise, selecting a real pool row does not authorize
+revealing that the lower path was unnecessary.  The existing fixed path
+schedule is retained.  Nonrepresentatives use the surrounding scheme's
+dummy-path rule, and collisions among public paths do not imply equality
+of logical UIDs.  Shared physical slots on overlapping paths must have
+their extraction/clear masks aggregated before a single state update.
+
+Fresh leaf labels and updated metadata stay secret.  A removed valid pool
+record is reintroduced only through the existing refreshed-return module;
+an unselected record survives exactly once.  No later step may both retain
+an old live copy and append a fresh live copy of the same UID.  These
+conditions, together with correct coalescing of recursive updates, preserve
+the valid-UID uniqueness needed by the next invocation.
+
+\subsection{Security argument and its scope}
+
+Consider a hybrid in which matching, conflict processing, share conversion,
+and shuffling are replaced by their specified secure functionalities.
+Conditional on the prior transcript, the pre-shuffle tag vector contains
+exactly one copy of each $j\in\{1,\ldots,B\}$ and $P$ zeros.  A fresh
+uniform permutation maps it to a uniform ordered placement of the $B$
+distinct nonzero tags.  This distribution is independent of the hit vector,
+the secret UIDs, and the original locations.  A simulator can therefore
+sample the opened tag vector without learning any of those secrets.
+
+One party knows its own private permutation, but the other party's
+independent uniform permutation still hides the composition.  Secure
+shuffling must refresh the shares: simply permuting recognizable active
+labels or unchanged share strings is not this functionality.  Its output
+record shares reveal no values when tags are opened.  Extraction and
+complement removal are deterministic local functions of the public tags
+and private shares, so they introduce no further openings.  Subsequent
+secure modules consume these shares and reveal only outputs already
+authorized by the surrounding protocol.  This is a conditional composition
+argument for the replacement module, not a security or overflow proof for
+the entire Circuit OPRAM template.
+
+Every later batch must use a fresh hidden shuffle before disclosing further
+positions.  Reusing a permutation permits cross-batch location linkage;
+reusing its masks or correlations can expose differences of secret arrays.
+Preprocessing can be performed ahead of time, but each correlation is
+consumed once and must not be restored after a retry or rollback.  A retry
+uses a new correlation.  In the semi-honest model, ``discard'' means that
+the protocol does not reuse a correlation; privacy must hold even against
+an adversary retaining its complete past view.
+
+\subsection{Representations and explicit communication charges}
+
+For the ordinary Boolean free-XOR backend, a bit $b$ is represented by a
+garbler-held zero label $K^0$ and an evaluator-held active label
+$K^b=K^0\oplus b\Delta$, where the permutation/color bit of $\Delta$ is
+one.  Taking the color bits locally gives
+\[
+ [b]_G=\operatorname{col}(K^0),\qquad
+ [b]_E=\operatorname{col}(K^b),\qquad
+ [b]_G\oplus[b]_E=b.
+\]
+This adds no communication and discloses nothing outside each party's
+existing view.  It does not itself promise independent fresh masks across
+all output bits; the secure shuffle supplies the required refresh.  No
+active label is sent to the garbler and no zero label is sent to the
+evaluator during this conversion.
+
+Returning an XOR-shared bit to an ordinary GC can be charged conservatively
+as two party inputs followed by a free XOR: a 16-byte garbler input label,
+two 16-byte OT message corrections for the evaluator input, and a 16-byte
+per-OT matrix allowance for standard 128-bit IKNP extension.  This gives
+\emph{64 bytes per logical re-input bit}, plus amortized base-OT setup and
+transport padding.  This is an explicit accounting choice rather than an
+optimal conversion claim.  Re-input every retained or extracted field that
+the next GC actually consumes; the shuffle cost alone is not the complete
+retrieval cost.  Persisting raw XOR shares instead of labels changes the
+storage backend and requires charging subsequent touched-state re-input.
+
+The color-bit argument applies to one-label-per-Boolean-bit encodings.
+It does \emph{not} turn two opaque packed labels into shares of a 256-bit
+value.  Accordingly, an ordinary Boolean model plus the explicit conversion
+charge is the concrete baseline.  A two-label payload scenario remains
+conditional on a specified packed encoding and secure conversion/update
+interface.  One-hot and specialized garbling techniques may improve other
+small-array modules~\cite{heath2024,heath2021}, but they do not remove the
+representation or composition obligations here.
+
+\paragraph{Shuffle cost.}
+Let $R$ include all actual XOR-share bytes in a row, including its tag.
+An $n$-input generalized Waksman network has
+\[
+ S(n)=n\lceil\log_2 n\rceil-2^{\lceil\log_2 n\rceil}+1
+\]
+switches.  In the construction of~\cite[Appendix A.3.1 and Figure 16]{osn2021},
+a switch uses a 1-out-of-2 OT with two $2R$-byte candidate payloads.
+Random-OT optimization reduces correction traffic from $4R$ to $2R$
+bytes per switch.  Wire masks are chosen in advance, so these OTs can be
+prepared in parallel; the data-dependent phase sends one masked input
+array per private permutation.  Composing two private permutations gives
+\[
+ C_{\rm shuffle}=\underbrace{2nR}_{\rm online}
+             +\underbrace{4S(n)R}_{\rm switch\ corrections}
+             +C_{\rm OT}.
+\]
+Uniform permutations must be sampled first and then routed through the
+network; independent fair switch bits do not sample uniform permutations.
+All preprocessing communication belongs in the bandwidth/cost ledger even
+when it lies outside the batch's critical path.  For $P=317$, $B=32$, and
+$n=349$, $S(n)=2630$.  If a complete tagged row occupies 73 bytes, the first
+two terms are 50,954 and 767,960 bytes per batch.  An illustrative 16-byte
+OT-extension allowance per switch adds 84,160 bytes across the two
+networks: 903,074 bytes per batch, or 28.22 decimal KB per request.  If the
+73-byte width excludes the tag, rounding to 74 bytes gives 28.57 KB per
+request instead.  Opening the tag column to both parties adds at most
+$2\lceil nt/8\rceil$ bytes with bit packing: 524 bytes per batch here,
+or 698 bytes if each tag is padded separately to one byte.  Metadata
+matching, re-input, result routing, and the remaining ORAM work are
+separate charges.

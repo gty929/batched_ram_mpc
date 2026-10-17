@@ -1,6 +1,55 @@
 MPC KEY-VALUE DATABASE COST MODEL
 ===============================
 
+17 October 2026: hierarchical ORAM alternative report
+----------------------------------------------------
+New self-contained analysis of binary mutable hierarchical ORAM, 512-slot
+routing buckets refined to 64/128-slot lookup buckets, per-parent residual
+buffers, merged global stashes, and packed XOR-share payloads:
+  ../output/latex/hierarchical_batch_oram_report.tex
+  ../output/pdf/hierarchical_batch_oram_report.pdf
+
+The B=1024, 64-slot case uses 21.389/28.455 MB unframed per lookup at N=2^28/2^32,
+including 11.147/14.976 MB rebuilding. The report includes a concrete 160-byte
+word-OT swap, source-stash re-admission, lifetime overflow bounds, sensitivities,
+and explicit TODOs. It is an analytical alternative, not an implementation
+or a replacement for the older reports. Fingerprint collisions are separate
+from the structural overflow bound; no measured throughput is claimed.
+
+Reproduce (SciPy and mpmath needed for probability calculations/tests):
+  python -m mpc_cost.hierarchical_split_cost
+  python -m unittest mpc_cost.test_hierarchical_split -v
+  python -m mpc_cost.render_hierarchical_split_report
+
+Ledger: results/hierarchical_split_comparison.json. Compile the delivered
+self-contained LaTeX twice with pdfLaTeX. The 16 October hierarchical_cost.py
+ledger is retained as the earlier unsplit 512-bucket reference.
+
+16 October 2026: interactive shuffle technical report (current)
+--------------------------------------------------------------
+The current scheme and cost derivation are in the standalone report:
+  ../output/latex/interactive_batch_oram_report.tex
+  ../output/pdf/interactive_batch_oram_report.pdf
+
+This report models secret-shared query keys, AES-CMAC cuckoo addressing,
+match/tag/shuffle pool retrieval with hidden composed permutations, explicit
+share-to-GC re-input, fused base-map exchange, and smaller batches. The selected
+batch is 32 for both database sizes. Framed traffic is 237.832/301.293 MB per
+complete lookup; annual network+state+modeled-I/O capacity is $39.05M/$51.40M.
+CPU work and single-state throughput remain conditional, not benchmarked.
+Two-carrier values are a separately labeled storage sensitivity; the primary
+ledger uses Boolean records outside the temporary XOR-shared shuffle.
+
+Reproduce from the repository root:
+  python -m mpc_cost.interactive_shuffle_cost
+  python -m unittest mpc_cost.test_interactive_shuffle -v
+  python -m mpc_cost.render_interactive_shuffle_report
+
+The generated ledger is results/interactive_shuffle_comparison.json. The
+delivered .tex is self-contained with an embedded bibliography; compile it
+twice with pdflatex. The modular editable source is interactive_shuffle_report.tex.
+Earlier reports and numerical comparisons below are preserved as history.
+
 16 October 2026: two-party public-routing audit and report refresh
 ----------------------------------------------------------------
 Current proposal comparison: two-party Garbled RAM versus streamed interactive

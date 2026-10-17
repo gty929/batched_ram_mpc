@@ -1,0 +1,2422 @@
+PAGE 1
+One Hot Garbling
+David Heath and Vladimir Kolesnikov
+heath.davidanthony@gatech.edu, kolesnikov@gatech.edu
+Abstract
+Garbled Circuit (GC) is the main practical 2PC technique, yet despite
+great interest in its performance, GC notoriously resists improvement.
+Essentially, we only know how to evaluate GC functions gate-by-gate using
+encrypted truth tables; given input labels, the GC evaluator decrypts the
+corresponding output label.
+Interactive protocols enjoy more sophisticated techniques. For exam-
+ple, we can expose to a party a (masked) private value. The party can
+then perform useful local computation and feed the resulting cleartext
+value back into the MPC. Such techniques are not known to work for GC.
+We show that it is, in fact, possible to improve GC eﬃciency, while
+keeping its round complexity, by exposing masked private values to the
+evaluator.
+Our improvements use garbled one-hot encodings of values.
+By using this encoding we improve a number of interesting functions,
+e.g., matrix multiplication, integer multiplication, ﬁeld element multipli-
+cation, ﬁeld inverses and AES S-Boxes, integer exponents, and more. We
+systematize our approach by providing a framework for designing such
+GC modules.
+Our constructions are concretely eﬃcient. E.g., we improve binary ma-
+trix multiplication inside GC by more than 6× in terms of communication
+and by more than 4× in terms of WAN wall-clock time.
+Our improvement circumvents an important GC lower bound and may
+open GC to further improvement.
+1
+Introduction
+Garbled circuits (GCs) allow two mutually untrusting parties to compute arbi-
+trary functions of their private inputs while revealing only the functions’ out-
+puts. Today, cryptographers view GC as a cryptographic primitive rather than a
+protocol. The primitive can be plugged into many protocols and is foundational
+in secure multiparty computation (MPC).
+The GC primitive only allows the circuit generator G and evaluator E to
+communicate a constant number of times. This restriction makes GC diﬃcult
+to improve. Indeed, since Yao ﬁrst described GC, only a handful of fundamental
+improvements have been made.
+GCs are usually structured as encryptions of Boolean circuits composed
+of XOR and AND gates.
+Most prior work has focused on improving these
+1
+
+
+PAGE 2
+gates. The most relevant cost is bandwidth consumption: G must send to E an
+‘encryption’ of the circuit, and this transmission is typically understood to be
+the GC bottleneck.
+The widely used half-gates [ZRE15] garbling requires G send to E two ci-
+phertexts per AND gate; XOR gates are communication free [KS08]. [ZRE15]
+also established a matching lower bound on AND gate communication that is
+diﬃcult to circumvent1.
+Thus, it is natural to target GC evaluation of more complex functions. Thus,
+searching for complex functions that can be quickly computed in GC became a
+natural research direction. Nevertheless, only two core-GC improvements have
+subsequently been found:
+Arithmetic GCs [BMR16] show that Free XOR [KS08] can be generalized to
+achieve free addition for arbitrary ﬁelds. Using this technique, we can eﬃciently
+add arithmetic values inside GC. Unfortunately, both multiplication and con-
+verting between ﬁelds is expensive, since these operations require G to send to
+E a number of ciphertexts proportional to the size of the ﬁeld. Thus, arithmetic
+GCs only improve communication in very speciﬁc scenarios.
+Stacked garbling [HK20a] improves the performance of GCs for functions
+that include conditional branching. The technique shows that G needs to send a
+number of ciphertexts proportional to only the longest program execution path,
+not to the entire circuit. Stacked garbling dramatically improves some functions,
+but requires that these functions feature exclusive conditional behavior.
+Our work.
+We show that a number of useful functions can be greatly
+improved by operating over a garbled one-hot encoding.
+Speciﬁcally, suppose the GC holds two bit vectors a ∈{0, 1}n and b ∈
+{0, 1}m.
+Moreover, suppose E knows a in cleartext.
+Our central primitive
+allows G and E to compute the following 2n×m matrix inside the GC extremely
+eﬃciently:
+
+
+0
+0
+· · ·
+0
+...
+0
+0
+· · ·
+0
+b0
+b1
+· · ·
+bm−1
+0
+0
+· · ·
+0
+...
+0
+0
+· · ·
+0
+
+
+(1)
+In this matrix, row a, viewed as a ∈{0, 2n−1}, is the only non-zero row.
+At ﬁrst glance, this primitive, which we call a one-hot outer product, may
+seem incredibly contrived and niche. It is not.
+1“Three-halves” [RR21], a recent improvement to half gates developed concurrently with
+our work, requires only 1.5 ciphertexts per AND gate. This new approach circumvents the
+letter, but not the spirit, of the [ZRE15] lower bound by operating on portions of garbled
+labels.
+The core of the lower bound still holds and implies further improvements will be
+diﬃcult.
+2
+
+
+PAGE 3
+Application
+Comm. Improvement
+128 × 128 binary matrix mult.
+6.2×
+32-bit mult.
+1.5×
+GF(28) mult.
+2.2×
+AES S-Box
+1.1×
+32-bit xy for public x
+11.8×
+32-bit x mod p for public p
+3.3×
+Figure 1: Use cases that we implemented where a one-hot encoding improves
+over a standard Boolean circuit implemented with [ZRE15]. We list communi-
+cation reduction as compared to a standard circuit. See Section 7 for details.
+This primitive can be used to implement a number of important functions.
+We use it to improve the GC bandwidth consumption of matrix multiplication,
+integer multiplication, ﬁeld multiplication, ﬁeld inverses and AES S-Boxes, inte-
+ger exponents, and more. We believe other eﬃcient applications of the technique
+are likely.
+We develop a framework for designing such ready-to-use modules.
+Once
+designed, these modules are freely composable in GC.
+1.1
+Contribution
+Non-interactivity is a key advantage of GC, as compared to other MPC tech-
+niques, such as GMW. However, non-interactivity also severely limits the set of
+GC building blocks. Essentially, we only know how to evaluate GC functions by
+using encrypted truth tables; given input labels, E decrypts the corresponding
+output label.
+In this work, we show that it is possible to improve GC eﬃciency by exposing
+masked private values to E. By doing so, we circumvent the [ZRE15] GC lower
+bound, and open GC for further improvement. In more detail, we:
+1. Introduce a new GC gate primitive that computes a one-hot outer product
+(see Equation (1)) for only 2(n −1) + m ciphertexts.
+2. Provide numerous constructions that utilize this new primitive to imple-
+ment improved GC modules (see Figure 1 and Section 7).
+3. Formalize a framework that allows new one-hot-based modules to be easily
+plugged in. Once implemented, these new modules can be used as if they
+are ordinary gates.
+4. Implement our approach in C++ and provide experimental evaluation (see
+Section 7).
+1.2
+High Level Intuition
+Let H(·) denote the function that maps a bit vector to its corresponding one-hot
+encoding. That is, for a ∈{0, 1}n, H(a) is a length-2n bit vector that is zero
+3
+
+
+PAGE 4
+everywhere, except at index a, where it is one. Let a ∈{0, 1}n and b ∈{0, 1}m
+be two bit vectors and suppose E holds garblings of these two values. Our lowest
+level primitive allows E to eﬃciently construct a garbling of the following matrix
+(see also Equation (1)):
+H(a) ⊗b
+where ⊗denotes the vector outer product operation. This matrix has dimension
+2n × m, yet the parties construct the output using only O(n + m)κ bits of
+communication, for security parameter κ.
+Our construction does have one limitation: E must know a. Nevertheless,
+we build a number of useful GC constructions from this low-level primitive, even
+if E does not know the input.
+Our constructions use two key ideas:
+First, the garbled one-hot encoding of a value is, in a sense, ‘fully homo-
+morphic’. Namely, let T (f) denote the truth table (represented as a matrix) for
+arbitrary function f. The following equality holds:
+T (f)⊺· H(a) = f(a)
+Thus, if f is public and E knows a, then we can map a garbling of H(a) to a gar-
+bling of f(a) without communication. Speciﬁcally, the parties locally construct
+and apply T (f)⊺via Free XOR [KS08].
+Second, we can reveal in cleartext to E masked intermediate circuit values.
+This way, E learns nothing, yet can use the above one-hot primitive to compute
+f of masked a. In many useful cases we can use simple algebra to cheaply undo
+the masking and obtain f(a) inside GC, where E does not know a.
+2
+Related Work
+Ours is in a line of works that improve the practical performance of GC. We
+review other works in this line. Our emphasis is communication reduction, which
+is the GC bottleneck.
+Practical GC research has long focused on eﬃcient evaluation of AND/XOR
+gates. [NPS99] gave the ﬁrst GC communication improvement: garbled row re-
+duction. Much later [KS08], gave the important Free XOR optimization which
+eliminated the communication cost of XOR gates. Garbled gates were slowly
+improved [PSSW09, KMR14], and the half-gates technique [ZRE15] reduced
+AND gate communication cost to only two ciphertexts. Subsequently, [GLNP18]
+showed that similar costs (two ciphertexts per AND and one per XOR) are
+possible even when assuming only one-way functions, as opposed a circular
+correlation robust hash function. Very recently, a new “three-halves” garbling
+technique showed that only 1.5 ciphertexts are needed per AND gate [RR21].
+However, “three-halves” has not yet been implemented, so we focus our com-
+parison on the widely-available half-gates technique. We mention that [RR21]’s
+construction uses Free XOR based GC labels, and so is compatible with and
+complementary to our technique: one-hot gates can be composed with 1.5 ci-
+phertext AND gates in a single circuit.
+4
+
+
+PAGE 5
+Not only have there been few core-GC improvements, but those improve-
+ments have also been small. For example, half-gates improved over prior state-
+of-the-art [KMR14] by only 1 −1.5× (1.5× is for the case where [KMR14]’s
+heuristics fail).
+Recently, GC performance improvement has proceeded in two new direc-
+tions:
+1. Consider more expressive ﬁelds. One elegant direction views a circuit as
+an object that operates over the Boolean ﬁeld. With this perspective, it is
+natural to consider whether larger ﬁnite ﬁelds are also candidates for GC
+evaluation. [BMR16] showed that they indeed are candidates, and gave
+constructions that add/multiply in a small arithmetic ﬁeld and even that
+convert between diﬀerent ﬁelds. Unfortunately, multiplication/conversion
+gates grow linearly in the size of the considered ﬁelds, and so rapidly
+become impractical. Arithmetic GCs are, unfortunately, only useful in
+speciﬁc settings.
+2. Consider more expressive functions. Since an improved AND gate seems
+unlikely, it is natural to consider more complex functions. However, such
+improvements are elusive in GC, and, to our knowledge, only one has been
+made: stacked garbling [HK20a, HK21] shows that GC communication can
+be improved for functions with exclusive conditional behavior.
+Our work falls into the second category.
+Non-GC Expressive Functions
+In other MPC protocols, it is possible to
+improve beyond considering simple XOR/AND or ADD/MUL gates. For exam-
+ple, other protocols allow (1) eﬃcient lookup-table-based approaches [IKM+13,
+DKS+17, KKW17, DNNR17]2, (2) eﬃcient linear algebra operations, e.g. [HKP20,
+ADI+17, PSSY20, RWT+18], or (3) custom designed subprotocols, such as fast
+ﬁeld inverse computation [BIB89]. Our work brings a ﬂavor of such techniques
+to GC.
+Puncturable PRFs and MPC
+Our one-hot outer product construction uses
+a well-known puncturable PRF derived from the classic GGM PRF [GGM84].
+This same idea is often applied in MPC, for example to help achieve eﬃcient
+OT extension [BCG+19, YWL+20]. Our work shows that this primitive can
+be directly and elegantly plugged into GC and that the resulting primitive is
+powerful.
+GC frameworks
+Part of our contribution is a framework for building new GC
+modules from one-hot outer products. The generally accepted GC framework,
+speciﬁed by [BHR12], deﬁnes garbling schemes. We clarify that our framework
+2Technically, large lookup tables can be implemented in GC by enumerating garbled rows,
+but this is expensive.
+5
+
+
+PAGE 6
+and [BHR12]’s framework achieve diﬀerent goals. The [BHR12] framework pro-
+vides an abstraction barrier between high level protocols and garbling schemes.
+Our framework instead supports new GC modules which are hosted inside a spe-
+ciﬁc garbling scheme. Indeed, our framework is proved secure in the [BHR12]
+framework.
+Previous work, e.g., [KNR+17, GLMY16] viewed their circuits as modules.
+The similarity between these works and ours is superﬁcial. They build mod-
+ular GC components that are individually garbled, then dynamically stitched
+together into a full GC for improved performance. In contrast, our modules
+enforce scope of private variables, and facilitate clean security proofs of circuits
+composed of our one-hot gates.
+3
+Notation and Assumptions
+We list some simple notation here. We elaborate on more involved notation in
+the following subsections.
+• κ is our computational security parameter, e.g. 128.
+• G is the GC generator. We refer to G by he/him.
+• E is the GC evaluator. We refer to E by she/her.
+• x ≜y denotes that x is equal to y by deﬁnition.
+• x
+c= y denotes that x is computationally indistinguishable from y.
+• We work with vectors and matrices:
+– If v is a vector, then vi denotes the ith entry in v. If m is a matrix,
+then mi,j, denotes the entry at the ith row and jth column. We use
+zero-based indexing.
+– m⊺denotes the transpose of m.
+– x⊗y denotes the outer product of vectors x and y. The outer product
+can be deﬁned as follows: x ⊗y ≜x · y⊺.
+• Let D be a distribution. We write x ←D to denote that x is drawn from
+D.
+• We overload the notion of a circuit wire to hold a matrix of bits of arbitrary
+dimension. We sample wires in a natural manner from general D. Namely,
+we sample D, encode the result in binary, then store the result onto the
+wires.
+• [n] denotes the sequence of natural numbers 0, 1, ..., n −1.
+6
+
+
+PAGE 7
+3.1
+One-Hot Encoding and Truth Tables
+Recall from Section 1.2 that our central construction computes the one-hot outer
+product H(a) ⊗b. Moreover, we apply functions to one-hot encodings via truth
+tables. We deﬁne appropriate notation:
+Deﬁnition 1 (One-hot encoding). Let a ∈{0, 1}n be a length-n bitstring. The
+one-hot encoding of a is a length-2n bitstring denoted H(a) such that for all
+i ∈[n]:
+H(a)i ≜
+(
+1
+if i = a
+0
+otherwise
+Deﬁnition 2 (Truth table). Let f : {0, 1}n →{0, 1}m be a function. The truth
+table for f, denoted T (f), is a 2n × m matrix of bits such that:
+T (f)i,j ≜f(i)j
+That is, the ith row of T (f) is the bitstring f(i).
+We extensively use the following simple lemma that relates truth tables and
+one-hot encodings:
+Lemma 1 (Evaluation by truth table). Let f : {0, 1}n →{0, 1}m be an arbitrary
+function. Let a ∈{0, 1}n be a bitstring:
+T (f)⊺· H(a) = f(a)
+Proof. Straightforward from Deﬁnitions 1 and 2. Informally, the one-hot vector
+“selects” row a of the truth table.
+3.2
+GC Notation: Garbled Sharings
+In this work, we forgo the standard GC notation of garbled labels in favor of
+garbled sharings of cleartext values held by G and E. This will be convenient
+for handling vectors and matrices of bits. We stress that the GC mechanism,
+including communication rounds, remains completely unchanged.
+We use Free XOR style garbled circuit labels [KS08]. In the GC, G and E
+hold sharings of each circuit wire. Each sharing consists of two shares, one held
+by G and one by E. G samples a uniform value ∆∈{0, 1}κ; ∆is a value that is
+global to all wires in the circuit. Then, for each wire value a ∈{0, 1}, G samples
+a uniform value A ∈{0, 1}κ. A is G’s share; E holds A ⊕a∆. Hence, the two
+parties together hold an XOR share of a∆. We will say that gates “output”
+a sharing. This corresponds to the traditional notation of E obtaining a valid
+wire label which can be used in continued GC evaluation.
+Deﬁnition 3 (Garbled sharing). Let a ∈{0, 1} be a bit. Let A, B ∈{0, 1}κ
+be two bitstrings. We say that the pair (A, B) is a garbled sharing of a over
+(usually implicit) ∆∈{0, 1}κ if A ⊕B = a∆. We denote a garbled sharing of
+a by writing JaK:
+JaK ≜(A, B)
+such that A ⊕B = a∆
+7
+
+
+PAGE 8
+Each of the two elements in the sharing are called shares. In the GC, G holds
+one share and E holds the other. We say that a garbled sharing is uniform if
+one share is drawn uniformly from {0, 1}κ.
+We extend sharing notation to vectors/matrices: a sharing of a matrix is a
+matrix of sharings. I.e., for a matrix a ∈{0, 1}n×m:
+JaK =
+u
+wv
+a0,0
+. . .
+a0,m−1
+...
+...
+an−1,0
+an−1,m−1
+}
+~ ≜
+
+
+Ja0,0K
+. . .
+Ja0,m−1K
+...
+...
+Jan−1,0K
+Jan−1,m−1K
+
+
+Note, XOR is homomorphic over garbled sharings [KS08]:
+JaK ⊕JbK = Ja ⊕bK
+More generally, we can homomorphically apply arbitrary linear functions to
+sharings. Speciﬁcally, if f is a linear map, then we overload function application
+syntax as follows:
+f(JaK) = f((A, A ⊕a∆)) ≜(f(A), f(A ⊕a∆))
+That is, the parties apply (linear) f to a sharing by locally applying f to their
+respective shares. This generates a correct output sharing:
+Lemma 2. Let f be a linear map and let JaK be a sharing. Then
+f(JaK) = Jf(a)K
+Proof.
+f(JaK)
+= f((A, A ⊕a∆))
+Deﬁnition 3
+= (f(A), f(A ⊕a∆))
+function application to sharing
+= (f(A), f(A) ⊕f(a)∆)
+f is a linear map
+= Jf(a)K
+Deﬁnition 3
+We apply the above fact often, most notably when applying truth tables
+to shared one-hot vectors. Speciﬁcally for arbitrary function f, Lemma 1 and
+Lemma 2 together imply the following:
+T (f)⊺· JH(a)K = Jf(a)K
+3.2.1
+G constants
+It is easy for G to inject secret constants into the GC. Speciﬁcally to input a
+constant c, E takes as her share 0 and G takes c∆: note that this matches
+Deﬁnition 3. We use such constants to help eliminate introduced masks.
+8
+
+
+PAGE 9
+3.2.2
+Share colors
+GC techniques use garbled shares to decrypt ciphertexts arranged in tables.
+The classic point and permute technique [BMR90] shows that E need not try to
+decrypt each row of a table, but rather can use share “pointer bits” to directly
+decrypt the appropriate row. Per [ZRE15], we refer to these pointers as colors.
+Namely, each share has a single distinguished bit that we refer to as the color.
+The key property is that on each wire, E’s two possible shares have diﬀerent
+colors, and the color of a share is independent of the cleartext value that the
+share represents.
+Formally, we ensure that the global value ∆has a one in its least signiﬁcant
+bit. We deﬁne a procedure Color that, when given a bit sharing JaK, returns to
+G and E the least signiﬁcant bit of their respective shares. Note the following:
+Color(JaK) = Color((A, A ⊕a∆))
+= (Color(A), Color(A ⊕a∆)) = (Color(A), Color(A) ⊕a)
+That is, if both parties compute the color of their respective shares, the result
+is an XOR secret share of the cleartext value. We extend the Color procedure
+over vectors and matrices: the color of a matrix of sharings is the matrix of
+colors of its elements.
+3.3
+Model and Cryptographic Assumptions
+We use the Free XOR technique [KS08] and so we assume a circular correlation
+robust hash function H [CKKZ12].
+In practice, we can instantiate H using
+ﬁxed-key AES [GKWY20, BHKR13].
+Formally, we construct a garbling scheme [BHR12], which is a tuple of algo-
+rithms that can be plugged into GC protocols. Thus we do not need to formally
+consider a speciﬁc threat model, e.g. semi-honest adversaries. Informally, E
+and G can be understood as semi-honest. Our implementation (see Section 6)
+uses our garbling scheme to instantiate a semi-honest protocol.
+4
+Technical Overview
+In this section, we present our techniques with suﬃcient detail to understand
+our contribution. Section 5 later presents our constructions in formal detail with
+appropriate theorems and proofs, and Section 7 shows a number of interesting
+functions that can be computed eﬃciently from our technique.
+Let a ∈{0, 1}n and b ∈{0, 1}m be two strings. Recall from Section 1.2 that
+our core primitive eﬃciently computes the following:
+JaK, JbK 7→JH(a) ⊗bK
+To use the primitive, E must know in cleartext the value a. We ﬁrst sketch the
+construction, then show how it can be used.
+9
+
+
+PAGE 10
+4.1
+Garbled One-Hot Encoding JaK 7→JH(a)K
+We ﬁrst describe how to compute JaK 7→JH(a)K when E knows a. The idea
+marries GC with a well-known puncturable PRF built from the classic GGM
+PRF [GGM84]. Puncturable PRFs are useful in a number of settings, see e.g.
+[BW13, KPTZ13, BGI14, Ds17, BCG+19, SGRR19].
+The technique is well
+known, but we nevertheless sketch it here and emphasize its natural compati-
+bility with GC sharings.
+G ﬁrst generates a full binary tree of PRG seeds with 2n leaves in the natural
+manner. Namely, each node’s seed is derived by evaluating a PRG on its parent’s
+seed. Let Si,j denote the jth seed on level i. Let the root of the overall tree
+reside in level −1. Let Lj be a pseudonym for the jth leaf seed: Lj ≜Sn−1,j.
+Our goal is to deliver to E all leaf seeds Lj̸=a. Recall that G and E hold
+garbled shares of JaK. Let JaiK = (Ai, Ai ⊕ai∆) be the shares of the individual
+bits in a. Recall, E knows each ai in cleartext but does not know ∆. We can
+use these shares to encrypt values that help E recover each seed in the binary
+tree, except the seeds along the path to La.
+As a base case, G simply deﬁnes the seeds on level zero as follows:
+S0,0 ≜A0 ⊕∆
+S0,1 ≜A0
+Thus, E trivially obtains exactly one seed on level zero.
+Now, consider arbitrary level i. Assume E has all seeds on level i except for
+one (along the path to La). By applying a PRG to these seeds, E can recover
+all seeds in level i + 1 save two.
+To deliver to E the missing seed “just oﬀ” the path to La, G sends two
+encrypted values. Let Even (resp. Odd) denote the XOR sum of all seeds Si+1,j
+for even j (resp. for odd j). G sends to E Even encrypted by Ai ⊕∆and Odd
+encrypted by Ai. Thus, E can decrypt Even if the seed just oﬀthe path to La
+is even (resp. for odd). E can then XOR in the even seeds (resp. odd seeds)
+she already holds and recover the missing seed.
+G now holds each seed Li and E holds each Li̸=a.
+By Deﬁnition 3, the
+parties hold garbled sharings of zero at all points i̸ = a. To complete the shared
+one-hot vector, we must convey to E a valid share of one at position a. G thus
+sends the following value to E:
+ M
+i Li
+
+⊕∆
+E XORs this value with the leaves she already holds and hence extracts La ⊕∆:
+a valid share of one.
+Thus, the two parties compute JH(a)K via 2(n −1) + 1 ciphertexts.
+4.2
+Garbled One-Hot Outer Product
+We now generalize the above approach to compute JH(a) ⊗bK.
+Let us back up to the point where the two parties each hold each Li except
+that E does not hold La. For each j, the parties hold a garbled sharing JbjK.
+Let Bj (resp. Bj ⊕bj∆) be G’s (resp. E’s) share.
+10
+
+
+PAGE 11
+For each j ∈[m] the parties act as follows. Both parties apply a PRG to
+each of their leaf seeds Li and hence obtain strings Xi,j. Now, G sends to E
+the following value:
+ M
+i Xi,j
+
+⊕Bj
+E XORs this with her 2n −1 values Xi̸=a,j and with her share of bj:
+ M
+i̸=a Xi,j
+
+⊕
+ M
+i Xi,j
+
+⊕Bj
+
+⊕(Bj ⊕bj∆) = Xa,j ⊕bj∆
+In other words, at index a, E receives a share of bj.
+Thus, the parties now hold a sharing of a 2n ×m matrix x where each row is
+all zeros except row a: row a holds the vector b. We have constructed JH(a)⊗bK.
+The full construction, formalized in Figure 3, requires G send to E 2(n −
+1) + m ciphertexts.
+4.3
+Applying the One-Hot Encoding
+We now give some examples of how the one-hot outer product can be used. We
+greatly expand on this topic in Section 7.
+Recall that garbled shares support linear maps (Lemma 2) and that for any
+function f the following equality holds:
+T (f)⊺· H(a) = f(a)
+Lemma 1
+Zero Knowledge.
+We brieﬂy mention that our one-hot outer product implies
+improvement for GC-based Zero Knowledge [JKO13, HK20b]; we emphasize
+that our focus is 2PC, not ZK.
+In ZK, E knows each circuit wire value, so our requirement that E knows the
+argument to H(·) is met automatically. Thus, in GC-ZK we can compute any
+function using only 2n −1 ciphertexts by computing T (f)⊺· JH(a)K. However,
+we must keep the domain of f small, since the parties construct a tree with 2n
+leaves.
+If f requires a large circuit, then this truth-table based approach can improve
+over the circuit. For example, if the ZK proof invokes SHA256 on a small domain
+n-bit input, we need only 2n−1 ciphertexts. The hand tuned SHA256 circuit, on
+the other hand, has a staggering 22573 AND gates [AAL+]. Other ZK protocols,
+e.g.
+[WYKW21], can similarly use truth tables by brute force constructing a
+one-hot encoding (at the cost of O(2n) AND gates). However, as the size of the
+input grows, our technique becomes more eﬃcient. For tables with more than
+9 input bits, our GC-based one-hot encoding will improve over other protocols.
+2PC
+We now consider 2PC applications where both parties have input and
+neither party knows any intermediate wire value.
+Since our one-hot outer product primitive requires E to know the argument
+a, we must reveal a to E in cleartext. Of course, we cannot arbitrarily reveal
+cleartext values to E: this would not be secure. Instead, we are careful to only
+11
+
+
+PAGE 12
+reveal values that have a mask applied such that the cleartext value remains
+protected.
+We illustrate this idea by example.
+Let a ∈{0, 1}n and b ∈{0, 1}m be
+two bitstrings. Moreover, let n, m be small. (Formally, let n, m be at most
+logarithmic in the overall circuit input size. This restriction avoids exponential-
+time computation due to the one-hot technique.)
+Suppose the parties hold two sharings JaK and JbK and wish to compute the
+(non-one-hot) outer product Ja ⊗bK. Note that outer products are useful since
+they can be leveraged to compute matrix products, integer products, and more
+(see Section 7).
+First, G chooses two uniform masks α ∈{0, 1}n and β ∈{0, 1}m.
+The
+parties compute Ja ⊕αK and Jb ⊕βK inside GC. Now, it is safe to reveal the
+values a⊕α and b⊕β to E in cleartext. These values are revealed by G sending
+his color bits to E3.
+From here, the parties use the following straightforward lemma:
+Lemma 3. Let x ∈{0, 1}n, y ∈{0, 1}m be two bitstrings and let id : {0, 1}n →
+{0, 1}n denote the identity function:
+T (id)⊺· (H(x) ⊗y) = x ⊗y
+Proof.
+T (id)⊺· (H(x) ⊗y)
+= T (id)⊺· (H(x) · y⊺)
+Deﬁnition ⊗
+= (T (id)⊺· H(x)) · y⊺
+Associativity
+= id(x) · y⊺
+Lemma 1
+= x · y⊺
+Deﬁnition id
+= x ⊗y
+Deﬁnition ⊗
+In particular, the parties compute the following two values:
+T (id)⊺· JH(a ⊕α) ⊗bK = J(a ⊕α) ⊗bK
+T (id)⊺· JH(b ⊕β) ⊗αK = J(b ⊕β) ⊗αK
+Finally, the parties compute the following:
+J(a ⊕α) ⊗bK ⊕J(b ⊕β) ⊗αK⊺⊕Jα ⊗βK
+= Ja ⊗bK ⊕Jα ⊗bK ⊕Jb ⊗αK⊺⊕Jβ ⊗αK⊺⊕Jα ⊗βK
+= Ja ⊗bK ⊕Jα ⊗bK ⊕Jα ⊗bK ⊕Jα ⊗βK ⊕Jα ⊗βK
+= Ja ⊗bK
+3Alternatively and more directly, G can deﬁne α (resp. β) to be his color bits of a (resp. b).
+This avoids sending small cleartext values to E and is similar to the method used in [ZRE15].
+Here, we introduce the idea that G can send color bits of a masked value to E because this
+sending generalizes to non-XOR masks.
+12
+
+
+PAGE 13
+(G knows α ⊗β, so he can inject this value as a GC constant.)
+Thus, E and G can compute the outer product Ja ⊗bK using only two one-
+hot outer products. In total, G sends to E 3(n + m) −4 ciphertexts. This is
+a signiﬁcant improvement compared to computing the outer product via AND
+gates: the AND-gate method consumes 2nm ciphertexts.
+As an interesting aside, the above technique is a strict generalization of
+the [ZRE15] half-gates technique. Namely, if we consider length one inputs a
+and b, the above technique computes Boolean AND using only two ciphertexts.
+Moreover, the numbers of per-party calls to H match the half-gates technique.
+While we have shown here only how to compute an outer product, our tech-
+nique improves other functions as well (see Section 7). We highlight the key
+ideas common to such constructions:
+1. Apply a mask to an internal circuit value such that it is safe to reveal the
+masked value to E.
+2. Use the revealed value as input to a one-hot outer product.
+3. Apply a function, via truth table, to this outer product matrix.
+4. Use simple algebra to remove the introduced masks and obtain the desired
+output sharing. The parties can use the output in further GC evaluation.
+4.4
+A Framework for One-Hot Techniques
+We found a number of interesting functions that can be eﬃciently implemented
+using the one-hot outer product (see Section 7). We certainly did not ﬁnd all
+such functions. Thus, part of our contribution is a simple framework for design-
+ing new such constructions, which can then be directly used without building a
+new garbling scheme from the ground up.
+Section 5 motivates and explains this framework in detail. In brief, notice
+our above high-level strategy involves revealing cleartext values to E.
+Our
+framework provides a simple infrastructure that prevents insecure leakage by
+packaging sensitive values into modules and ensuring these values cannot leave
+the module.
+Our framework is a tool for designing modules that implement useful func-
+tions inside GC. Modules are built from a small set of primitives provided by
+the framework. These primitives allow the designer to specify what to compute,
+how to sample auxiliary randomness, and what to reveal to E. Crucially, the
+module designer will not directly manipulate garbled labels, material, and other
+garbling scheme artifacts – all such handling is done through the framework’s
+primitives. In particular, this means that the module designer need not prove
+her GC instantiation secure: module security follows from our framework’s se-
+curity theorems.
+13
+
+
+PAGE 14
+C
+α ←Dmask
+a
+C(a, α)
+E
+Reveal
+x ←Dout
+{a, C(a, α)} c= {a, x}
+G
+M
+M(a) = f(a)
+a
+Figure 2: Left: Reveal gates safely reveal values to E. At runtime, G samples
+a mask α from the designer-speciﬁed distribution Dmask. This mask, and the
+input, are fed into the designer-speciﬁed function C. For security, the output
+of C must be indistinguishable from a value sampled from some output distri-
+bution Dout, even in the context of the input a (Requirement 2, Section 5.3).
+The masked value C(a, α) is revealed in cleartext to E and α is given to G. The
+masked value C(a, α) and the mask α are output as GC shares.
+Right: A module M implements a speciﬁc function and encapsulates any inter-
+nal randomness that can emerge from Reveal gates. M must satisfy Require-
+ment 1 (Section 5.3).
+5
+Our Garbling Framework
+In this section we formalize our approach. Typically, GC approaches consider
+simple gates, e.g. XOR/AND or ADD/MUL; the resulting GC framework is
+simple to prove and use. Ours is more complex.
+At the heart of this complexity lies our highly nonstandard one-hot outer
+product gate. In particular, the gate is nonstandard because it requires that E
+know one of its inputs. Thus, to use the gate eﬀectively, the GC must reveal
+certain values to E.
+One direction we could take, but which we do not take, would be to expose
+one-hot gates to the circuit designer and to allow her to manage (e.g., via
+masking) the information release associated with its eﬃcient use in GC. This
+would not be ideal, since each new top level circuit would require a new proof
+of security.
+Instead, we do not allow our one-hot primitive to be used by top level cir-
+cuits. Rather, these gates must be packaged into self-contained modules. Each
+module can use our primitive to eﬃciently implement a speciﬁc function. As a
+module might internally reveal values to E, it must satisfy certain simple secu-
+rity properties. Once these properties are proved, the module may be used by
+a top level circuit as if it were a standard gate.
+In Section 7, we enumerate a number of useful modules, but we are conﬁdent
+that we have not found them all. Thus, we provide a framework for building
+and using modules: we specify the module requirements, and prove that, if met,
+the module can be used as a regular gate in GC. Thus GCs can be arbitrarily
+constructed from secure modules, without the need for additional proofs. New
+14
+
+
+PAGE 15
+modules require proofs; the circuits that use them do not.
+5.1
+Reveal gates
+Our framework introduces a Reveal meta-gate (see Figure 2). Reveal gates are
+our framework’s method for revealing cleartext values to E. The GC may re-
+veal a value to E so long as that value is indistinguishable from a value drawn
+from a ﬁxed distribution (more formally, the input and output are together
+indistinguishable from the input and the sampled value). To achieve this indis-
+tinguishability, we allow the module designer to specify an arbitrary function
+that can apply a mask to the Reveal gate input value. The Reveal gate samples
+the mask (which is revealed to G) from a designer-speciﬁed distribution. In
+practice, this is achieved by G locally sampling the mask and programming it
+into the gate.
+The Reveal gate produces as (garbled) output both the mask and the masked
+value; crucially, it also reveals in cleartext the masked value to E and the mask
+to G.4 Because the masked value is indistinguishable from one drawn from a
+ﬁxed distribution, our security proofs can simulate E’s view5.
+We do not wish to restrict masking methods (in this work we mask via XOR-
+ing, adding, and multiplying). Reveal gates can implement arbitrary masking
+by way of the circuit C (see Figure 2).
+5.1.1
+Color Gates and Connection to [ZRE15]
+The half-gates technique views the color (see Section 3.2.2) of a GC label as a
+masked cleartext value, where the mask is known to G. They use this observa-
+tion to help implement eﬃcient AND gates.
+Reveal gates can be viewed as a generalization of this simple masking: we
+allow arbitrary masks, and the chosen mask can be tailored to the application.
+Reveal gates require G to send bits to E to reveal the output. Color bits do
+not require extra sending from G to E: the revealed value is implicit. We view
+color-based masking as a special case; for completeness, we include a special
+Color gate. At the interface, Color gates are the same as Reveal gates, except
+that they do not need a designer-speciﬁed distribution Dmask or circuit C. Color
+gates can be viewed as a speciﬁc instantiation of a Reveal gate.
+Formally, a Color gate takes as input a matrix JaK. Let α be the color of
+G’s share: α = Color(A). The gate outputs (1) Ja ⊕αK and (2) JαK. The gate
+“reveals” α to G and a ⊕α to E. Of course, the parties already knew these
+values, so no communication is required – the Color gate is merely a formalism
+that allows modules to syntactically manipulate colors.
+4Values are revealed to E via color bits; as noted above, G selects the mask himself.
+5In this work, we only use Reveal gates that each produce a distribution that is identical
+to a ﬁxed distribution, not merely indistinguishable. We allow indistinguishability because it
+is more ﬂexible and because it is easily proved secure.
+15
+
+
+PAGE 16
+5.2
+Modules
+Reveal gates and Color gates do not encapsulate sensitive data that might be
+misused.
+As an example, suppose the module designer speciﬁes a Reveal gate that
+applies a uniform XOR mask α to a bit a: thus E learns a ⊕α. Now suppose
+the designer inadvertently speciﬁes that α is an output of the overall circuit.
+Because a ⊕α was revealed to E, this leaks a to E!
+To achieve a clean modular GC framework, we must prevent sensitive values
+(i.e. values that depend on random masks) from escaping the context where
+they are used.
+Thus, we introduce the concept of Modules.
+A Module is a
+subroutine that computes a speciﬁc function of its input and that encapsulates
+internal data.
+A Module is parameterized over a module-designer-provided circuit. It sim-
+ply passes its input to this circuit and then propagates the output.
+So far,
+this is trivial. However, we require that the module designer provide a proof of
+correctness demonstrating that the internal circuit implements a deterministic
+function of its argument. This will, in particular, guarantee that the output is
+independent of internal random masks; thus, masks cannot escape the module.
+Top level circuits are only allowed to manipulate modules. I.e., our one-
+hot outer product primitive, Reveal gates, and Color gates are syntactically
+prohibited outside of modules. This restriction means (we prove this) that top
+level circuits may use modules without any extra proofs, and so are suitable for
+end users.
+5.3
+Formal Syntax
+We now formalize our syntax. Speciﬁcally, we formalize the space of circuits
+C, the space of modules M, and the space of gates allowed in modules G.
+Because we wish to allow modules to use other, simpler modules (i.e., one module
+designer should be allowed to use the work of another) our syntax is inductively
+deﬁned.
+As stated above, top level circuits are only allowed to manipulate modules.
+Formally, a circuit C is an ordered list of modules with speciﬁed input and
+output wires. Modules can manipulate lower level gates. A module M is a list
+of gates with accompanying input and output wires. Modules do not directly
+manipulate garbled shares, etc (Section 4.4).
+We provide a grammar for the gates allowed inside of modules. Let each
+wi denote a wire that holds a matrix of bits of arbitrary dimension. When a
+wire wi’s cleartext value is revealed to G (resp. E), we write wG
+i
+(resp. wE
+i
+).
+When a wire is revealed, it remains a valid garbled sharing and can be used
+inside a module. Let Dmask refer to an arbitrary distribution over a ﬁnite set of
+16
+
+
+PAGE 17
+values. Let c refer to a constant chosen by G:
+G ≜w2 := w0 ⊕w1
+| w2 := H(w0) ⊗w1
+| w0 := Constant(c)
+| wE
+1
+, wG
+2
+:= Reveal[C, Dmask](w0)
+| wE
+1
+, wG
+2
+:= Color(w0)
+| w1 := Module[M](w0)
+(2)
+That is, modules can use gates that (1) compute the XOR of two matrices (of
+equal dimension), (2) compute the one-hot outer product of two vectors, (3)
+output a constant chosen by G, (4) reveal a masked value to E (see Figure 2),
+(5) incorporate a share’s color in the GC (see Section 5.1.1), and (6) recursively
+call another module. We refer to one-hot outer product gates simply as ‘one-hot’
+gates.
+We specify two requirements each module must satisfy.
+Requirement 1 (Module correctness). For module M computing function f,
+it must hold that for all inputs x:
+f(x) = M(x)
+Requirement 2 (Reveal indistinguishability). For a Reveal gate wE
+1
+, wG
+2
+:=
+Reveal[C, Dmask](w0), there must exist a distribution Dout such that for all inputs
+x on wire w0 and for r ←Dout and α ←Dmask the following indistinguishability
+holds:
+{x, C(x, α)}
+c= {x, r}
+Note, each module may have more than one Reveal gate, so it may not be a
+priori clear that arbitrary Reveal gate interactions are secure. For instance, is it
+safe to feed the output of one Reveal gate as input to another? From Require-
+ment 2, we can prove that everything revealed in a module can be simulated
+by a ﬁxed distribution. We then (Theorem 2) prove that this is suﬃcient for
+security.
+Lemma 4. Let M be a module and let y be the tuple of all values revealed to E
+in M due to Reveal gates and Color gates (as formally speciﬁed by OneHot.Ev).
+There exists a distribution Drev such that:
+{y}
+c= {r}
+where r ←Drev
+Speciﬁcally, Drev is the distribution that samples from each Reveal gate
+distribution Dout (and samples a uniform distribution in the case of Color gates)
+and concatenates the samples.
+Due to lack of space, we prove Lemma 4 in
+Appendix A.
+17
+
+
+PAGE 18
+5.4
+Standard Boolean Gates in Our Framework
+Neither XOR nor AND are by default available to top level circuits. However,
+these functions can be expressed as modules, and thus traditional Boolean cir-
+cuits are compatible with our framework:
+XOR is easily handled by building a module with a single XOR gate that
+XORs the two bits of its input and outputs the result.
+AND is conspicuously missing from G. We do not need a separate AND
+gate primitive, because we can express AND as a module. Moreover, the re-
+sulting module is functionally identical to the state-of-the-art half-gates tech-
+nique [ZRE15]. Namely, our approach uses the same number of calls to H for
+each party and transfers the same number of ciphertexts (i.e., two) from G to
+E.
+Let a, b be bits, and view them as one element vectors. Let α, β denote the
+color of a, b respectively. Note the following equality:
+(T (id) · H(a ⊕α) ⊗b) ⊕(T (id) · H(b ⊕β) ⊗α) ⊕αβ
+= ((a ⊕α) ⊗b) ⊕((b ⊕β) ⊗α) ⊕αβ
+= ((a ⊕α)b) ⊕((b ⊕β)α) ⊕αβ
+= ab
+Thus, we can compute ab via two Color gates (to compute and reveal a ⊕α
+and b ⊕β), two one-hot gates, one Constant gate (for αβ), and XOR gates (to
+compute T (id)·). Each of these sub-components is communication free except
+for the one-hot gates. A one-hot gate uses 2(n −1) + m ciphertexts; here, in
+both cases n = m = 1, so the module costs a total of two ciphertexts.
+Thus, [ZRE15] half-gates can be hosted in our framework.
+5.5
+The OneHot Garbling Scheme
+Now that we have established syntax, we prove the framework secure.
+We
+formalize our framework as a garbling scheme [BHR12].
+A garbling scheme is a ﬁve-tuple of algorithms:
+(ev, En, Gb, Ev, De)
+These ﬁve algorithms specify the actions taken by G and E when executing
+the protocol. Informally, (1) En describes how cleartext inputs are encoded as
+garbled shares, (2) Gb describes how G constructs the garbled circuit, (3) Ev
+describes how E uses input shares and the garbled circuit to compute output
+shares, (4) De describes how output shares are decoded to cleartext outputs,
+and (5) ev provides a cleartext speciﬁcation of the circuit semantics. Loosely
+speaking, En, Gb, Ev, and De should together perform the same task as ev
+while preventing E from learning G’s inputs.
+Construction 1 (OneHot Garbling Scheme). OneHot is the tuple of algorithms
+deﬁned in Figure 4 by reference to Figure 3.
+18
+
+
+PAGE 19
+Our scheme is a straightforward formalization of the high level intuition
+given in Section 4.
+OneHot satisﬁes the [BHR12] deﬁnitions of correctness, obliviousness, pri-
+vacy, and authenticity.
+We include deﬁnitions and explanations of each of
+these properties.
+Full formal proof of each theorem is presented in
+Appendix A due to a lack of space.
+Deﬁnition 4 (Correctness). A garbling scheme is correct if for all circuits C
+and all inputs x:
+De(d, Ev(C, M, En(e, x))) = ev(C, x)
+where (M, e, d) ←Gb(1κ, C).
+Correctness requires the scheme to realize the semantics speciﬁed by ev.
+That is, the implementation matches the speciﬁcation.
+Theorem 1. OneHot is correct.
+Correctness is mostly trivial, save the correctness of one-hot gates. One-hot
+gate correctness can be inferred from discussion in Section 4. See Appendix A
+for a full proof.
+Deﬁnition 5 (Obliviousness). A garbling scheme is oblivious if there exists a
+simulator Sobv such that for any circuit C and all inputs x, the following are
+indistinguishable:
+(C, M, X)
+c= Sobv(1κ, C)
+where (M, e, ·) ←Gb(1κ, C) and X ←En(e, x).
+Informally, obliviousness ensures that the material M and encoded input
+shares X reveal no information about the input x or about the output ev(C, x).
+Theorem 2. If H is a circular correlation robust hash function, then OneHot
+is oblivious.
+In short, because of the properties of H we can simulate most values by
+uniform bits. For Reveal gates, we instead simulate values by sampling from
+each such gate’s speciﬁed distribution; this is valid due to Requirement 2. See
+Appendix A for a full proof.
+Deﬁnition 6 (Privacy). A garbling scheme is private if there exists a simulator
+Sprv such that for any circuit C and all inputs x, the following are computation-
+ally indistinguishable:
+(M, X, d)
+c= Sprv(1κ, C, y),
+where (M, e, d) ←Gb(1κ, C), X ←En(e, x), and y ←ev(C, x).
+Privacy ensures that E, who is given (M, X, d), learns nothing about the
+input x except what can be learned from the output y.
+19
+
+
+PAGE 20
+Theorem 3. If H is a circular correlation robust hash function, then OneHot
+is private.
+The privacy simulator follows relatively trivially from the obliviousness sim-
+ulator and from our choice of output decoding string d (Figure 4). See Ap-
+pendix A for a full proof.
+Deﬁnition 7 (Authenticity). A garbling scheme is authentic if for all circuits
+C, all inputs x, and all poly-time adversaries A the following probability is neg-
+ligible in κ:
+Pr (Y ′̸ = Ev(C, M, X) ∧De(d, Y ′)̸ = ⊥)
+where (M, e, d) = Gb(1κ, C), X = En(e, x), and Y ′ = A(C, M, X).
+Authenticity ensures that even an adversarial E cannot construct shares that
+successfully decode except by running Ev as intended.
+Theorem 4. If H is a circular correlation robust hash function, then OneHot
+is authentic.
+Authenticity is nontrivial only for one-hot gates. One-hot gates can be shown
+authentic due to the properties of H. See Appendix A for a full proof.
+5.5.1
+Compatibility with Stacked Garbling
+As mentioned in Section 2, stacked garbling (SGC) is a state-of-the-art GC
+improvement for conditional branching [HK20a, HK21]. SGC is parameterized
+over an underlying garbling scheme which it leverages to handle each conditional
+branch.
+OneHot can, in a slightly limited sense, be used as this underlying
+scheme.
+SGC requires that the underlying scheme produces garbled material M and
+inputs shares X that are indistinguishable from uniform strings. Our scheme
+satisﬁes this, with the notable exception of Reveal gates.
+OneHot can be
+‘stacked’ so long as all Reveal gates use uniform binary strings as their out-
+put distribution Dout.
+In Appendix A, we prove that, under this condition, OneHot is strongly
+stackable [HK21] and can be the SGC underlying scheme.
+6
+Experimental Setup
+In the following section, we give experimental ﬁndings of the performance of our
+technique as compared to standard Boolean circuits. We record details of our
+experimental setup here.
+Implementation Details.
+We implemented our technique and benchmarks
+in ∼2000 lines of C++.
+Our implementation uses our garbling scheme to
+instantiate a semi-honest 2PC protocol. Garbled shares are 128 bits long. Hence
+our security parameter κ = 127; the 128th bit is reserved for share color.
+20
+
+
+PAGE 21
+We compare our implementation against half-gates [ZRE15]. We refer to
+half-gates based implementations of our experiments simply as ‘standard’. We
+do not compare in detail to the concurrent work [RR21]; moreover their tech-
+nique has not yet been implemented. For many of our applications, our im-
+provement will be slightly diminished given a fast [RR21] implementation. In
+particular, our work improves over [RR21] for all considered applications, except
+for AES S-Box.
+Computation Setup.
+For each experiment, we ran both G and E on a single
+commodity laptop: a MacBook Pro with an Intel Quad-Core i7 2.3GHz proces-
+sor and 16GB of RAM. The two parties run in parallel on separate processes on
+the same machine.
+Communication Setup.
+G and E communicate over a simulated 100Mbps
+WAN. (For completeness we conﬁgure the network with 30ms latency, though
+this is largely irrelevant in our experiments which do not incur multiple rounds
+of interaction.)
+In our experiments, we record bandwidth consumption and wall clock time.
+For each experiment, we build a top-level circuit that repeatedly uses the tar-
+get module 1000 times; our presented measurements divide total communica-
+tion/total wall clock time by 1000 to approximate the cost of a single module
+instance.
+7
+Applications
+In this section, we instantiate applications of our approach. Each application is
+formalized in our framework (see Section 5); when necessary, we implement a
+module.
+We mention that all of the following modules, with the exception of our
+binary ﬁeld inverse and our modular reduction, are compatible with stacked
+garbling.
+7.1
+Small Domain Binary Outer Products
+Our ﬁrst module follows naturally from our one-hot primitive. Let a ∈{0, 1}n
+and b ∈{0, 1}m be two bitstrings and let n, m be small (formally, at most log-
+arithmic in the overall circuit input size). The module maps two input garbled
+sharings JaK, JbK to the outer product Ja ⊗bK.
+This module was explained in Section 4 and is formalized in Figure 5. Be-
+cause we need XOR-based masks, we use Color gates.
+The full construction consumes only 3(n + m) −4 ciphertexts, a signiﬁcant
+improvement from the 2nm ciphertexts needed to compute the outer product
+via AND gates.
+We implemented our module and experimented with its performance. Fig-
+ure 6 plots the results.
+21
+
+
+PAGE 22
+7.2
+General Binary Outer Products
+We have shown how to compute the outer product of two short vectors. We are,
+so far, limited to short vectors because of the exponential computation scaling
+of our one-hot technique.
+It is interesting to compute the outer product of vectors of all sizes, not just
+short ones. Here, we give an eﬃcient construction of general outer products.
+In Section 7.1 we decomposed a ⊗b into three summands:
+(a ⊗b) = ((a ⊕α) ⊗b) ⊕((b ⊕β) ⊗α)⊺⊕(α ⊗β)
+The third term is known to G and is free. The other two terms must be computed
+inside the GC. Consider the term (a ⊕α) ⊗b.
+In Section 7.1 we insisted that this outer product be computed by a single
+one-hot gate. More generally, we can tile together multiple one-hot outer prod-
+ucts. We ensure the tiles are small enough that computation remains polynomial
+in the input size.
+Each tile computes the outer product of a k-bit chunk of a ⊕α with b,
+yielding a k × m submatrix of the full outer product (a ⊕α) ⊗b. Vertically
+concatenating the ⌈n/k⌉submatrices yields the correct result. We use the same
+idea to compute (b ⊕β) ⊗α. We defer formal presentation of the module to
+Appendix B.
+If the chosen chunk size k is logarithmic in the size of input, then the parties
+compute a ⊗b in polynomial time.
+In terms of communication, the parties
+use O(nm/k) garbled rows: a factor k improvement over the standard method.
+Formally, we improve outer product communication by a logarithmic factor; in
+practice we choose constants k that yield good performance.
+Figure 7 plots the practical eﬃciency we obtained when implementing gen-
+eral outer products with diﬀerent values of k. The results show that our ap-
+proach signiﬁcantly improves outer products over prior state-of-the art.
+7.3
+Binary Matrix Multiplication
+It is well known that outer products can be used to eﬃciently multiply ma-
+trices. We implemented this approach – see Appendix B. For chunking factor
+k = 6, our approach improves 128 × 128 square matrix multiplication by 6.2×
+(communication) and 5× (time).
+7.4
+Integer Multiplication
+Consider bit vectors a, b ∈{0, 1}n that each represent n-bit numbers. The outer
+product of a⊗b can be used to help calculate the product a·b. See Appendix B
+for further discussion.
+We implemented 32-bit integer multiplication using our technique and the
+standard method (our standard circuit is inspired by [WMK16]). Best perfor-
+mance was achieved with “chunking factor” (see Section 7.2) k = 6:
+22
+
+
+PAGE 23
+Standard
+Ours
+Improvement
+Comm. (KB)
+32.0
+21.3
+1.51×
+Time (ms)
+3.20
+2.32
+1.38×
+As compared to outer products and matrix multiplication, our improvement
+here is less substantial: after the outer product is computed, our technique still
+must add together values in the standard manner. Still, we achieve improvement
+to an important primitive.
+In the GC setting, the Karatsuba fast multiplication method improves over
+standard multiplication even for small 20-bit integers [HKS+10]. Karatsuba is a
+recursive divide-and-conquer algorithm. At the leaves of the recursion (i.e. for
+19-bit numbers or less), it is best to use standard multiplication. We thus can
+use our improved standard multiplication method to accelerate Karatsuba-based
+multiplication.
+7.5
+Binary Field Multiplication
+Consider an arbitrary binary ﬁeld GF(2n). In such ﬁelds, multiplication can be
+understood as polynomial multiplication modulo an irreducible polynomial p(x).
+By representing elements a, b ∈GF(2n) as vectors of bits, we can easily compute
+the product of the two polynomials from the vector outer product. Once com-
+puted, the product can be reduced modulo p(x) by a linear function [GKPP06].
+Thus, our outer product construction improves binary ﬁeld multiplication by
+the “chunking factor” k (see Section 7.2).
+Because this multiplication only uses a black box outer product followed by
+XORs, we do not need to formalize a module.
+We implemented both our approach and a standard circuit for GF(28) (mod-
+ulo x8 + x4 + x3 + x + 1). We used the best available standard circuit for this
+ﬁeld [BDP+20]. We ran our version with chunking factor k = 4 and k = 8.
+We list communication, wall clock time, and corresponding improvement over
+standard:
+Standard
+k = 4
+k = 8
+Comm. (Bytes)
+1536
+896
+1.71×
+704
+2.18×
+Time (µs)
+146
+80
+1.82×
+111
+1.3×
+Despite the fact eﬃcient hand-tuned circuits are available, we improve commu-
+nication consumption by more than 2×.
+7.6
+Binary Field Inverses and the AES S-Box
+Our technique can compute binary ﬁeld inverses using less communication than
+the state-of-the-art. Consider a ﬁeld GF(2n) where n is small (formally, loga-
+rithmic in the circuit input size). Let a ∈GF(2n) be a ﬁeld element and suppose
+a̸ = 0 (we handle this separately).
+Our module follows from a technique given by [BIB89]. Namely, for non-
+zero input a, we ﬁrst compute a · α for uniform non-zero mask α. Then, we
+reveal a · α to E. With this done, we use a one-hot gate to eﬃciently compute
+23
+
+
+PAGE 24
+(a · α)−1 · α = a−1. Due to a lack of space, we defer a full formalization of our
+inverse module to Appendix B.
+S-Boxes.
+The AES S-Box, which is the only non-linear component of the AES
+block cipher, performs a single inversion in GF(28); all other parts of the S-Box
+are linear. The state-of-the-art Boolean circuit S-Box uses 32 AND gates [BP10].
+Thus, with the half-gates technique, this implementation consumes 64 cipher-
+texts.
+Our full inverse gate consumes 58 ciphertexts: 22 to compute Ja · αK, 22 to
+then compute the inverse, and 14 to handle the case where a = 0. This improves
+communication by ∼10%.
+We implemented the [BP10] S-Box and our one-hot version:
+Standard
+Ours
+Improvement
+Comm. (Bytes)
+1024
+929
+1.10×
+Time (µs)
+103.6
+105.8
+0.98×
+On a WAN, our implementation is slightly slower than the standard S-Box. This
+can likely be improved by low-level code optimization.
+It may be possible to further apply our technique to block ciphers, perhaps
+by codesigning with our new cost structure in mind. We leave such ﬁne-grained
+approaches to future work.
+7.7
+Modular Reduction
+Let x mod y denote a function that computes the remainder of x divided by y.
+Suppose the parties hold a sharing JaK and wish to compute Ja mod ℓK where ℓ
+is a public constant. Such computation is potentially useful, e.g. to compute in
+an arithmetic ﬁeld Zp.
+The Boolean circuit that computes (·) mod ℓis an expensive quadratic con-
+struction. One-hot gates can improve the cost.
+Our module ﬁrst subtracts a random mask α from a and then reveals a −α
+to E. It then splits a into small k-bit “chunks” and, for each chunk, eﬃciently
+computes (·) mod ℓusing a one-hot gate.
+The reduced chunks can then be
+recombined and the mask stripped oﬀusing addition mod ℓ. (Addition modulo
+ℓwhere both arguments are already less than ℓis a special case and can be
+computed eﬃciently.) Crucially, the number of needed additions is proportional
+only to the number of chunks. Due to lack of space, we defer formal treatment
+of the module to Appendix B.
+For our concrete experiment, we implemented modular reduction for 32-
+bit numbers using the prime modulus p = 65521 (the largest 16-bit prime).
+Our standard implementation conditionally subtracts p · 2k for k ∈[16]; thus 16
+conditional subtractions are needed. Our optimized version uses chunking factor
+k = 8. The technique requires only 3 additions and 3 conditional subtractions
+and hence substantially improves performance:
+24
+
+
+PAGE 25
+Standard
+Ours
+Improvement
+Comm. (KB)
+35.1
+10.5
+3.3×
+Time (ms)
+3.75
+1.08
+3.5×
+7.8
+Exponentiation
+Suppose the parties hold a sharing JaK and wish to compute JℓaK where ℓis
+a publicly agreed constant. For special cases of ℓ(e.g., ℓ= 2), there are fast
+circuits that compute JℓaK.
+However, for arbitrary ℓwe need to repeatedly
+multiply inside GC, which is expensive. We can use one-hot gates to greatly
+reduce the number of needed multiplications.
+Our module ﬁrst subtracts a uniform additive mask α from a and then reveals
+a −α to E. Then, the module splits Ja −αK into small k-bit “chunks” and, for
+each chunk c, computes JℓcK using a one-hot gate. These intermediate values
+can be combined and the mask stripped oﬀusing multiplication. We use our
+improved multiplication technique (Section 7.4) to further improve the module.
+We defer formal treatment of the module to Appendix B.
+We implemented exponents for 32-bit numbers using a standard technique
+(which consumes 31 standard multiplications) and our technique (with chunking
+factor k = 8, which consumes only 4 improved multiplications):
+Standard
+Ours
+Improvement
+Comm. (KB)
+1024
+87
+11.8×
+Time (ms)
+101
+10.6
+9.52×
+Acknowledgments.
+This work was supported in part by NSF award
+#1909769, by a Facebook research award, a Cisco research award, and by Geor-
+gia Tech’s IISP cybersecurity seed funding (CSF) award.
+References
+[AAL+]
+David Archer, Victor Arribas Abril, Steve Lu, Pieter Maene, Nele
+Mertens, Danilo Sijacic, and Nigel Smart. ’bristol fashion’ mpc
+circuits. https://homes.esat.kuleuven.be/~nsmart/MPC.
+[ADI+17]
+Benny Applebaum, Ivan Damg˚ard, Yuval Ishai, Michael Nielsen,
+and Lior Zichron. Secure arithmetic computation with constant
+computational overhead. In Jonathan Katz and Hovav Shacham,
+editors, CRYPTO 2017, Part I, volume 10401 of LNCS, pages 223–
+254. Springer, Heidelberg, August 2017.
+[BCG+19]
+Elette Boyle, Geoﬀroy Couteau, Niv Gilboa, Yuval Ishai, Lisa
+Kohl, and Peter Scholl. Eﬃcient pseudorandom correlation gen-
+erators: Silent OT extension and more. In Alexandra Boldyreva
+and Daniele Micciancio, editors, CRYPTO 2019, Part III, volume
+11694 of LNCS, pages 489–518. Springer, Heidelberg, August 2019.
+25
+
+
+PAGE 26
+[BDP+20]
+Joan
+Boyar,
+Morris
+Dworkin,
+Rene
+Peralta,
+Meltem
+Tu-
+ran,
+Cagdas
+Calik,
+and
+Luis
+Brandao.
+Circuit
+Mini-
+mization Work.
+http://cs-www.cs.yale.edu/homes/peralta/
+CircuitStuff/CMT.html, 2020.
+[BGI14]
+Elette Boyle, ShaﬁGoldwasser, and Ioana Ivan. Functional sig-
+natures and pseudorandom functions. In Hugo Krawczyk, editor,
+PKC 2014, volume 8383 of LNCS, pages 501–519. Springer, Hei-
+delberg, March 2014.
+[BHKR13]
+Mihir Bellare, Viet Tung Hoang, Sriram Keelveedhi, and Phillip
+Rogaway. Eﬃcient garbling from a ﬁxed-key blockcipher. In 2013
+IEEE Symposium on Security and Privacy, pages 478–492. IEEE
+Computer Society Press, May 2013.
+[BHR12]
+Mihir Bellare, Viet Tung Hoang, and Phillip Rogaway. Founda-
+tions of garbled circuits. In Ting Yu, George Danezis, and Virgil D.
+Gligor, editors, ACM CCS 2012, pages 784–796. ACM Press, Oc-
+tober 2012.
+[BIB89]
+Judit Bar-Ilan and Donald Beaver.
+Non-cryptographic fault-
+tolerant computing in constant number of rounds of interaction.
+In Piotr Rudnicki, editor, 8th ACM PODC, pages 201–209. ACM,
+August 1989.
+[BMP13]
+Joan Boyar, Philip Matthews, and Ren´e Peralta. Logic minimiza-
+tion techniques with applications to cryptology. Journal of Cryp-
+tology, 26(2):280–312, April 2013.
+[BMR90]
+Donald Beaver, Silvio Micali, and Phillip Rogaway.
+The round
+complexity of secure protocols (extended abstract). In 22nd ACM
+STOC, pages 503–513. ACM Press, May 1990.
+[BMR16]
+Marshall Ball, Tal Malkin, and Mike Rosulek. Garbling gadgets
+for Boolean and arithmetic circuits. In Edgar R. Weippl, Stefan
+Katzenbeisser, Christopher Kruegel, Andrew C. Myers, and Shai
+Halevi, editors, ACM CCS 2016, pages 565–577. ACM Press, Oc-
+tober 2016.
+[BP10]
+Joan Boyar and Ren´e Peralta. A new combinational logic min-
+imization technique with applications to cryptology. Experimen-
+tal Algorithms Lecture Notes in Computer Science, page 178–189,
+2010.
+[BW13]
+Dan Boneh and Brent Waters. Constrained pseudorandom func-
+tions and their applications. In Kazue Sako and Palash Sarkar,
+editors, ASIACRYPT 2013, Part II, volume 8270 of LNCS, pages
+280–300. Springer, Heidelberg, December 2013.
+26
+
+
+PAGE 27
+[CKKZ12]
+Seung Geol Choi, Jonathan Katz, Ranjit Kumaresan, and Hong-
+Sheng Zhou.
+On the security of the “free-XOR” technique.
+In
+Ronald Cramer, editor, TCC 2012, volume 7194 of LNCS, pages
+39–53. Springer, Heidelberg, March 2012.
+[DKS+17]
+Ghada Dessouky,
+Farinaz Koushanfar,
+Ahmad-Reza Sadeghi,
+Thomas Schneider, Shaza Zeitouni, and Michael Zohner.
+Push-
+ing the communication barrier in secure computation using lookup
+tables. In NDSS 2017. The Internet Society, February / March
+2017.
+[DNNR17]
+Ivan Damg˚ard, Jesper Buus Nielsen, Michael Nielsen, and Samuel
+Ranellucci. The TinyTable protocol for 2-party secure computa-
+tion, or: Gate-scrambling revisited. In Jonathan Katz and Hovav
+Shacham, editors, CRYPTO 2017, Part I, volume 10401 of LNCS,
+pages 167–187. Springer, Heidelberg, August 2017.
+[Ds17]
+Jack Doerner and abhi shelat. Scaling ORAM for secure compu-
+tation. In Bhavani M. Thuraisingham, David Evans, Tal Malkin,
+and Dongyan Xu, editors, ACM CCS 2017, pages 523–535. ACM
+Press, October / November 2017.
+[GGM84]
+Oded Goldreich, ShaﬁGoldwasser, and Silvio Micali. How to con-
+struct random functions (extended abstract). In 25th FOCS, pages
+464–479. IEEE Computer Society Press, October 1984.
+[GKPP06]
+Jorge Guajardo, Sandeep S. Kumar, Christof Paar, and Jan Pelzl.
+Eﬃcient software-implementation of ﬁnite ﬁelds with applications
+to cryptography. In Acta Applicandae Mathematica, 2006.
+[GKWY20] Chun Guo, Jonathan Katz, Xiao Wang, and Yu Yu. Eﬃcient and
+secure multiparty computation from ﬁxed-key block ciphers.
+In
+2020 IEEE Symposium on Security and Privacy, pages 825–841.
+IEEE Computer Society Press, May 2020.
+[GLMY16]
+Adam Groce, Alex Ledger, Alex J. Malozemoﬀ, and Arkady
+Yerukhimovich. CompGC: Eﬃcient oﬄine/online semi-honest two-
+party computation. Cryptology ePrint Archive, Report 2016/458,
+2016. https://eprint.iacr.org/2016/458.
+[GLNP18]
+Shay Gueron, Yehuda Lindell, Ariel Nof, and Benny Pinkas. Fast
+garbling of circuits under standard assumptions. Journal of Cryp-
+tology, 31(3):798–844, July 2018.
+[HK20a]
+David Heath and Vladimir Kolesnikov. Stacked garbling - garbled
+circuit proportional to longest execution path.
+In Daniele Mic-
+ciancio and Thomas Ristenpart, editors, CRYPTO 2020, Part II,
+volume 12171 of LNCS, pages 763–792. Springer, Heidelberg, Au-
+gust 2020.
+27
+
+
+PAGE 28
+[HK20b]
+David Heath and Vladimir Kolesnikov. Stacked garbling for dis-
+junctive zero-knowledge proofs. In Anne Canteaut and Yuval Ishai,
+editors, EUROCRYPT 2020, Part III, volume 12107 of LNCS,
+pages 569–598. Springer, Heidelberg, May 2020.
+[HK21]
+David Heath and Vladimir Kolesnikov. Logstack: Stacked garbling
+with o(b log b) computation. Cryptology ePrint Archive, Report
+2021/531, 2021. https://eprint.iacr.org/2015/751.pdf.
+[HKP20]
+David Heath, Vladimir Kolesnikov, and Stanislav Peceny. MOTIF:
+(almost) free branching in GMW - via vector-scalar multiplication.
+In ASIACRYPT 2020, Part III, LNCS, pages 3–30. Springer, Hei-
+delberg, December 2020.
+[HKS+10]
+Wilko Henecka, Stefan K¨ogl, Ahmad-Reza Sadeghi, Thomas
+Schneider, and Immo Wehrenberg.
+TASTY: tool for automat-
+ing secure two-party computations. In Ehab Al-Shaer, Angelos D.
+Keromytis, and Vitaly Shmatikov, editors, ACM CCS 2010, pages
+451–462. ACM Press, October 2010.
+[IKM+13]
+Yuval Ishai, Eyal Kushilevitz, Sigurd Meldgaard, Claudio Orlandi,
+and Anat Paskin-Cherniavsky. On the power of correlated ran-
+domness in secure computation. In Amit Sahai, editor, TCC 2013,
+volume 7785 of LNCS, pages 600–620. Springer, Heidelberg, March
+2013.
+[JKO13]
+Marek Jawurek, Florian Kerschbaum, and Claudio Orlandi. Zero-
+knowledge using garbled circuits: how to prove non-algebraic state-
+ments eﬃciently. In Ahmad-Reza Sadeghi, Virgil D. Gligor, and
+Moti Yung, editors, ACM CCS 2013, pages 955–966. ACM Press,
+November 2013.
+[KKK+15]
+Matthew
+Kelly,
+Alan
+Kaminsky,
+Michael
+Kurdziel,
+Marcin
+ Lukowiak, and Stanis law Radziszowski.
+Customizable sponge-
+based authenticated encryption using 16-bit s-boxes. In MILCOM
+2015 - 2015 IEEE Military Communications Conference, pages 43–
+48, 2015.
+[KKW17]
+W. Sean Kennedy, Vladimir Kolesnikov, and Gordon T. Wilfong.
+Overlaying conditional circuit clauses for secure computation. In
+Tsuyoshi Takagi and Thomas Peyrin, editors, ASIACRYPT 2017,
+Part II, volume 10625 of LNCS, pages 499–528. Springer, Heidel-
+berg, December 2017.
+[KMR14]
+Vladimir Kolesnikov,
+Payman Mohassel,
+and Mike Rosulek.
+FleXOR: Flexible garbling for XOR gates that beats free-XOR.
+In Juan A. Garay and Rosario Gennaro, editors, CRYPTO 2014,
+Part II, volume 8617 of LNCS, pages 440–457. Springer, Heidel-
+berg, August 2014.
+28
+
+
+PAGE 29
+[KNR+17]
+Vladimir Kolesnikov, Jesper Buus Nielsen, Mike Rosulek, Ni Trieu,
+and Roberto Triﬁletti. DUPLO: Unifying cut-and-choose for gar-
+bled circuits.
+In Bhavani M. Thuraisingham, David Evans, Tal
+Malkin, and Dongyan Xu, editors, ACM CCS 2017, pages 3–20.
+ACM Press, October / November 2017.
+[KPTZ13]
+Aggelos Kiayias, Stavros Papadopoulos, Nikos Triandopoulos, and
+Thomas Zacharias. Delegatable pseudorandom functions and appli-
+cations. In Ahmad-Reza Sadeghi, Virgil D. Gligor, and Moti Yung,
+editors, ACM CCS 2013, pages 669–684. ACM Press, November
+2013.
+[KS08]
+Vladimir Kolesnikov and Thomas Schneider.
+Improved garbled
+circuit: Free XOR gates and applications. In Luca Aceto, Ivan
+Damg˚ard, Leslie Ann Goldberg, Magn´us M. Halld´orsson, Anna
+Ing´olfsd´ottir, and Igor Walukiewicz, editors, ICALP 2008, Part II,
+volume 5126 of LNCS, pages 486–498. Springer, Heidelberg, July
+2008.
+[NPS99]
+Moni Naor, Benny Pinkas, and Reuban Sumner. Privacy preserving
+auctions and mechanism design. In Proceedings of the 1st ACM
+conference on Electronic commerce, pages 129–139. ACM, 1999.
+[PSSW09]
+Benny Pinkas, Thomas Schneider, Nigel P. Smart, and Stephen C.
+Williams. Secure two-party computation is practical. In Mitsuru
+Matsui, editor, ASIACRYPT 2009, volume 5912 of LNCS, pages
+250–267. Springer, Heidelberg, December 2009.
+[PSSY20]
+Arpita Patra, Thomas Schneider, Ajith Suresh, and Hossein
+Yalame. ABY2.0: Improved mixed-protocol secure two-party com-
+putation.
+Cryptology ePrint Archive, Report 2020/1225, 2020.
+https://eprint.iacr.org/2020/1225.
+[RR21]
+Mike Rosulek and Lawrence Roy.
+Three halves make a whole?
+Beating the half-gates lower bound for garbled circuits.
+LNCS,
+pages 94–124. Springer, Heidelberg, 2021.
+[RWT+18]
+M. Sadegh Riazi,
+Christian Weinert,
+Oleksandr Tkachenko,
+Ebrahim M. Songhori, Thomas Schneider, and Farinaz Koushanfar.
+Chameleon: A hybrid secure computation framework for machine
+learning applications. In Jong Kim, Gail-Joon Ahn, Seungjoo Kim,
+Yongdae Kim, Javier L´opez, and Taesoo Kim, editors, ASIACCS
+18, pages 707–721. ACM Press, April 2018.
+[SGRR19]
+Phillipp Schoppmann, Adri`a Gasc´on, Leonie Reichert, and Mar-
+iana Raykova.
+Distributed vector-OLE: Improved constructions
+and implementation. In Lorenzo Cavallaro, Johannes Kinder, Xi-
+aoFeng Wang, and Jonathan Katz, editors, ACM CCS 2019, pages
+1055–1072. ACM Press, November 2019.
+29
+
+
+PAGE 30
+[WMK16]
+Xiao Wang, Alex J. Malozemoﬀ, and Jonathan Katz. EMP-toolkit:
+Eﬃcient MultiParty computation toolkit. https://github.com/
+emp-toolkit, 2016.
+[WYKW21] Chenkai Weng, Kang Yang, Jonathan Katz, and Xiao Wang.
+Wolverine:
+Fast,
+scalable,
+and communication-eﬃcient zero-
+knowledge proofs for boolean and arithmetic circuits.
+In IEEE
+Symposium on Security and Privacy, 2021.
+[YWL+20]
+Kang Yang, Chenkai Weng, Xiao Lan, Jiang Zhang, and Xiao
+Wang. Ferret: Fast extension for correlated OT with small com-
+munication. In Jay Ligatti, Xinming Ou, Jonathan Katz, and Gio-
+vanni Vigna, editors, ACM CCS 20, pages 1607–1626. ACM Press,
+November 2020.
+[ZRE15]
+Samee Zahur, Mike Rosulek, and David Evans. Two halves make
+a whole - reducing data transfer in garbled circuits using half
+gates.
+In Elisabeth Oswald and Marc Fischlin, editors, EURO-
+CRYPT 2015, Part II, volume 9057 of LNCS, pages 220–250.
+Springer, Heidelberg, April 2015.
+A
+Formal Proofs
+We prove Lemma 4.
+Proof. By constructing Drev.
+In this proof, we view Color gates as a strict special case of Reveal gates
+that use a uniform output distribution Dout.
+Recall that Drev must simulate all values revealed by Reveal gates in a
+module M. Drev is the distribution that, when sampled, samples each Reveal
+gate’s distribution Dout and concatenates the results.
+We show this secure by a hybrid argument. Let the considered module M
+have n Reveal gates. Let hybrid h0 be the real distribution of revealed values
+and let hybrid hn be Drev. Each hybrid hi is equal to hi−1 except that we replace
+the output of the ith Reveal gate by a sample from its distribution Dout.
+Assume the real distribution and Drev are distinguishable, and hence for
+some i, hi−1 and hi allow a distinguisher. Thus, the ith gate’s simulated output
+must allow the distinguisher. Let yE, zG := Reveal[C, Dmask](x) denote the
+ith Reveal gate. Requirement 2 gives the following property for all inputs x:
+{x, C(x, α)}
+c= {x, r}
+where r ←Dout, α ←Dmask
+This property implies that the output of the ith gate is (computationally) inde-
+pendent of its input. Hence the output of the ith gate must be computationally
+independent of all other Reveal gate outputs. Note, (1) {C(x, α)}
+c= {r} holds
+trivially from the above property and (2) the presence of other simulated Reveal
+30
+
+
+PAGE 31
+outputs cannot help a distinguisher because each such output is mutually in-
+dependent with every other output (up to computational indistinguishability).
+Therefore, the existence of distinguisher between hi−1 and hi contradicts Re-
+quirement 2, and hence our assumption does not hold.
+As an informal aside, note that this lemma would not hold if we required only
+that the output of a Reveal gate is indistinguishable from Dout: by requiring
+that indistinguishability hold even in the context of the Reveal gate input, we
+ensure that Reveal outputs are independent of one another (and hence cannot
+even jointly reveal private information).
+We prove Theorem 1: OneHot is correct.
+Proof. By induction on a module M. Our inductive hypothesis is that modules
+are correct. Once modules are proved correct, circuits are trivially correct, since
+a circuit is merely a list of modules.
+To prove modules correct, we ﬁrst argue that each individual gate type is
+in some sense correct. Note that we cannot prove gates strictly correct because
+both Reveal and Color are non-deterministic. However, we can show that in
+both our implementation (OneHot.Gb and OneHot.Ev) and our speciﬁcation
+(OneHot.ev), gates produces outputs in the same distribution. This, combined
+with the module-designer proof of correctness (Requirement 1), suﬃces to show
+that the module as a whole is strictly correct.
+We proceed by case analysis on gates.
+XOR gates use the linearity of garbled shares (Lemma 2), and are trivially
+correct.
+Constant gates are trivially correct: For constant c, G uses share c∆and
+E uses share 0. This is a valid garbled sharing of c (Deﬁnition 3).
+One-hot gates are our most complex construction. Figure 3 explains many
+details inline; we expand on details here.
+We consider a one-hot gate with inputs a and b that computes H(a) ⊗b.
+Recall that E is assumed to know a. The two parties begin by jointly expanding
+a GGM tree such that, in the end, G computes 2n leaf nodes Li and E computes
+each leaf node Li̸=a.
+We prove this initial expansion correct by induction on the levels of the tree;
+namely for each level i, G holds 2i+1 strings Si,j and E holds all such strings
+except the single string on the path to La. In the base case, G chooses S0,0 to
+be A0 ⊕∆and S0,1 to be A0. Thus the invariant trivially holds.
+Now consider arbitrary level i such that level i −1 is already populated. E
+trivially expands all strings on this level save two: one on the path to a (which
+she should not receive) and one just oﬀthe path to a. To correct for this, G
+sends to E two encryptions that allow her to obtain the XOR sum of all even
+strings/all odd strings depending on her share Ai ⊕ai∆. From this sum, she
+XORs on all of her already expanded even (resp. odd) strings and recovers the
+missing even (resp. odd) string. From this, E recovers the string just oﬀthe
+path to La. Hence the inductive invariant holds.
+31
+
+
+PAGE 32
+Next, the parties expand their leaf strings into garbled sharings JH(a) ⊗bK.
+G generates all of his shares simply by applying H to each leaf m times. Thus
+G computes a 2n × m matrix. E similarly applies H to her leaves m times.
+Thus, she obtains the same matrix as G except that row a is missing.
+Let X be G’s matrix. Let Bj be G’s share of bit bj. For each column j of
+the matrix, G computes and sends to E the following value:
+ M
+i Xi,j
+
+⊕Bj
+Note that E holds her garbled share Bj ⊕bj∆. Thus, she computes:
+ M
+i̸=a Xi,j
+
+⊕
+ M
+i Xi,j
+
+⊕Bj
+
+⊕(Bj ⊕bj∆) = Xa,j ⊕bj∆
+Thus, in row a, the parties hold garbled shares of b. Altogether, the parties hold
+a sharing JH(a) ⊗bK.
+One-hot gates are correct.
+Recursive Module calls are correct by induction.
+Reveal gates are correct by inspection. The speciﬁcation and the imple-
+mentation of Reveal gates match: both procedures sample values from Dmask
+and feed them as input to the internal masking circuit. The internal masking
+circuit is correct by induction.
+Color gates are similarly correct: the speciﬁcation draws a uniform value
+while the implementation uses the color bit, which is uniform. Note there is one
+tedious detail here: If we are being pedantic, calling a color gate on the same
+input more than once is problematic because the implementation uses the same
+uniform bit for each gate, whereas the speciﬁcation draws a fresh mask for each
+gate. This is easily remedied by having the speciﬁcation associate a uniform
+color with each wire. We elide this detail outside of this discussion because it
+is so minor.
+We have now shown each gate type correct in the sense that the implemen-
+tation and speciﬁcation produce equal distributions. Now, the module that calls
+these gates is strictly correct, because the module designer provided a proof of
+correctness that demonstrates the module output is independent of any internal
+randomness (Requirement 1).
+Since modules are correct, circuits are correct. OneHot is correct.
+We prove Theorem 2: If H is a circular correlation robust hash function,
+then OneHot is oblivious.
+Proof. By construction of a simulator Sobv. At a high level, all messages sent
+from G to E are simulated by uniform bits, except values leaked by Reveal
+gates which are instead simulated by sampling each such gate’s speciﬁed output
+distribution (Requirement 2).
+First, Sobv uniformly samples input shares X′. In isolation, these are trivially
+indistinguishable from the real shares X, because each share in X is drawn
+uniformly (with ∆conditionally added). These remain indistinguishable in the
+context of C and M.
+32
+
+
+PAGE 33
+We describe the simulator’s gate-by-gate handling and argue that the re-
+sultant material (even in context of input shares) is indistinguishable.
+The
+simulator propagates the simulated input shares X′ to simulated output shares
+Y ′ and builds up material M ′. Our indistinguishability argument proceeds by
+induction on the structure of a module M. The inductive hypothesis maintains
+that the simulated garbling of each submodule is indistinguishable from the real
+garbling.
+XOR gates are handled simply: Sobv XORs the input shares. No change
+is made to the simulator’s output.
+Constants are also simple: Sobv sets the output share to zero.
+One-hot gates are more involved.
+Recall that a one-hot gate ﬁrst proceeds level-by-level through a binary
+branching tree.
+For each level, Gb includes an encryption of all even nodes
+and of all odd nodes:
+H(Ai ⊕∆, noncei,even) ⊕
+2i−1
+M
+j=0
+Si,2j
+H(Ai, noncei,odd) ⊕
+2i−1
+M
+j=0
+Si,2j+1
+Note two facts: (1) each string Si,j is generated by invoking H on another
+uniform string and (2) both encryptions are generated by again invoking H. H
+is a circular correlation robust hash function, so Sobv securely simulates each
+pair of encryptions with uniform bits.
+Sobv then copies the actions of OneHot.Ev in decrypting the GGM tree
+starting from the input shares. Recall that the purpose of this decryption is to
+compute the 2n −1 leaf strings Li̸=a. As an aside, we emphasize that the input
+a is not a uniform value, but rather must be simulated on a case-by-case basis.
+In particular, the Reveal leakage is simulatable (see below). Because each input
+share is uniform and each encryption is uniform, Sobv computes 2n −1 uniform
+leaves.
+Finally, in the real world, Gb appends to M m strings of the form:
+ M
+i Xi,j
+
+⊕Bj
+Sobv simulates each such string with a uniform string. This is suitable because
+(1) each Xi,j is uniform, and (2) one string Xa,j is missing from E’s view. From
+here, Sobv copies the actions of Ev in computing E’s share of the output matrix
+and outputs the resultant shares.
+Thus, Sobv properly simulates one-hot gates.
+Each recursive Module call is recursively simulated. This is appropriate
+by induction.
+Reveal gates are handled as follows. First, we simulate shares for the sam-
+pled value α ←Dmask. These shares are trivially simulated by all zeros (see
+OneHot.Ev). Next, Sobv recursively simulates the Reveal gate’s internal circuit
+C. By induction, this simulation is indistinguishable from the real garbling. Let
+b′, c′ be the simulated output shares. The real garbling appends a value Color(b)
+to the material (see OneHot.Gb). Sobv simulates this message as follows: ﬁrst,
+33
+
+
+PAGE 34
+it samples a value x ←Dout. Recall that the user provided a proof that the
+output of C is indistinguishable from such a sampled value (Requirement 2).
+Hence x simulates the cleartext output of C. Next, Sobv appends x ⊕Color(b′)
+to its simulated material. This properly simulates the material because it “re-
+veals” the value x, which is indistinguishable from the value revealed in the real
+garbling.
+Color gates are straightforward: the simulator simply copies OneHot.Ev’s
+actions.
+We have now proved each gate type simulatable. However, this does not yet
+prove the entire module simulation indistinguishable. In the real world, some of
+the module’s wires encode masks applied to values that are revealed via Reveal
+gates. We must ensure that these masks are never themselves revealed, or else
+the simulation would be distinguishable. This is ensured by three facts: (1)
+inside a module, no values are revealed except those revealed by new Reveal
+and Color gates, (2) each Reveal gate uses a fresh mask and its leakage is
+simulatable, and (3) the output of the module is a deterministic value, and
+hence is independent of any internal random masks (Requirement 1).
+Thus
+internal random masks cannot escape the module.
+Note also that the joint
+information given by multiple Reveal gates does not break indistinguishability
+(see Lemma 4).
+Thus Sobv outputs a module garbling that is indistinguishable from real.
+Because modules can simulated, circuits can also trivially be simulated. OneHot
+is oblivious.
+We prove Theorem 3: If H is a circular correlation robust hash function,
+then OneHot is private.
+Proof. By construction of a simulator Sprv. At a high level, Sprv simply runs
+Sobv, then builds a corresponding decoding string that ensures the simulated
+circuit garbling outputs y when evaluated.
+First, Sprv invokes (C, M ′, X′) = Sobv(1κ, C). The remaining task is to gen-
+erate a decoding string d′ which, together with M ′ and X′, is indistinguishable
+from real (M, X, d), even when given the output y.
+To do so, Sprv invokes the procedure Y ′ = Ev(C, M ′, X′) and hence computes
+output shares that correspond to the obliviousness simulation. Recall that the
+real string d is constructed by hashing each corresponding zero/one output share
+(see OneHot.De). Thus, Sprv must simulate two strings for each ith output: one
+that properly maps Y ′
+i to yi, and one that cannot be decrypted. Sprv computes
+H(Y ′
+i , nonce) where nonce is the same nonce as described in OneHot.De. There
+are two available ‘slots’ in d′ where this string can be placed; Sprv places it in
+slot yi. Sprv ﬁlls the other slot with a uniform string.
+Note ﬁrst that the above is correct: OneHot.De(d′, Y ′) = y. Moreover, the
+simulation is indistinguishable from the real world: each element in d is the
+output of a (circular correlation robust) hash function, so appears uniformly
+random; the simulated decoding string d′ also appears uniformly random.
+OneHot is private.
+34
+
+
+PAGE 35
+We prove Theorem 4: If H is a circular correlation robust hash function,
+then OneHot is authentic.
+Proof. We proceed backwards across C, at each gate demonstrating that A
+cannot obtain input shares except by correctly evaluating the previous parts of
+the circuit. The key idea is to show that forging an output of any subcircuit
+is as hard as forging an input to that subcircuit. Thus, by induction, forging a
+circuit output amounts to guessing a diﬀerent circuit input, which succeeds with
+probability 2−κ by trying to guess the value ∆. At a high level, authenticity
+is trivial for all except one-hot gates; one-hot gates are authentic due to the
+security properties of H.
+First, inspect OneHot.De. Recall that for each bit of output yi, the decoding
+string d holds two values:
+H(nonce, Yi)
+H(nonce, Yi ⊕∆)
+A succeeds if for any output bit yi she causes De to output yi ⊕1. To construct
+an output that properly decodes, A must either (1) break the collision resistance
+of H (infeasible by assumption) or (2) construct a value Yi ⊕(yi ⊕1)∆. If A
+attempts any other value, then OneHot.De will abort, so A fails.
+Now, it suﬃces to show that it is infeasible to produce any such value Yi ⊕
+(yi ⊕1)∆. We do so by induction on the structure of a module M. Authenticity
+of circuits follows trivially from the authenticity of modules.
+The inductive
+hypothesis is as follows: Given garbled input X and material M for a submodule
+M′ such that Y = Ev(C, M, X), A cannot construct Y ′ = Y ⊕r∆for some non-
+zero matrix r except with negligible probability. Put more simply, it is infeasible
+for A to generate an output Y ′ that is a valid share, but is diﬀerent from Y
+anywhere.
+XOR gates are trivially authentic. In Ev, XOR gates simply XOR the
+input shares. Thus, forging output is as hard as forging input.
+Constant gates are trivially authentic: Ev simply outputs a share zero, so
+A is given no new information.
+Recursive Module calls are authentic by induction.
+Reveal gates are trivially authentic. First, each such gate samples a mask
+α ←Dmask.
+Forging a diﬀerent mask would require A to guess ∆, which
+succeeds only with probability 2−κ and hence is infeasible.
+Then, the gate
+forwards its input and α to a subcircuit which is authentic by induction.
+Note, the Reveal gate also leaks a value to A. Changing this value cannot
+help A because the leaked values are simply guides that indicate which garbled
+rows to decrypt.
+Color gates are trivially authentic: Ev simply forwards parts of the Color
+gate input.
+One-hot gates are less straightforward, but can be proved secure by the
+properties of H. Assume the one-hot gate has inputs a and b. We split the
+one-hot gate into two parts.
+The ﬁrst part constructs the GGM tree where
+honest E decrypts 2n−1 out of 2n leaves. The second part uses these leaves to
+construct matrix columns.
+35
+
+
+PAGE 36
+We start from the second part. For each column in the second part, the
+material includes a message of the following form:
+ M
+i Xi,j
+
+⊕Bj
+Moreover, A holds each string Xi̸=a,j and Bj ⊕bj∆. However, A does not hold
+Xa,j and, moreover, this value is the result of calling H on a leaf string La. But
+H is a hash function, so constructing Xa,j is as hard as constructing La. Thus,
+forging a valid output matrix X′̸ = X is as hard as forging La or forging valid
+B′̸ = B.
+Now, let us look at the ﬁrst part and demonstrate that forging La is as hard
+as forging valid A′̸ = A. We proceed upwards through the binary branching
+tree, demonstrating that forging level i + 1 is as hard as forging level i.
+Each child node is constructed fby hashing its parent node, so forging a
+child is as hard as forging its parent. For each level, A additionally observes
+two strings:
+H(Ai ⊕∆, noncei,even) ⊕
+2i−1
+M
+j=0
+Si,2j
+H(Ai, noncei,odd) ⊕
+2i−1
+M
+j=0
+Si,2j+1
+Informally, if A could decrypt the ‘wrong’ string, then she could forge a child
+on the path to a. However, both strings are encrypted using a hash of Ai and
+H is circular correlation robust. Therefore, forging the sum of odds/evens is as
+hard as forging A′̸ = A. Thus, the ﬁrst part is authentic.
+In summary, forging an output matrix X′̸ = X is as hard as forging A′̸ = A
+or B′̸ = B. Thus, one-hot gates are authentic.
+Since all gate types are authentic, modules and circuits are also authentic.
+Forging a valid circuit output Y ′̸ = Y is as hard as forging a valid circuit input
+X′̸ = X, and forging a valid circuit X′̸ = X can only be achieved by guessing
+∆, which only succeeds with negligible probability.
+OneHot is authentic.
+A.1
+Compatibility with Stacked Garbling
+Recall that OneHot is a garbling scheme (Section 5.5, Construction 1) [BHR12].
+In this section we prove OneHot’s (limited) compatibility with stacked gar-
+bling [HK20a, HK21]. In particular, OneHot can serve as the underlying gar-
+bling scheme for stacked garbling, which handles each conditional branch. We
+start by giving the deﬁnition of strong stackability [HK21].
+Deﬁnition 8 (Strong Stackability). A garbling scheme is strongly stackable if:
+1. For all circuits C and all inputs x,
+(C, M, En(e, x))
+c= (C, M ′, X′)
+where (M, e, ·) ←Gb(1κ, C), X′ ←{0, 1}|X|, and M ′ ←{0, 1}|M|.
+36
+
+
+PAGE 37
+2. The scheme is projective [BHR12].
+3. There exists an eﬃcient deterministic procedure Color that maps strings
+to {0, 1} such that for all C and all projective label pairs A0, A1 ∈d:
+Color(A0)̸ = Color(A1)
+where (·, ·, d) = Gb(1κ, C).
+4. There exists an eﬃcient deterministic procedure Key that maps strings to
+{0, 1}κ such that for all C and all projective label pairs A0, A1 ∈d:
+Key(A0) | Key(A1)
+c= {0, 1}2κ
+where (·, ·, d) = Gb(1κ, C).
+Informally, strong stackability achieves two goals. First, property (1) ensures
+that the garbling of a circuit “looks random”, which is important when stacking
+branches [HK20a]. Second, properties (2–4) allow the stacked garbling scheme
+to manipulate the shares that emerge from evaluation of our garbling scheme.
+To achieve strong stackability we modify OneHot in two ways.
+The ﬁrst change is simple and does not alter the ﬂexibility of our scheme.
+Speciﬁcally, we alter our output decoding string d to meet item (3). Recall that
+we construct the decoding string d by setting the projective pair for each output
+bit yi as follows (see Figure 4):
+H(Yi, nonce)
+H(Yi ⊕∆, nonce)
+Note that if we call our Color procedure (Section 3) on these two strings, the
+result may match, which fails property (3). Thus, we make the following simple
+adjustment to d:
+H(nonce, Yi) | Color(Yi)
+H(nonce, Yi ⊕∆) | Color(Yi ⊕∆)
+(3)
+By concatenating the color of the input shares, we ensure that the least signif-
+icant bits of these two strings diﬀer. Therefore, our Color procedure will now
+meet item (3).
+The second change is more fundamental: Reveal gates can reveal values
+from arbitrary distributions. This breaks property (1), which insists that all
+values viewed by E are indistinguishable from uniform. Therefore, to achieve
+strong stackability we limit Reveal gates such that only uniform distributions
+are allowed.
+Theorem 5. Let OneHot′ be the OneHot garbling scheme (Section 5.5, Con-
+struction 1) with the following two modiﬁcations:
+1. The output decoding string d is conﬁgured by setting the projective output
+pair for each output bit yi according to Equation (3).
+37
+
+
+PAGE 38
+2. The output distribution Dout of each Reveal gate is limited to a uniform
+distribution over binary strings.
+If H is a circular correlation robust hash function, OneHot′ is strongly stackable.
+Proof. By inspection of the simulator Sobv (Theorem 2).
+First note that strong stackability items (2–4) hold trivially.
+OneHot is
+projective.
+Color is formally deﬁned in Section 3, and we deﬁne Key to be
+the procedure which drops the least signiﬁcant bit (i.e. drops the color bit)
+and retains the remaining bits . The indistinguishability of pairs of keys in d
+follows from the fact that H is a circular correlation robust hash function (see
+Equation (3)).
+Now, it remains to prove strong stackability item (1). Examine the oblivious-
+ness simulator Sobv (Theorem 2). Note that Sobv simulates the entire garbling
+(i.e., all material and wire shares) with uniform bits with one notable excep-
+tion: the material used to reveal E’s output of a Reveal gate is simulated by
+sampling from that gate’s output distribution Dout. However, since OneHot′ re-
+stricts Dout, this simulation is also achieved by uniform bits. Since the simulator
+simulates all values with uniform bits, item (1) holds.
+OneHot′ is strongly stackable.
+B
+Applications – Extended
+In this appendix, we expand on details deferred from Section 5.
+B.1
+General Binary Outer Products – Extended
+In Section 7.2 we explained our general outer product technique, but we did not
+formalize it. Figure 8 provides the formal module.
+B.2
+Binary Matrix Multiplication – Extended
+It is well known that outer products can be used to eﬃciently compute matrix
+products. Speciﬁcally, the binary matrix product of input matrices a and b can
+be expressed by (1) for each i taking the outer product of column i of a with
+row i of b and (2) XORing the resulting matrices.
+Notice that this technique does not use our low level primitives directly, and
+instead uses our outer product module as a black box. Hence, we need not
+formalize a module for matrix multiplication.
+Because our technique reduces the cost of outer products by factor k (see
+Section 7.2), we similarly reduce the cost of binary matrix multiplication by
+factor k.
+That is, for input matrices with dimension n × m and m × l, we
+require O(nml/k) communication rather than the standard O(nml). Formally,
+k is a logarithmic factor; in practice we instantiate k with small constants.
+We implemented matrix multiplication; Figure 9 plots our improvement over
+the standard approach.
+38
+
+
+PAGE 39
+B.3
+Integer Multiplication – Extended
+Consider the multiplication of two n-bit numbers a and b. Standard GC tech-
+niques multiply such numbers using the schoolbook method [WMK16]6. For
+sake of example, consider n = 4 and examine the computation done by the
+schoolbook method:
+a0 · (
+a1 · (
+a2 · (
+a3 · (
+b3
+b2
+b1
+b0
+b2
+b1
+b0
+b1
+b0
+b0
++
+(ab)0
+(ab)1
+(ab)2
+(ab)3
+)
+)
+)
+0
+0
+0
+0
+0
+0
+)
+Notice that each summand can be expressed by bits in the outer product of a
+and b. Hence, we improve multiplication by using our general outer product
+module (Section 7.2). Each summand must still be added inside GC; we do so
+by traditional GC means. This addition is now the bottleneck of multiplica-
+tion performance. We leave potential improvements, perhaps by incorporating
+arithmetic GC techniques [BMR16], to future work.
+Our integer multiplication technique does not use our lowest level primitives
+directly, so we need not formalize a module.
+B.4
+Binary Field Inverses – Extended
+We now describe our ﬁeld inverse module in detail. We ﬁrst compute and release
+to E a · α. To do so, we use a Reveal gate to sample uniform non-zero mask
+α ∈GF(2n). Recall that a Reveal gate may use an arbitrary circuit to apply the
+mask to its argument; we use a circuit that computes a · α where · denotes ﬁeld
+multiplication. This circuit uses the technique described in Section 7.5 to reduce
+ﬁeld multiplication to an outer product. Because G knows the multiplicand α,
+the Reveal gate’s internal circuit can compute the outer product more eﬃciently
+than as described in Section 7.1. Namely the parties compute the following,
+where γ ∈{0, 1}n is a uniform mask:
+T (id)⊺· JH(a ⊕γ) ⊗αK ⊕Jγ ⊗αK = Ja ⊗αK
+G injects Jγ ⊗αK as a constant. The parties apply a linear function to this outer
+product to obtain Ja · αK.
+The above gate reveals a · α to E, so we must prove this secure. This holds
+straightforwardly: because α is uniform and because GF(2n) is a ﬁeld, this value
+is indistinguishable from a uniform non-zero ﬁeld element.
+Next, we use the revealed value a·α to compute the inverse. Let (·)−1 be the
+function that takes the ﬁeld inverse of its argument. The parties use a one-hot
+gate to compute the following:
+T ((·)−1)⊺· JH(a · α) ⊗αK = J(a · α)−1 ⊗αK
+Lemma 1
+6There exist asymptotically more eﬃcient multiplication algorithms, but these are ineﬃ-
+cient in practice.
+39
+
+
+PAGE 40
+The parties use the reduction described in Section 7.5 to compute from the outer
+product the ﬁeld product J(a · α)−1 · αK = Ja−1K.
+Our module must account for the possibility that the input a is zero. The
+typical approach, which we also adopt, is to map input zero to output zero. To
+do so, we ﬁrst compute an auxiliary bit z that indicates if a = 0. We use a
+regular Boolean circuit with ANDs and XORs to compute JzK ≜Ja == 0K. At
+the top-level, the module computes the following expression:
+J(a ⊕z)−1 ⊕zK
+If a is indeed zero, then this expression takes the inverse of one, which is itself
+one, and then XORs one, resulting in the desired output zero. Otherwise, this
+expression computes a−1.
+B.4.1
+S-Boxes – Extended
+In Section 7.6, we discussed the 8-bit AES S-Box. 16-bit S-Boxes, based on an
+inversion in GF(216), have also been proposed for some applications [KKK+15].
+The state-of-the-art Boolean circuit uses 226 ciphertexts (113 AND gates) [BMP13].
+Our approach produces an S-Box that consumes only 122 ciphertexts, a ∼45%
+improvement. Unfortunately, this application is less practical in terms of wall
+clock time since the parties must each compute a 216 ×16 one-hot outer product
+matrix.
+B.5
+Modular Reduction – Extended
+Figure 11 lists the module for our modular reduction technique. The module
+makes use of two key ideas:
+First, consider x and y that are both statically known to be less than ℓ. In
+this case, the operation (x + y) mod ℓis a special case and can be computed
+using linear communication: simply add the numbers, compare the sum to ℓ,
+and conditionally subtract ℓ.
+Second, we use the two following equalities:
+(x + y) mod ℓ= ((x mod ℓ) + (y mod ℓ)) mod ℓ
+x mod ℓ= (x mod (m · ℓ)) mod ℓ
+Based on these ideas, we split the input a into chunks, reduce each chunk
+modulo ℓ, and then eﬃciently add the results.
+B.6
+Exponentiation – Extended
+We now describe our module that computes JℓaK for publicly agreed constant ℓ.
+We take advantage of the following property of exponents:
+xy · xz = xy+z
+The module is formalized in Figure 12.
+40
+
+
+PAGE 41
+The key idea is that we can split a into “chunks” and then easily compute ℓ(·)
+for each chunk. We still need to then multiply each of these results inside GC,
+but the number of required multiplications is proportional only to the number
+of chunks. Notice also that we can use our improved multiplication technique
+(Section 7.4) to further improve the module.
+41
+
+
+PAGE 42
+Input: E inputs a. Parties together input shared bitstrings JaK and JbK where
+a ∈{0, 1}n, b ∈{0, 1}m.
+Output: Parties output a shared matrix JH(a) ⊗bK.
+Procedure:
+• Let Ai represent G’s share of each bit ai; hence E holds Ai ⊕ai∆.
+• Our ﬁrst goal is to deliver to E 2n −1 out of 2n pseudorandom seeds
+where the ath seed is missing:
+• E and G consider a full binary tree with 2n leaves. Let Ni,j be the jth
+node on level i and let the root reside on level −1.
+• E and G label nodes from level 1 down with jointly agreed nonces
+noncei,j.
+• G labels each node (except the root) with a κ-bit string Si,j:
+– G labels N0,0 by letting S0,0 ≜A0 ⊕∆and N0,1 by letting S0,1 ≜
+A0.
+– Consider
+Ni,j
+with
+parent
+Ni−1,⌊j/2⌋.
+G
+sets
+Si,j
+=
+H(Si−1,⌊j/2⌋, noncei,j).
+• For each level i > 0, G XORs all odd and all even labels:
+Even ≜
+M2i−1
+j=0 Si,2j
+Odd ≜
+M2i−1
+j=0 Si,2j+1
+For each level i > 0, the parties agree on two nonces noncei,even and
+noncei,odd. G sends to E the following two values:
+H(Ai ⊕∆, noncei,even) ⊕Even
+H(Ai, noncei,odd) ⊕Odd
+• E reconstructs each label Si,j except the labels along the path to leaf
+a:
+– E labels N0,1 with A0 if a0 = 0; otherwise she labels N0,0 with
+A0 ⊕∆(recall, her share is A0 ⊕a0∆).
+– Consider each level i > 0.
+There are two sibling nodes on
+level i that do not have a labeled parent. Consider each of the
+other 2i+1 −2 nodes Ni,j with parent Ni−1,⌊j/2⌋.
+E computes
+H(Si−1,⌊j/2⌋, noncei,j) = Si,j.
+– For the other nodes on level i, E decrypts the XOR sum Even if ai
+is odd or Odd if ai is even; E XORs this value with her 2i −1 even
+(resp. odd) labels and hence extracts the remaining even (resp.
+odd) label.
+• G now holds 2n strings Sn−1,j; E also holds each string except Sn−1,a.
+Rename these leaf strings Li ≜Sn−1,i.
+• For each bit bj of b:
+– Let Bj be G’s share of JbjK. Hence, E holds Bj ⊕bj∆.
+– E and G agree on 2n fresh nonces noncei.
+– For each leaf i, G sets Xi,j ≜H(Li, noncei). G sends to E:
+ M
+i Xi,j
+
+⊕Bj
+42
+
+
+PAGE 43
+OneHot.ev(C, x) takes as input a circuit C and a string x. It outputs a string
+y. Each gate in a module is handled as follows:
+• For each XOR gate w2 := w0⊕w1 and each one-hot gate w2 := H(w0)⊗
+w1, ev applies the appropriate function and stores the result in w2. For
+each constant gate w0 := Constant(c), ev stores c in w0.
+• For each Module w1 := Module[M](w0), OneHot.ev recursively evalu-
+ates M on input w0 and stores the result in w1.
+• For each Reveal gate wE
+1
+, wG
+2
+:= Reveal[C, Dmask](w0), OneHot.ev
+(1) samples a mask α ←Dmask, (2) recursively evaluates C with input
+(w0, α), (3) stores the result on wire w1, and (4) stores α on wire w2.
+Each Color gate w1, w2 := Color(w0) is handled in the same manner as
+each Reveal gate except that α is drawn uniformly.
+OneHot.Gb(1κ, C) takes as input a circuit C. It outputs an input encoding
+string e, an output decoding string d, and circuit material M. OneHot is a pro-
+jective garbling scheme [BHR12], so e and d are standard. When OneHot.Gb
+is ﬁrst called, it uniformly draws the global XOR oﬀset ∆←{0, 1}κ and
+sets ∆’s least signiﬁcant bit to one. To generate M, OneHot.Gb maintains
+a garbled share on each circuit wire. Each gate in a module is handled as
+follows:
+• For each XOR gate w2 := w0 ⊕w1, OneHot.Gb generates the output
+sharing by XORing the two input sharings (see Lemma 2).
+• For each one-hot gate w2 := H(w0) ⊗w1, OneHot.Gb runs G’s steps
+as described in Figure 3. When Figure 3 indicates G should send a
+message to E, OneHot.Gb appends the message to M.
+• For each constant gate w0 := Constant(c), OneHot.Gb sets w0 to c∆.
+• For each Module, OneHot.Gb recursively garbles.
+• For each Reveal gate wE
+1
+, wG
+2
+:= Reveal[C, Dmask](w0), Gb samples a
+mask α ←Dmask and sets the share w2 to α∆. The procedure recur-
+sively garbles the subcircuit C with appropriate input shares and stores
+the output shares in w1. Finally, the procedure evaluates Color(w1) and
+attaches the result to M: informally, this reveals the masked output to
+E.
+• For each Color gate w1, w2 := Color(w0), Gb computes Color(w0) and
+stores Color(w0)∆in w2. It then stores w2 ⊕w0 in w1.
+OneHot.Ev(C, M, X) takes as input a circuit C, material M, and encoded
+input X. It outputs encoded output Y . OneHot.Ev maintains E’s garbled
+share on circuit wires, propagating them through each gate in a module as
+follows:
+• For each XOR gate w2 := w0 ⊕w1, OneHot.Ev generates the output
+share by XORing the two input shares (see Lemma 2).
+• For each one-hot gate w2 := H(w0) ⊗w1, OneHot.Ev runs E’s steps as
+described in Figure 3. Note, w0 must have been revealed for this call
+to be legal. When Figure 3 indicates G should send a message to E,
+OneHot.Ev parses the message from M.
+• For each Constant gate w0 := Constant(c), OneHot.Ev sets w0 to zero.
+Note, E need not know c.
+43
+
+
+PAGE 44
+Input: Parties input shared bitstrings JaK, JbK where a ∈{0, 1}n and b ∈
+{0, 1}m.
+Output: Parties output a shared matrix Ja ⊗bK.
+Procedure:
+• Parties reveal to E a ⊕α and b ⊕β for uniform α ∈{0, 1}n, β ∈{0, 1}m
+via Color gates. Notably, the Color gates output Ja ⊕αK, Jb ⊕βK, and
+JαK.
+• Parties compute JH(a ⊕α) ⊗bK via a one-hot gate.
+• Parties compute JH(b ⊕β) ⊗αK via a one-hot gate.
+• Parties compute the following two outer products:
+T (id)⊺· JH(a ⊕α) ⊗bK = J(a ⊕α) ⊗bK
+Lemma 3
+T (id)⊺· JH(b ⊕β) ⊗αK = J(b ⊕β) ⊗αK
+Lemma 3
+• G locally computes α ⊗β. He injects Jα ⊗βK as a constant.
+• Parties compute and output:
+J(a ⊕α) ⊗bK ⊕J(b ⊕β) ⊗αK⊺⊕Jα ⊗βK = Ja ⊗bK
+See Section 4.3 for a correctness argument.
+Figure 5: Eﬃcient small domain outer product module. The module implements
+the function a, b 7→a ⊗b.
+Figure 6: Communication consumption (top) and wall clock time (bottom)
+when computing the outer product of two n-bit vectors. We varied n from 1 to
+9. The standard method computes the outer product using AND gates. Our
+technique’s computation scales exponentially in the vector sizes, but is more
+eﬃcient for vectors between lengths 4 and 8.
+44
+
+
+PAGE 45
+Figure 7: We used our implementation to compute the bitwise outer product
+of two 128 bit vectors. We instantiated our approach with various “chunking
+factors” k (see Section 7.2). Increasing k decreases communication but increases
+computation, due to the exponential computation scaling of our one-hot gate.
+The standard method computes outer products by simply ANDing pairs of
+values. At k = 6, we improve over standard by 6.2× (communication) and 4.1×
+(time).
+45
+
+
+PAGE 46
+Input: Parties input shared bitstrings JaK, JbK where a ∈{0, 1}n and b ∈
+{0, 1}m.
+Output: Parties output a shared matrix Ja ⊗bK.
+Procedure:
+• Parties release to E a⊕α and b⊕β for uniform α ∈{0, 1}n, β ∈{0, 1}m
+via Color gates. Notably, the Color gates output Ja ⊕αK, Jb ⊕βK, and
+JαK.
+• Parties agree on a “chunk size” k which is at most logarithmic in the
+overall circuit input size. The parties split the input vectors into ⌈n/k⌉
+k-bit subvectors to avoid expensive exponential scaling.
+• For each k-bit subvector Ja ⊕αKi..i+k, the parties compute:
+T (id)⊺· JH((a ⊕α))i..i+k ⊗bK = J(a ⊕α)i..i+k ⊗bK
+via a one-hot gate (by Lemma 3). Notice that the parties do not split b
+into chunks. The parties then vertically concatenate the ⌈n/k⌉resultant
+matrices into a single matrix J(a ⊕α) ⊗bK.
+• Symmetrically, the parties compute J(b ⊕β) ⊗αK by splitting Jb ⊕βK
+into ⌈n/k⌉k-bit chunks.
+• G locally computes α ⊗β and injects Jα ⊗βK as a constant.
+• Parties compute and output:
+J(a ⊕α) ⊗bK ⊕J(b ⊕β) ⊗αK⊺⊕Jα ⊗βK = Ja ⊗bK
+(see Figure 5 for proof of above equality).
+Figure 8: Eﬃcient general outer product module. The module implements the
+function a, b 7→a ⊗b. Unlike Figure 5, this module handles outer products for
+input vectors of arbitrary length.
+Figure 9: We used our implementation to compute the bitwise matrix product of
+two 128 × 128 square bit matrices. We plot total communication consumption
+(top) and wall clock runtime (bottom).
+We instantiated our approach with
+various “chunking factors” k (see Figure 8). At k = 6, we improve over standard
+by 6.2× (communication) and 5× (time).
+46
+
+
+PAGE 47
+Input: Parties input shared bitstring JaK where a ∈{0, 1}n.
+Output: Let f : {0, 1}n →{0, 1}n be deﬁned as follows:
+f(x) ≜
+(
+0
+if x = 0
+x−1
+otherwise
+Parties output a shared bitstring Jf(a)K.
+Procedure:
+• The parties ﬁrst compute JzK ≜Ja == 0K. This is achieved using a
+circuit with n −1 AND gates.
+• The parties next compute a Reveal gate to mask a⊕z. The gate samples
+a uniform non-zero element α from GF(2n). The Reveal gate’s internal
+circuit is itself a module that computes x 7→x · α; it is implemented as
+follows:
+– The internal module takes as arguments a and α. Via a Color gate,
+it reveals a ⊕γ to E where γ is a uniform mask.
+– Note, G knows γ ⊗α and hence can inject it as a constant. The
+parties compute the following by a one-hot gate:
+T (id)⊺· JH(a ⊕γ) ⊗αK ⊕Jγ ⊗αK
+= J(a ⊕γ) ⊗αK ⊕Jγ ⊗αK
+= J(a ⊗α) ⊕(γ ⊗α)K ⊕Jγ ⊗αK
+= Ja ⊗αK
+– The internal module then computes Ja · αK via a linear function
+(see Section 7.5) and outputs the result.
+• The above Reveal gate releases (a ⊕z) · α to E. This is secure because
+both a ⊕z and α are non-zero ﬁeld elements and because α is uniform;
+hence the product is indistinguishable from a uniform non-zero ﬁeld
+element.
+• The parties compute the following by a one-hot gate:
+T ((·)−1)⊺· JH((a ⊕z) · α) ⊗αK = J((a ⊕z) · α)−1 ⊗αK
+• Finally, the parties compute the following via a linear function (see
+Section 7.5) and output the result:
+J((a ⊕z) · α)−1 · α) ⊕zK =
+(
+J0K
+if z = 1
+Ja−1K
+otherwise
+Figure 10: Our binary ﬁeld inverse module.
+47
+
+
+PAGE 48
+Input: Parties input shared bitstring JaK where a ∈{0, 1}n. Parties agree
+on a public constant ℓ.
+Output: Parties output a shared bitstring Ja mod ℓK.
+Procedure:
+• Parties agree on a parameter m such that m · ℓ> 2n.
+• The parties use a Reveal gate to (1) sample uniform mask α ∈Zm·ℓ,
+(2) compute Ja + α mod m · ℓK, and (3) reveal a + α mod m · ℓto E.
+Because α is uniform, this revelation is secure.
+• The parties view Ja+α mod m·ℓK as the concatenation of k-bit “chunks”.
+For each ith chunk Jci mod (m · ℓ)K, the parties compute:
+T (((·) ≪(i · k)) mod ℓ) · JH(ci) ⊗1K
+= (ci ≪(i · k)) mod ℓ
+Where ≪denotes a left bit shift. That is, the parties compute (·) mod ℓ
+on each k-bit chunk of the masked input.
+• The parties compute and output:
+  X
+i
+(ci ≪(i · k)) mod ℓ
+!
++ α
+!
+mod ℓ
+= ((a + α) −α) mod ℓ
+= a mod ℓ
+Each addition is computed by an AND-gate based circuit that eﬃciently
+computes (x + y) mod ℓfor x, y strictly less than ℓ.
+Figure 11: Our public modular reduction module.
+48
+
+
+PAGE 49
+Input: Parties input shared bitstring JaK where a ∈{0, 1}n. Parties agree
+on a public constant ℓ.
+Output: Parties output a shared bitstring Jℓa mod 2nK.
+Procedure:
+• The parties use a Reveal gate to (1) sample uniform α, (2) compute
+Ja−αK, and (3) reveal a−α to E. Because α is uniform, this revelation
+is secure.
+• The parties view Ja −αK as the concatenation of ⌈n/k⌉k-bit “chunks”.
+For each ith chunk JciK, the parties compute:
+T (ℓ(·)≪(i·k)) · JH(ci) ⊗1K = ℓci≪(i·k)
+• The parties compute and output:
+ Y
+i
+ℓci≪(i·k)
+!
+· ℓα
+= (ℓa−α) · ℓα
+= ℓa
+Note ℓα is a constant known to G. Each multiplication is computed via
+the technique described in Section 7.4.
+Figure 12: Our integer exponent of a public constant module.
+49

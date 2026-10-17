@@ -1,0 +1,120 @@
+from NanoGRAM [21], which caps the buckets of its ORAM
+and collects all overflow in one shared pile. The overflows of
+independent buckets rarely occur together, so a shared stash
+needs little capacity. One merge-split alone needs a stash
+of 32 slots to keep the probability that the stash overflows
+below 2−64, whereas 220 merge-splits can share a stash of 62
+slots. The loads of consecutive stages, however, are positively
+correlated, and a tight bound on their total overflow remains
+an open problem. NanoGRAM, whose pile collects overflow
+from all levels, sizes the pile by empirical simulation. We
+instead give each stage its own stash and combine the stages
+with a union bound (Appendix A).
+The union bound is loose, but lookups never scan the stage
+stashes, which would add 20 stashes to every lookup in a table
+of 220 buckets. Most residuals overflowed at an intermediate
+stage, although their destination bucket has room, so a final
+sweep over the output table gives them a second chance (Fig-
+ure 4). Writing a residual directly into its destination would
+reveal that bucket. The merge instead obliviously partitions
+the residuals by destination into one range bucket for each
+range of consecutive output buckets, and the sweep reads the
+range bucket at every output bucket in its range, whether or
+not any residual belongs there. The few records that still do
+not fit form the new table’s residual tier, which a lookup
+scans in full whenever it probes the table. As a result, the tier
+is as small as any placement of the table’s keys into 64-slot
+buckets can make it, and we show one or two buckets suffice
+for each tier in our default configuration (Appendix A). The
+tier is offered to the sweep again at the table’s next merge,
+where a different hash is used.
+Duplicate keys and the stash bound. The stash bound of
+each stage requires the routed records to have distinct keys.
+Because our hash tables are read-only, however, an access
+leaves the older copy of its key in place, so the two tables of
+a merge can hold copies of the same key. At first glance, this
+seems harmless: both copies carry the same routing tag, so
+they meet in the merge’s last stage, whose merge-splits keep
+only the newer copy (Figure 3). The problem lies in the earlier
+stages, where each table is routed through its own part of the
+network and the two parts share each stage’s stash. The two
+copies of a key follow corresponding routes in the two parts.
+In the extreme case, repeated accesses leave the two tables
+with exactly the same keys, and every overflow in one part
+recurs in the other.
+A merge’s preparation therefore routes the older table
+through every stage, including the last, and the carry joins
+only in the sweep (Figure 4). The two tables thus meet only
+in the sweep, which removes duplicates as in Section 2.3.
+Fixed capacities. How many records overflow must not show
+in a rebuild’s memory trace. Every stash, range bucket, and
+tier therefore has a public capacity that depends only on the
+table size, and every merge-split visits its prescribed stash
+storage even when no record overflows. With fixed capacities,
+the scheme fails only if a record arrives at a stash, range
+bucket, or tier that is already full. We implement a checker
+that bounds this probability for a given configuration. For the
+default configuration with 227 records, the probability that
+some capacity is exceeded within 232 accesses is about 2−69.7,
+below our target of 2−64. We also prove in Lean that a model
+of MICRORAMA exceeds no capacity within these accesses
+except with probability at most 2−69 (Appendix C). [Tianyao:
+Should the threat model state that the request sequence is fixed
+independently of the hash functions? The checker assumes this
+non-adaptive model, and an adaptive client needs a reduction
+that is not yet proved.]
+3. Deamortized Rebuilding
+Without deamortization, an access of the hierarchical
+ORAM of Section 2 waits for any rebuild it triggers, and
+requests that arrive meanwhile queue behind it. We therefore
+run rebuilds in the background while accesses continue, bal-
+ancing latency, throughput, and storage overhead.
+3.1. Background Rebuilding and Pre-routing
+Background
+rebuilding.
+Following
+Ostrovsky
+and
+Shoup [11], each level answers queries from published
+tables while a background worker builds replacements.
+The worker merges the partial table with each carry from
+below (Section 2.3), reading published inputs and writing to
+separate storage. Publishing an outgoing table passes it to
+the next level as a carry.
+With enough cores, each level can rebuild on its own
+core. When there are fewer cores than levels, the workers
+of consecutive levels share a thread. The thread runs their
+merges in short pieces, in earliest-deadline-first order, so that
+a long merge at a large level does not block the rebuild of
+a small level. [Tianyao: Report the longest request stall with
+this schedule against running each merge whole. Dev host,
+32M records, one thread: 0.66 ms against 0.68–0.90 s.]
+Background rebuilding adds no rebuild work, but costs
+extra lookup probes and storage. Until a merge publishes its
+output, every lookup must search its carry as a separate table,
+and the merge’s inputs and output occupy memory at the same
+time. To reduce the extra probes, we want each merge to
+publish its output soon after its carry arrives.
+Pre-routing. To publish sooner, a merge starts its preparation
+early. Preparation does not read the carry (Section 2.4), and
+the public rebuild schedule determines which hash the output
+uses (Appendix B), so the merge starts preparation as soon as
+the partial table is published, before its carry arrives. With this
+pre-routing, only residual partitioning and the sweep remain
+when the carry arrives. The top uses the same procedure.
+Pre-routing also keeps the required rebuild speed close
+to the average. In an idealized model where preparation
+dominates the cost of a merge (Appendix B), each non-top
+level at B = 8 must rebuild at 4.5× the access rate, only
+about 3% faster than its average rate of 4.375×. [Tianyao:
+Determine what fraction of rebuild work must be available
+for pre-routing for deamortization to require no additional
+rebuild speed above the same-B average, and whether our
+construction can attain it.]
+3.2. Storage Reuse
+Storage cost of deamortization. The remaining cost of
+deamortization is storage. A merge cannot overwrite its inputs
+while accesses still read them, so old and new tables coexist
+at every level. With half-full hash tables, prior deamortization
+schemes therefore reserve at least 10× the space of the raw
+7

@@ -1,0 +1,154 @@
+\section{Cryptographic primitives and representation costs}
+\label{sec:shuffle-primitives}
+
+\subsection{Hashing a secret-shared 32-byte query key}
+The query key is shared between the garbler and evaluator:
+$x=x_G\oplus x_E\in\{0,1\}^{256}$.  Neither party is assumed to know $x$.
+Consequently, computing its two table addresses locally is not an admissible
+optimization.  A concrete baseline evaluates AES-128-CMAC inside the secure
+computation, with a fixed, separately sampled secret PRF key $K$ shared between
+the parties.  The database uses the same function when it is constructed.
+For the fixed-length input $x=M_1\mathbin\Vert M_2$, CMAC is
+\begin{align}
+ L&=\operatorname{AES}_K(0^{128}), &
+ K_1&=\operatorname{dbl}(L),\nonumber\\
+ C_1&=\operatorname{AES}_K(M_1), &
+ T&=\operatorname{AES}_K(C_1\oplus M_2\oplus K_1).
+ \label{eq:shared-cmac}
+\end{align}
+Both message blocks are complete, so CMAC uses $K_1$, without a padding block.
+Multiplication by $X$ in the binary field, denoted $\operatorname{dbl}$, consists
+of a shift and XORs with selected bits of the constant reduction polynomial;
+it requires no AND gates.  These choices follow AES and the CMAC specification
+\cite{aesfips,cmac}.
+
+For an auditable gate count, use the established 32-AND AES S-box circuit listed
+by NIST, rather than assuming a newer optimized implementation.  The ten AES
+rounds contain $160$ S-boxes, giving $160\cdot32=5120$ ANDs for the encryption
+datapath.  The AES-128 key schedule contains another $40$ S-boxes, or $1280$
+ANDs.  NIST lists $6400$ ANDs for AES-128 with its key schedule and $5120$ for
+the fixed-key datapath \cite{nistcircuits}.  A secret, already expanded key has
+the same nonlinear datapath count: AddRoundKey remains XOR.  Reusing the
+expanded key and $K_1$ across the $B$ queries of a single batch therefore gives
+\begin{equation}
+ A_{\rm hash}(B)=
+ \underbrace{1280+5120}_{6400\text{ setup}}
+ +\underbrace{2\cdot5120B}_{10240B\text{ query work}}.
+ \label{eq:shared-hash-cost}
+\end{equation}
+At 32 bytes per half-gate AND, this is $200$ KiB of setup plus $320$ KiB per
+query.  The primary model retains the 11 expanded round keys and $K_1$ as
+1536 ordinary encoded state bits, using the same linked-garbling interface
+as other persistent state.  Setup is therefore performed once per initialized
+state and amortized, rather than repeated in every batch.  This requires
+compatible labels and distinct gate/hash tweaks across the composed
+computation; it does not permit reuse of one-time garbled tables.  A reset to
+an incompatible encoding must pay for secure key-state translation or new
+input and setup.  Equation~\eqref{eq:shared-hash-cost} counts neither initial
+database hashing nor interface traffic.
+
+One 128-bit PRF result suffices for two $h$-bit table addresses when $2h\le128$:
+take two disjoint $h$-bit slices of $T$.  For a pseudorandom $T$, the slices are
+jointly pseudorandom; a second CMAC is unnecessary for this address-generation
+interface.  Equal keys deliberately receive equal address pairs.  The full
+query key must still be compared with candidate keys to handle address
+collisions.  This construction assumes fixed-length, domain-separated use of
+the PRF; changing its application domain must preserve that separation.
+
+Query-share input and result-share output belong in a separate interface ledger.
+Reconstructing $x_G\oplus x_E$ inside GC costs XORs but not ANDs.  The model
+charges 4096 bytes for G's share labels and 12,288 bytes for E's input OT,
+giving 16,384 bytes per query: 12,288 forward and 4096 reverse, before framing.
+This is a convention, not an unavoidable lower bound: existing garbled inputs
+and correlated-OT encodings can change the charge.  The value and hit flag
+remain shared; taking the two parties' label color bits gives local XOR
+shares as explained in Section~\ref{sec:interactive-pool-protocol}.
+There is no plaintext answer decoding to E.  Client delivery is a separate
+boundary and is not included in the inter-server totals.
+
+\subsection{Packed storage and conditional movement are separate costs}
+The proposed packed representation carries a 32-byte value in two 128-bit
+objects.  We retain this as a payload-storage and transport optimization.
+It does not, by itself, specify the protocol for moving those objects under
+a secret control bit.  In ordinary Boolean GC, a 128-bit label represents
+one Boolean wire; storing a payload in two opaque carriers is a different
+representation with its own input, output, and movement interfaces.
+
+For this reason the primary total uses a fully specified Boolean movement
+cost: swapping a 256-bit payload under one secret bit costs 256 ANDs, with
+metadata added at its actual Boolean width.  A conditional packed-backend
+column may instead use a measured or proved parameter $c_2$, the communication
+for swapping the two packed payload carriers under a secret control.  Storage
+size alone does not establish $c_2$, and the conditional column must also
+include conversions and relabeling.  When a shuffle-and-reveal step has made
+the physical selection public, both parties can select their own shares
+locally; that public routing genuinely avoids secret-control payload gates.
+This distinction makes the Boolean estimate auditable while keeping the
+packed optimization visible as a concrete implementation target.
+
+\subsection{One-hot garbling: what is obtained and what is charged}
+Let $P=2^k$ be the padded size of a small array.  Heath's binary-to-one-hot
+primitive creates $H(y)$ using $(k-1)\lambda$ bits of garbled material, or
+$16(k-1)$ bytes at $\lambda=128$, when the evaluator knows $y$.
+The complete framework is not restricted to public true inputs: it masks
+private inputs and cancels the masks within secure modules
+\cite{heath2021,heath2024}.
+
+In particular, Section~5.1 of \cite{heath2024} encodes a private short integer
+$x\in\mathbb Z_{2^k}$ using a mask $\alpha$ and a one-hot encoding of
+$y=x+\alpha\bmod 2^k$.  G knows $\alpha$ and E learns $y$, while neither learns
+$x$.  For binary input, the stated construction adds $\alpha$ with a
+$(k-1)$-AND ripple-carry adder and then invokes binary-to-one-hot.  With the
+paper's two-ciphertext Boolean AND implementation, the conversion material is
+\begin{equation}
+ C_{\rm bin\to masked\ hot}
+ =32(k-1)+16(k-1)=48(k-1)\ \text{bytes}.
+ \label{eq:masked-hot}
+\end{equation}
+This excludes input-label transfer, the small reveal/interface bits, and any
+additional conversion required by the consuming operation.  Binary and
+arithmetic one-hot outputs must not silently be identified: an arithmetic
+consumer may require the corresponding upcast or word conversion.  The
+expanded vector still has $P$ entries, so local work and working storage grow
+linearly in $P$ for the binary construction, with further width factors for
+arithmetic words or payload outer products.
+
+Equation~\eqref{eq:masked-hot} is a cost for a \emph{masked-position}
+representation, not a canonical $H(x)$ at the same interface.  A lookup into
+a mutable secret array must also align that representation with the array
+and account for any masking correction.  The free truth-table evaluation
+$T(f)^\mathsf{T}H(y)$ uses a public constant table; it is not automatically a
+lookup into independently encoded secret array entries.  Similarly, the cheap
+one-hot outer product distributes one scalar or vector to one selected slot,
+not a different unknown payload at every slot.  These observations do not
+rule out a useful module, especially with interaction and shuffled arrays;
+they identify the missing interface that must be specified.  The primary
+totals therefore claim no generic one-hot discount for dynamic pool accesses.
+
+\subsection{One-AND swaps and a fused flat-array exchange}
+For a control bit $s$ and two $w$-bit words $a,b$, define
+\begin{equation}
+ d=s\mathbin{\wedge}(a\oplus b),\qquad
+ a'=a\oplus d,\qquad b'=b\oplus d.
+ \label{eq:one-and-swap}
+\end{equation}
+The AND is bitwise with the same control on all bits.  Thus a swap costs
+$w$ ANDs and $3w$ XORs, rather than two independently implemented muxes.
+For $P$ flat entries and a valid unique target index, start a carry word with
+the new value and conditionally swap it with each array entry at its one-hot
+selection bit.  The final carry is the old value and the array contains the
+new one.  A straightforward shared-prefix binary decoder uses $P-2$ ANDs
+for $P\ge2$, giving the specified circuit cost
+\begin{equation}
+ A_{\rm flat\ exchange}(P,w)=Pw+P-2,
+ \qquad X_{\rm flat\ exchange}(P,w)=3Pw+P-2.
+ \label{eq:flat-fused-exchange}
+\end{equation}
+These are counts for this explicit decoder, not a claim of minimum circuit
+size.  A one-entry array needs no selector circuit.  An additional secret
+enable, out-of-range handling, or metadata predicates must be charged if
+present.  The fused exchange assumes the replacement word is already
+available; an arbitrary function of the returned old word needs its own
+evaluation and suitable writeback.  For batched repeated indices, a
+single unordered aggregate of selectors is insufficient: preserve sequential
+semantics or securely group duplicates and define their read/write order.

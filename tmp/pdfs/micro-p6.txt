@@ -1,0 +1,124 @@
+online stash
+level 1
+level 2
+to
+level 3
+stage
+0
+1
+2
+merge 1
+merge 2
+Figure 3: A cascade of merges in a binary construction,
+viewed as one butterfly network over 8 buckets. Each color
+marks the merge-splits of one merge: merge 1 combines the
+stash with level 1’s table, and merge 2 adds the table of
+level 2. In the lighter part of each merge, every table is
+routed alone. The darker last stage combines two tables, and
+only its merge-splits compare keys.
+merge. Only that stage, drawn darker in Figure 3, compares
+keys. A cascade that ends in a table of m buckets thus runs
+(m/2) log2 m merge-splits, of which fewer than m compare
+keys.
+The comparison must not reveal which keys match. The
+merge therefore compares every key in a bucket of the older
+table with every key in the paired bucket of the newer table,
+and marks each older record whose key matches as a dummy
+in the occupancy mask. Two buckets of 64 keys need 4096
+key comparisons. A 512-bit register holds 16 keys of 4 bytes
+or 8 keys of 8 bytes, so with AVX-512F alone, comparing
+two buckets takes about 580 instructions for 4-byte keys and
+1100 for 8-byte keys. We optimize for AMD Zen 5, which
+supports the VP2INTERSECT extension. Its instructions com-
+pare every 4-byte or 8-byte lane of one register with every lane
+of another, so comparing two buckets takes only 16 and 64
+instructions, respectively. On a Zen 5 processor, this makes a
+merge with 4-byte keys 1.7 times faster (Section 5.4).
+A key longer than 8 bytes does not fit in one lane, so
+MICRORAMA stores it as its 16-byte hash under a secret
+key and compares the hashes in four 4-byte pieces. A merge
+then drops a record when every piece of its hash matches
+the same piece of some hash in the other bucket. The four
+matches may come from different hashes, in which case the
+record is dropped by mistake. Nonetheless, because the hashes
+are secret and random, each piece matches by chance with
+probability at most 64 · 2−32, so such a mistake occurs with
+probability about 2−104 per record in each bucket comparison.
+2.4. Resolving Remaining Bottlenecks
+Byte-sliced merge-splits leave a rebuild with little compu-
+tation, so three other problems now limit hierarchical ORAM.
+First, lookups become slow relative to rebuilds. A rebuild
+processes whole tables in bulk. Each merge-split takes a few
+register permutations per byte position, and the merge-splits
+of one stage can run in parallel. A lookup instead probes one
+bucket in each table, and whether each probe is real or dummy
+depends on the results of the earlier probes. Vector units and
+additional cores do little to shorten this chain of dependent
+memory accesses, so every table on the lookup path adds to
+the latency of every access. Second, memory traffic now limits
+the speed of a rebuild, because each stage of the network reads
+and writes every bucket of the table but does little work on
+each byte. Third, the 64-slot buckets that make merge-splits
+fast overflow routinely, so a rebuild must handle the records
+that do not fit.
+Fewer lookup probes with a larger branching factor. To
+balance the rebuild and lookup costs, we deliberately give re-
+builds more work so that each lookup probes fewer tables. We
+increase the branching factor B, the capacity ratio between
+successive levels, so that one level spans the capacity range of
+log B binary levels. MegaBlocks [22] makes the same trade
+in external memory, where rebuilds are cheap for a different
+reason: a rebuild processes many records with good locality,
+whereas each lookup makes random transfers from backing
+storage. In MICRORAMA, rebuilds are cheap because merge-
+splits need little computation, so the trade is worthwhile even
+when all tables reside in memory.
+A larger branching factor also reduces storage overhead,
+because the levels below the largest one together have about
+1/(B −1) of its capacity: as much as the largest level when
+B = 2, but one seventh of it when B = 8.
+With B > 2, a level receives B carries before it passes a
+table up. As in MegaBlocks [22], each level keeps one table,
+so a lookup still probes one table per level. A level adopts
+its first carry as its partial table and merges each later carry
+into it. Every carry into level ℓoccupies Uℓbuckets, so a
+partial table of j carries has jUℓbuckets, which need not be
+a power of two (Appendix B). The merge of the B-th carry
+ends the level’s cycle and produces an outgoing table of BUℓ
+buckets, which leaves the level as one carry into the next level.
+We number the hashed levels 1, . . . , L from the smallest, the
+bottom, to the largest, the top. The top never passes a table up.
+It instead merges every carry with its table into a replacement
+of the same T = BUL buckets, which hold N = 32T live
+keys at the nominal load of Section 2.2.
+Cache and register locality. The butterfly network has a
+locality that prior work exploits [19], [33]: the merge-splits of
+k consecutive stages combine buckets only within groups of
+2k. Routing each group through these stages while it remains
+in cache reduces passes through memory by about k times.
+We use a cache-oblivious recursive order [19], [40], which
+needs no cache-size parameter and exploits this locality at
+each cache level.
+The 64-slot buckets chosen for register permutations also
+improve this reuse. At the same record size, a cache holds
+eight times as many 64-slot buckets as 512-slot buckets, so a
+group covers three more routing stages before its data must
+leave the cache.
+Registers give the same benefit at the smallest scale.
+We fuse two consecutive stages over four buckets, so each
+bucket’s current byte line stays in a register through both
+stages. This halves the loads and stores of bucket byte
+lines while preserving each stage’s routing permutations. We
+measure the combined benefit of fusion and cache-oblivious
+traversal in the online full version.
+Overflow and residual records.
+At the nominal load, the
+number of records routed to one 64-slot bucket is approxi-
+mately Poisson with mean 32, which exceeds 64 with proba-
+bility about 2−22. A rebuild of a table of 220 buckets writes
+every bucket at each of its 20 stages, so about four buckets
+overflow on average.
+We cap each bucket of the network at its 64 slots and
+send the records that do not fit, which we call residuals,
+to a stash shared by many merge-splits. We adapt this idea
+6

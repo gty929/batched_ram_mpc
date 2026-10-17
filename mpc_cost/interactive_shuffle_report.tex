@@ -1,0 +1,527 @@
+\documentclass[11pt]{article}
+\usepackage[letterpaper,margin=0.85in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern,microtype,amsmath,amssymb,booktabs,tabularx,array,longtable}
+\usepackage{xcolor,enumitem,fancyhdr}
+\usepackage[hyphens]{url}
+\usepackage{hyperref}
+\definecolor{navy}{HTML}{17324D}
+\definecolor{teal}{HTML}{176B73}
+\hypersetup{colorlinks=true,linkcolor=navy,citecolor=teal,urlcolor=teal,
+ pdftitle={Interactive Batch ORAM with Garbled Circuits and Secret-Shared Shuffling},
+ pdfauthor={Technical design and cost study}}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\setlength{\emergencystretch}{2em}
+\setlength{\headheight}{14pt}
+\setlist{nosep,leftmargin=1.6em}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\small\textcolor{navy}{Interactive batch ORAM}}
+\fancyhead[R]{\small Scheme and cost derivation}
+\fancyfoot[C]{\thepage}
+\newcommand{\AND}{\mathbin{\wedge}}
+\newcommand{\xor}{\mathbin{\oplus}}
+\newcommand{\ceil}[1]{\left\lceil #1\right\rceil}
+\newcommand{\bits}{\operatorname{bits}}
+\newcommand{\valid}{\operatorname{valid}}
+\newcommand{\uid}{\operatorname{uid}}
+\newcommand{\bytes}{\operatorname{bytes}}
+\newcommand{\costtable}[2]{\begin{center}\small #2\end{center}\par\textit{#1}\par}
+\input{interactive_shuffle_numbers.tex}
+\begin{document}
+{\color{teal}\large TECHNICAL REPORT\par}
+{\color{navy}\LARGE\bfseries Interactive Batch ORAM with Garbled Circuits and Secret-Shared Shuffling\par}
+\vspace{4pt}
+\textbf{Scheme, security conditions, and reproducible resource estimates}\par
+16 October 2026 \quad $\cdot$ \quad Two-party semi-honest setting
+\vspace{8pt}
+
+\begin{abstract}
+We study a private key--value service combining two-choice cuckoo hashing,
+recursive Circuit-OPRAM-style batching, streamed garbled circuits, and an
+interactive secret-shared shuffle. Both the database and each 256-bit query
+key are private; neither server is assumed to know the query. An AES-CMAC
+PRF computes both cuckoo indices inside the secure computation. Our main
+optimization matches requests to pool records, attaches secret request tags,
+shuffles the tagged records with a permutation unknown to either party, and
+opens only the shuffled tags. Payload extraction and removal then become
+local operations on shares. A fixed number of uniquely tagged dummies hides
+pool misses and duplicate requests.
+
+We derive a complete accounting ledger for the selected compilation template,
+including garbled tables, both directions of OT traffic, shuffle preprocessing,
+conversion between representations, recursive-map updates, persistent state,
+and modeled storage I/O. The primary estimate uses ordinary Boolean records
+outside the shuffle; it does not require an unverified two-label conditional
+swap. Packed-value storage is reported as a conditional sensitivity.
+At 10,000 lookups/s, the selected batch has 32 requests for both studied sizes.
+The resulting historical-price network, state-capacity, and modeled-I/O budgets
+are \PrimaryAnnualSmall{} and \PrimaryAnnualLarge{} per year. These are
+capacity scenarios, not measured deployment costs or throughput guarantees:
+the inherited parallel eviction and grouping routines remain circuit
+composition allowances, and CPU, state service time, initialization, and
+overflow probabilities require validation.
+\end{abstract}
+
+\input{interactive_shuffle_summary_table.tex}
+\textbf{Interpretation.} The report provides a concrete pool-fetch protocol
+and a reproducible cost model for the surrounding construction. It does not
+claim that the whole construction has been implemented or that the chosen
+capacity parameters have a service-lifetime failure bound.
+
+\clearpage
+{\small\setlength{\parskip}{0pt}\tableofcontents}
+\clearpage
+
+\section{Functionality, threat model, and notation}
+\label{sec:scope}
+Two noncolluding servers, a garbler $G$ and evaluator $E$, hold a private
+key--value dictionary. We assume a static, semi-honest adversary corrupting
+at most one server. A query key $x\in\{0,1\}^{256}$ is supplied as
+$x=x_G\xor x_E$; neither share alone reveals $x$. Database initialization
+must similarly establish a secret shared or encoded dictionary. Both
+cuckoo probes execute on every lookup. The returned value and hit bit remain
+shared between the servers; an authorized client may reconstruct them through
+a separately specified delivery interface. No server receives the cleartext
+query, cuckoo index, or value by default.
+
+This report models application \emph{reads}. Each read still changes the ORAM
+position maps, locations, validity bits, and stash/pool state. Arbitrary
+application writes, concurrent database mutation, client authentication,
+malicious security, availability, and durable recovery need additional
+protocols. Public workload information includes the fixed batch size,
+provisioned capacities, execution schedule, and completed-query count.
+
+\begin{center}\small
+\begin{tabularx}{\linewidth}{lX}\toprule
+Symbol & Meaning\\\midrule
+$N=2^d$ & Number of dictionary records; $d\in\{28,32\}$\\
+$Q$ & Aggregate rate, $10{,}000$ complete dictionary lookups/s\\
+$B$ & Fixed batch size; both tables receive $B$ requests\\
+$h_\ell$ & Logical-address/leaf width at recursive tree $\ell$\\
+$F=2^f$ & Number of child position labels packed in one map record\\
+$Z$ & Tree bucket capacity, fixed at 3 in this study\\
+$\sigma$ & Additional pool slack, fixed at 128 records\\
+$r=\log_2(2B)$ & Number of upper tree levels represented by the pool\\
+$P=Z(2^r-1)+\sigma$ & Persistent pool capacity per recursive tree\\
+$D_\ell$, $W_\ell$ & Payload width and complete record width in bits\\
+$n=P+B$ & Number of tagged records shuffled per tree and batch\\
+$\lambda$ & Garbling security parameter, 128 bits\\
+\bottomrule\end{tabularx}
+\end{center}
+All MB, GB, TB, and PB in traffic/state tables are decimal. GiB and MiB are
+binary units and are used where required by storage billing. Costs include
+both table probes unless a row is explicitly labeled ``per table.''
+
+\section{Dictionary and recursive ORAM layout}
+\label{sec:layout}
+We use two cuckoo tables, each with $2N$ logical cells, together with an
+eight-entry application cuckoo stash. The total table load is $N/(4N)=1/4$.
+The original dictionary occupies 16 GiB or 256 GiB before hash-table, ORAM,
+and encoding overhead. A data payload has 256 key bits, 256 value bits, and
+one occupancy bit:
+\begin{equation}
+ D_0=513,\qquad h_0=d+1,\qquad W_\ell=D_\ell+2h_\ell+1.
+\end{equation}
+The two $h_\ell$ fields are the logical record identifier and assigned leaf;
+the last bit is the ORAM validity flag. Dictionary occupancy and ORAM
+validity are distinct. Recursive position-map records hold $F$ leaf labels:
+\begin{equation}
+ h_{\ell+1}=h_\ell-f,\qquad D_{\ell+1}=Fh_\ell.
+\end{equation}
+Map packing changes record width; it does not change the binary tree's
+branching factor.
+
+At each tree, the top $r$ levels are represented by an unordered pool.
+Below them, a path contains
+\begin{equation}
+ L_\ell=h_\ell-r+1
+\end{equation}
+bucket levels. Public old-leaf paths determine which lower buckets are
+fetched. An ORAM logical identifier, an assigned leaf, and a physical slot
+are different objects. Revealing a requested old leaf does not reveal the
+record's identifier or its position within a bucket or pool.
+
+Recursion stops at a configurable base cutoff or before the next tree would
+have fewer than $2B$ leaves. The final scalar position map has
+$C=2^{h_{\rm last}}$ entries of width $h_{\rm last}$; its \emph{full} capacity,
+not the requested cutoff, is charged. The selected layouts and all recursive
+record widths are listed in Section~\ref{sec:results}.
+
+The overall structure follows Circuit OPRAM~\cite{chan2017}. The concrete
+Boolean compilation below is a source-inspired planning template. In
+particular, $Z=3$ and $\sigma=128$ are fixed study parameters, not a proven
+overflow bound for these database sizes and access horizons.
+
+\input{interactive_shuffle_primitives.tex}
+\input{interactive_shuffle_protocol.tex}
+
+\section{Full batch execution and state dependencies}
+\label{sec:pipeline}
+The two cuckoo tables execute in parallel, while each table's position-map
+chain is dependent. The logical schedule is:
+\begin{enumerate}
+\item Input the two shares of every query key; evaluate the secret-key PRF
+and retain both hash indices as encoded values.
+\item Privately group duplicate logical requests at each recursive level.
+Do not reveal repeated old leaves directly. Representatives use their old
+positions; nonrepresentatives use independently random dummy paths.
+\item Access and update the flat base map. Its returned old labels enable
+the next recursive tree to disclose its duplicate-masked old paths.
+\item For that tree, scan lower-path metadata and perform the pool protocol.
+Combine the pool and path results under the one-live-copy invariant.
+Forward each representative result to duplicate requests privately, then
+restore request order using saved secret routing controls.
+\item Coalesce updates to different offsets of the same recursive map
+record. Fetching one parent block does not authorize independent whole-block
+writes from its children. Commit a single combined replacement.
+\item Insert refreshed records/dummies into the pool and execute the fixed
+eviction schedule: $2B$ lower subtrees per tree. Candidate selection and
+pool cleanup retain the template costs derived below.
+\item Compare the full query key with both candidate keys and all eight
+cuckoo-stash keys. Return a shared value and shared hit bit.
+\end{enumerate}
+
+Fresh leaf positions are generated as $\rho_G\xor\rho_E$ inside GC, from
+independent private random contributions. Their XOR costs no AND gates;
+input labels and OTs are charged. Fresh positions are never opened when
+assigned. The old position is disclosed only when that record is accessed
+later. Untouched state labels persist; touched state obtains fresh output
+labels. Tables are generated for the current work and streamed, not retained
+as a complete multi-query garbled program.
+
+Intersecting fetch paths require aggregation before clearing physical
+slots. After deduplication, at most one representative targets any live
+record. Per-slot deltas can therefore be XOR-aggregated and committed once.
+Deterministically chosen eviction subtrees are disjoint below the pool;
+this property does not make intersecting fetch writes independent.
+
+\section{Deriving the circuit and communication ledger}
+\label{sec:ledger}
+We count ordinary Boolean ANDs separately from OT and shuffle bytes. With
+FreeXOR and half gates, an AND contributes 32 bytes from $G$ to $E$, while an
+XOR contributes no garbled table~\cite{halfgates}. FreeXOR still requires
+local computation and memory traffic. This section makes explicit which
+counts follow directly from kernels and which are composition allowances.
+
+\subsection{Reusable Boolean kernels}
+For a bitonic sort of $m$ items, let $K=2^a$ with
+$a=\ceil{\log_2m}$. There are
+\begin{equation}
+ T(K)=Ka(a+1)/4
+\end{equation}
+compare-exchanges. For a $k$-bit sorting key, $p$ payload bits, and $v$ bits
+of inverse routing through saved controls, the template charges
+\begin{equation}
+ A_{\rm sort}(m,k,p,v)=T(K)(4k-2+p+v).
+\label{eq:sort}
+\end{equation}
+The comparison uses at most $3k-2$ ANDs; swapping the key costs $k$,
+the payload costs $p$, and inverse routing costs $v$. Conditional swaps
+already use one AND per bit: no additional factor-of-two discount applies.
+
+Two work-efficient segmented sweeps, adjacent group comparisons, and final
+masking are budgeted by
+\begin{equation}
+ A_{\rm group}(m,g,w)=(m-1)\max(g-1,0)
+       +4(m-1)(w+2)+m(w+4).
+\label{eq:group}
+\end{equation}
+The network and comparison formulas specify concrete kernels. Equation~
+\eqref{eq:group}'s use in complete pool/duplicate phases is a composition
+allowance; it is not a compiled gate trace. Define
+\begin{equation}
+ \Phi(m,k,g,w,v)=A_{\rm sort}(m,k,w+3,v)+A_{\rm group}(m,g,w).
+\end{equation}
+
+\subsection{Work retained at each recursive tree}
+Suppress the level subscript and write $h,W,L$ for the current widths and
+path length. The following counts are per table and per batch:
+\begin{align}
+ A_{\rm conflicts}&=A_{\rm sort}(B,h+\log_2B+1,W+2,W)
+                       +A_{\rm group}(B,h,W),\\
+ A_{\rm pathfetch}&=BZL(h+W+2),\\
+ A_{\rm depth}&=2h(P+B),\\
+ A_{\rm select}&=\Phi(P+3B,r+e+\ceil{\log_2(P+3B)}+2,r,W,W),\\
+ A_{\rm cleanup}&=\Phi(P+3B,1+\ceil{\log_2(P+3B)},1,W,0),\\
+ A_{\rm pathchoice}&=Bh,
+\end{align}
+where $e=\max(1,\ceil{\log_2(h+1)})$. Request-conflict work is scheduled
+on both sides of retrieval: forward grouping first, result propagation and
+inverse routing afterward. The old pool-retrieval sort is replaced in its
+entirety by the shuffle protocol, rather than discounted a second time.
+
+The lower-subtree eviction budget is
+\begin{align}
+ A_{\rm evict}={}&(2BZL)(2h)
+  +2BL(Z-1)(3e-2+e+\ceil{\log_2Z}+1) \nonumber\\
+ &+2B\cdot8L(6e+2)+2B(2Z+4)LW.
+\label{eq:evict}
+\end{align}
+These terms are eligibility, bucket-winner selection, a parallel planner,
+and record movement. The planner factor 8 and extra movement factor 4 are
+exposed allowances inherited from the existing model. They must be checked
+against an implemented parallel eviction circuit; Equation~\eqref{eq:evict}
+is not asserted as an exact count from the Circuit OPRAM paper.
+
+\subsection{Recursive updates, flat map, and application logic}
+For a map block containing $F$ labels of $h$ bits, write $U=Fh$ and
+$h'=h-\log_2F$. Coalescing updates is budgeted by
+\begin{equation}
+ A_{\rm packedmap}=B\bigl((F-2)+F+6U\bigr)
+       +4(B-1)(U+F+2)+(B-1)\max(h'-1,0).
+\end{equation}
+Here ``packed'' means multiple scalar position labels in one map block;
+it is unrelated to the two-label value encoding.
+
+For the final flat map of $C$ cells with $h$-bit labels, the fused read/update
+has cost
+\begin{align}
+ A_{\rm base}={}&A_{\rm sort}(B,\log_2C+\log_2B+1,h+2,h)
+    +A_{\rm group}(B,\log_2C,h)\nonumber\\
+ &+B\bigl((C-2)+C+Ch\bigr).
+\end{align}
+The last line pays for decoding, representative gating, and one shared
+read/write product per label bit. It saves $BCh$ ANDs per table relative
+to separate read and write masks. No unproved one-hot replacement is credited.
+
+With two table candidates and eight cuckoo-stash entries, the application
+lookup contributes
+\begin{equation}
+ A_{\rm app}=B\bigl(10(255+1+256)+9\bigr)=5129B.
+\end{equation}
+The 255 ANDs test a 256-bit equality, one gates occupancy, 256 mask the
+returned value, and nine combine hit flags. A dictionary key is assumed
+unique among live entries.
+
+\subsection{The new pool term and directional traffic}
+Let $t=\ceil{\log_2(B+1)}$ and
+$b_\ell=\ceil{(W_\ell+t)/8}$. For each pool and batch, the model charges
+\begin{align}
+ A_{\rm poolmatch}&=BP(h_\ell+2),\\
+ C_{\rm shuffle}&=2nb_\ell+4S(n)b_\ell+32S(n),\\
+ C_{\rm tags}&=2\ceil{nt/8},\\
+ I_{\rm reinput}&=nW_\ell\quad\text{shared bits}.
+\end{align}
+The $32S(n)$ term is an illustrative 16-byte OT-extension allowance for each
+of the $2S(n)$ switches. Actual OT setup, padding, and implementation constants
+must be measured. Shuffle corrections are paid for every fresh batch, even
+when prepared offline. The tag vectors are bit-packed; rounding is per
+message.
+
+The primary model converts all shuffled records back to Boolean labels,
+including the selected records and remaining pool. A shared-bit input uses
+16 bytes for the garbler's share label and classic evaluator input OT
+(32 forward, 16 reverse): 48 bytes forward and 16 reverse. This is a
+conservative standard interface, not an optimal mixed-protocol conversion.
+Tag bits are opened and do not need re-input. The shuffle and tag traffic is
+symmetric across the two directions because the two private permutations
+exchange the parties' roles.
+
+Let $A$ be total ordinary ANDs per \emph{complete query}, including both
+tables, application logic, and 10,240 CMAC ANDs; let $J$ be the corresponding
+shared re-input bits, $U=2\sum_\ell h_\ell$ the fresh-position bits, $V=U$
+the old-path bits, and $C_s$ the sum of shuffle and tag bytes per query.
+Before framing,
+\begin{align}
+ C_{G\to E}&=32A+48J+\tfrac12C_s+48(256)+48U+V/8,\\
+ C_{E\to G}&=16J+\tfrac12C_s+16(256)+16U+V/8.
+\label{eq:wire}
+\end{align}
+Old paths are opened to both parties, costing $V/8$ bytes in each direction.
+The query key is entered as two 256-bit shares. No supplied-index inputs are
+charged, because indices are computed internally. No plaintext answer
+decoding to $E$ is charged: the answer remains shared. Base OT, secret PRF
+key setup, initialization, and authorized client delivery are separate
+amortized or deployment-specific items. The reported wire counts multiply
+each direction by 1.05 for framing.
+
+\section{Numerical results and selection of parameters}
+\label{sec:results}
+\input{interactive_shuffle_results.tex}
+
+\section{Persistent state, I/O, and annual capacity cost}
+\label{sec:deployment}
+The number of persistent slots in a tree is
+\begin{equation}
+ Z\bigl(2^{h_\ell+1}-2^r\bigr)+P.
+\end{equation}
+Therefore the primary model's persistent logical bits are
+\begin{equation}
+ S_{\rm bits}=2\left[\sum_\ell
+ \left\{Z(2^{h_\ell+1}-2^r)+P\right\}W_\ell+C h_{\rm last}\right]
+ +8\cdot513+1536.
+\end{equation}
+Each party retains one 16-byte label per logical bit, so the total across
+both parties is $32S_{\rm bits}$ bytes. The garbler needs one zero label plus
+a global FreeXOR offset, not two independently stored labels per bit.
+The final 1,536 bits retain the expanded AES round keys and CMAC subkey.
+The newly added dummy rows and shuffle masks are batch workspace, not
+persistent additional tree capacity.
+
+The persistent-I/O envelope touches the whole pool, $B$ fetch paths, and
+$2B$ eviction paths at every tree. It counts overlaps repeatedly and assumes
+scratch intermediates remain in RAM:
+\begin{equation}
+ T_{\rm bits}=2\left[\sum_\ell(P+3BZL_\ell)W_\ell+C h_{\rm last}\right]
+            +8\cdot513.
+\end{equation}
+Reading and writing label state costs $32T_{\rm bits}/B$ bytes per query
+\emph{per party}. Converting pool labels to XOR shares does not imply that
+the rest of the database has been converted to compact share storage.
+
+\subsection{Historical deployment assumptions}
+The dollar estimates reuse the repository's official AWS US East
+(N.~Virginia) price snapshot, published 12 October 2026. They are not a new
+price quote. The assumed c6in.32xlarge rate is \$7.2576/hour; each node has
+256 GiB RAM, 200 Gbit/s network, and up to 100 Gbit/s EBS bandwidth.
+The gp3 capacity rate is \$0.96/GiB-year~\cite{awsnetwork,awsebs,awsprice}.
+
+Applying network-efficiency, distribution, and utilization factors gives
+\begin{equation}
+ c_{\rm NIC}=\frac{200\cdot10^9}{8}(0.65)(0.70)(0.70)
+            =7.9625\cdot10^9\ \text{bytes/s per direction}.
+\end{equation}
+Full-duplex NIC capacity is enforced at both roles:
+\begin{equation}
+ n_{\rm role}=\ceil{\frac{Q\max(C_{G\to E},C_{E\to G})}{c_{\rm NIC}}},
+ \qquad D_{\rm EC2}=2n_{\rm role}(8760)(7.2576).
+\end{equation}
+Both servers' worker fleets are in one availability zone; the model assigns
+no marginal cross-AZ transfer charge in this placement. Intra-party data
+distribution is not free in an implementation and is not explicitly routed
+by this aggregate NIC calculation.
+
+For storage, annual capacity cost is
+$0.96\,S_{\rm bytes}/2^{30}$. The inherited I/O scenario uses 64 KiB aggregated
+operations, provisioned with $0.65\cdot0.70$ throughput headroom, gp3 limits
+of 2,000 MiB/s and 80,000 IOPS per volume, and at least four IOPS per provisioned
+MiB/s. It prices extra throughput at \$0.48/(MiB/s)-year and extra IOPS at
+\$0.06/IOPS-year after each volume's included 125 MiB/s and 3,000 IOPS.
+This is a specified provisioning scenario, not a minimal price or a disk
+latency guarantee. The model also checks volume attachments and EBS host
+capacity, taking a maximum with the NIC fleet rather than double-counting
+the same host.
+
+\input{interactive_shuffle_deployment.tex}
+
+\section{Throughput, interaction, and unresolved costs}
+\label{sec:limits}
+Ordinary Yao evaluation needs no network round trip per AND layer. However,
+old-path discovery, the two online private permutations, opening tags, and
+re-entering shared state create real dependencies. The number of recursive
+trees is only the count of dependent \emph{path-disclosure} barriers, not
+the protocol's total interaction rounds. The two tables can proceed in
+parallel; a concrete implementation must schedule the additional interfaces
+and account for their RTTs.
+
+Let $\tau_B$ be the measured time until one independently evolving ORAM
+state can service its next batch, including preprocessing availability,
+evaluation, updates, and synchronization. With $K$ independent states and
+target utilization $u=0.70$, a necessary capacity condition is
+\begin{equation}
+ Q\le\frac{uKB}{\tau_B},\qquad
+ K\ge\ceil{\frac{Q\tau_B}{uB}}.
+\end{equation}
+At $B=32$ and $Q=10{,}000$, one state requires $\tau_B\le2.24$ ms.
+Mean batch-fill delay is approximately $(B-1)/(2Q)=1.55$ ms under regular
+aggregate arrivals. Neither bound is established by buying enough network
+nodes. A large distributed fleet does not automatically parallelize a
+single dependent state transition.
+
+Independent replicas multiply state capacity and initialization work.
+They need independent hidden ORAM layouts; replicating the underlying
+read-only dictionary does not authorize reusing correlated randomness or
+garbled tables. Application writes would additionally require consistency
+across replicas. The one-state annual figures must be revised if measured
+$\tau_B$ requires additional states.
+
+\paragraph{CPU accounting.}
+An ordinary-AND rate can provide a workload sensitivity, but it does not
+account automatically for OT extension, Waksman routing, PRG expansion,
+label-to-share conversions, FreeXOR memory traffic, or distributed workers.
+The report's rate sensitivities price known ordinary-gate work only; the
+extra kernels still require benchmarking. Offline communication and CPU
+must sustain the same long-run query rate as online evaluation.
+
+\paragraph{What remains to be established.}
+The match--tag--shuffle argument is conditional on the underlying OT,
+garbling, and shuffle security, and on the unique-live-copy and duplicate
+handling invariants. It is not a stand-alone proof for an implemented
+Circuit OPRAM. Required next validations are: a full recursive-state
+implementation; overflow and cuckoo-stash bounds at the desired lifetime;
+an exact parallel eviction and packed-map-update circuit; hidden initial
+placement; fresh-correlation and label-lifetime management; end-to-end
+batch service time; and failure recovery. These are material limits of the
+estimate, not priced deployment features.
+
+\section{Reproduction and implementation checkpoints}
+The accompanying Python model adds a new calculation rather than changing
+the historical comparison files. From the repository root:
+\begin{quote}\small\ttfamily
+python -m mpc\_cost.interactive\_shuffle\_cost\\
+python -m unittest mpc\_cost.test\_interactive\_shuffle -v\\
+python -m mpc\_cost.render\_interactive\_shuffle\_report
+\end{quote}
+The JSON ledger is \path{mpc_cost/results/interactive_shuffle_comparison.json}.
+The source model is \path{mpc_cost/interactive_shuffle_cost.py}; its inherited
+kernel formulas are in \path{mpc_cost/two_party_batch.py}. The historical
+price inputs are in \path{mpc_cost/data/aws_garbled_prices_2026-10-13.json}.
+The PDF can be rebuilt from the self-contained delivered \LaTeX{} source by
+running \texttt{pdflatex} twice. The source requires only standard packages
+listed in its preamble and has an embedded bibliography.
+
+Functional checks should verify that tags always form the same fixed
+multiset, removal leaves exactly $P$ rows, dummies hide misses and duplicates,
+and clear/reinsert operations preserve one live record per UID. Arithmetic
+checks should independently reconcile each direction of traffic, all pool
+terms, the flat-map saving, the PRF count, storage, and NIC rounding. These
+checks validate the accounting and small functional kernels; they are not
+cryptographic benchmarks or a security proof.
+
+\begin{thebibliography}{99}\small
+\bibitem{chan2017} T.-H. Hubert Chan and Elaine Shi.
+\emph{Circuit OPRAM: Unifying Statistically and Computationally Secure ORAMs
+and OPRAMs}. IACR ePrint 2016/1084, revised 2020.
+\url{https://eprint.iacr.org/2016/1084}.
+\bibitem{cgp2020} Melissa Chase, Esha Ghosh, and Oxana Poburinnaya.
+\emph{Secret-Shared Shuffle}. ASIACRYPT 2020, ePrint 2019/1340.
+\url{https://eprint.iacr.org/2019/1340}.
+\bibitem{osn2021} Gayathri Garimella, Payman Mohassel, Mike Rosulek,
+Saeed Sadeghian, and Jaspal Singh. \emph{Private Set Operations from
+Oblivious Switching}. PKC 2021, ePrint 2021/243, Appendix A.3.
+\url{https://eprint.iacr.org/2021/243}.
+\bibitem{cop2025} Feng Han et al. \emph{Concretely Efficient Correlated
+Oblivious Permutation}. IACR ePrint 2025/449.
+\url{https://eprint.iacr.org/2025/449}.
+\bibitem{halfgates} Samee Zahur, Mike Rosulek, and David Evans.
+\emph{Two Halves Make a Whole: Reducing Data Transfer in Garbled Circuits
+Using Half Gates}. EUROCRYPT 2015.
+\url{https://www.cs.virginia.edu/~evans/pubs/ec2015/}.
+\bibitem{heath2024} David Heath. \emph{Efficient Arithmetic in Garbled
+Circuits}. EUROCRYPT 2024, ePrint 2024/139, Sections 4--5.
+\url{https://eprint.iacr.org/2024/139}.
+\bibitem{heath2021} David Heath and Vladimir Kolesnikov.
+\emph{One Hot Garbling}. CCS 2021, ePrint 2022/798, Sections 4--5.
+\url{https://eprint.iacr.org/2022/798}.
+\bibitem{aesfips} NIST. \emph{Advanced Encryption Standard (AES)}.
+FIPS 197, updated 2023. \url{https://doi.org/10.6028/NIST.FIPS.197-upd1}.
+\bibitem{cmac} NIST. \emph{Recommendation for Block Cipher Modes of
+Operation: The CMAC Mode for Authentication}. SP 800-38B, updated 2016.
+\url{https://doi.org/10.6028/NIST.SP.800-38B}.
+\bibitem{nistcircuits} NIST. \emph{Circuit Complexity: List of Circuits}.
+Accessed 16 October 2026. The primary budget uses the classic 32-AND AES
+S-box, not the newer 28-AND variants.
+\url{https://csrc.nist.gov/projects/circuit-complexity/list-of-circuits}.
+\bibitem{awsnetwork} AWS. \emph{Amazon EC2 C6i/C6in Instances};
+\emph{EC2 Instance Network Bandwidth}.
+\url{https://aws.amazon.com/ec2/instance-types/c6i/};
+\url{https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ec2-instance-network-bandwidth.html}.
+\bibitem{awsebs} AWS. \emph{Amazon EBS Pricing}; \emph{General Purpose SSD
+Volumes}. \url{https://aws.amazon.com/ebs/pricing/};
+\url{https://docs.aws.amazon.com/ebs/latest/userguide/general-purpose.html}.
+\bibitem{awsprice} AWS. \emph{AmazonEC2 US East (N.~Virginia) Price List},
+version 20261012193925, published 12 October 2026; locally retained snapshot.
+\url{https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/20261012193925/us-east-1/index.csv}.
+\end{thebibliography}
+\end{document}

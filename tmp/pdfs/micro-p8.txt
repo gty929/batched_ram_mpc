@@ -1,0 +1,171 @@
+Preparation
+Partition by range: depth first, by t2, then t1
+Merge
+single memory pass
+equal keys meet here
+tier
+older table
+***
+**0
+***
+**1
+***
+**0
+***
+**1
+***
+**0
+***
+**1
+empty
+*00
+000
+000
+*01
+001
+001
+*10
+010
+010
+*11
+011
+011
+*00
+100
+100
+*01
+101
+101
+*10
+110
+110
+*11
+111
+111
+Stage 0
+split by t0
+Stage 1
+split by t1
+Stage 2
+split by t2
+tier
+stash 0
+stash 1
+stash 2
+0**
+0**
+1**
+1**
+00*
+01*
+10*
+11*
+overflow
+**0
+**1
+carry
+tier
+carry’s tier
+tier
+final residual tier
+Hash table
+Figure 4: A merge adds a two-bucket carry to a six-bucket older table. Each small box is one 64-slot bucket. Labels give
+fixed routing-tag bits, with ∗marking an unfixed bit. Intermediate buckets are lighter, and shaded merge-splits can overflow.
+Preparation routes only the older table, collecting overflow in a separate stash per stage. The partitioning tree divides the
+older table’s tier and these stashes into range buckets. At each output bucket, a single sweep offers the pre-routed carry, range
+residuals, and the carry’s tier in that order. Unplaced records form the final residual tier.
+data [11], [12], [13] (Table 1). We cannot simply reserve less,
+because a level without a free region for its next merge makes
+the carries from below wait, and the wait propagates down to
+the online stash and stalls foreground accesses.
+Storage layout. In our design, a level below the top can
+hold three tables at once. Its previous outgoing table stays
+queryable until the next level absorbs it, and its partial table
+stays queryable while pre-routing builds the replacement in
+separate storage. Three full-size regions are not necessary,
+however, because a partial table holds at most B −1 carries.
+Each level therefore reserves two regions of BUℓbuckets
+and one region of (B −1)Uℓbuckets (Figure 5). The partial
+table and its replacement alternate between the smaller region
+and one full-size region, timed so that the last merge of the
+cycle writes into the full-size region. The full table is then
+already where the next outgoing table belongs, so it needs
+no relocation copy. Once the next level retires the previous
+outgoing table P, its region pairs with the smaller one for the
+next cycle.
+Storage at the top. The top matters most for storage, because
+it holds a fraction (B −1)/B of the capacity: half at B = 2
+and seven eighths at B = 8. Its published table must stay
+queryable while the replacement is built, so the top needs
+at least two regions of T buckets. MICRORAMA needs no
+more, because the butterfly network rebuilds a table in place:
+preparation routes the published table into the second region,
+and the sweep then inserts the carry there.
+Storage bound. The three regions of a non-top level hold
+3 −1/B times its full table, and the two regions of the top
+hold twice its table. With half-full hash tables, MICRORAMA
+with B = 2, 4, and 8 therefore uses about 9×, 5.8×, and
+4.8× the space of the raw data, respectively. These numbers
+ignore metadata. We compare this cost with prior schemes in
+Level ℓstorage, B = 4
+time
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+Initial
+Receive and publish A1
+Receive A2
+Publish A1 ∪A2
+Receive A3
+Publish A1 ∪A2 ∪A3
+Receive A4
+Publish full table
+P retired; roles switch
+P
+A1
+A1
+P
+A1 ∪A2
+A1
+P
+A1 ∪A2
+A1 ∪A2
+P
+A1 ∪A2
+A1 ∪A2 ∪A3
+P
+A1 ∪A2 ∪A3
+A1 ∪A2 ∪A3
+P
+A1 ∪A2 ∪A3 ∪A4 A1 ∪A2 ∪A3
+P
+A1 ∪A2 ∪A3 ∪A4
+P
+A1 ∪A2 ∪A3 ∪A4
+Published
+(being absorbed)
+Published
+(fresher version)
+Under construction
+(pre-routing)
+Under construction
+(absorbing)
+Figure 5: Logical storage of a non-top level ℓwith B = 4,
+with time running down the rows. Each unit holds Uℓ
+buckets, and the three regions hold 4Uℓ, 3Uℓ, and 4Uℓ
+buckets, or 11Uℓin total. Carries A1, . . . , A4 arrive in order,
+and a union denotes a merge that keeps the newest copy of
+each key. Green tables and the older blue table P stay
+queryable while the dashed outputs are built. A gray region
+is reused only after the readers of its previous table finish.
+Section 3.5.
+8

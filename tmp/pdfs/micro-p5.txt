@@ -1,0 +1,121 @@
+permutation indices and register masks, so they stay hidden
+as long as the instructions that use them are constant-time,
+that is, take time independent of their operands [35]. Intel
+guarantees this for the loads, stores, byte comparisons, and
+mask-register operations that our kernels use, on Ice Lake
+and later processors only when the data operand independent
+timing mode is enabled [36], [37]. Its list omits several
+instructions that our kernels apply to secret data, including the
+byte permutation, compress, and expand instructions that route
+records. We assume that these instructions are constant-time,
+and we test the assumption on both of our evaluation machines
+(Section 5.1). For every instruction that our kernels apply to
+secret data, the test times blocks of executions under several
+classes of secret operands in random order and compares each
+class with a random reference class. Every instruction passes
+on the Intel machine, both inside and outside its TDX trust
+domain: no class differs from the reference by more than
+0.0033 cycles per instruction, whereas a one-cycle difference
+in a control instruction is detected. The test also passes on the
+AMD machine inside its SEV-SNP guest. [Tianyao: Still open:
+state the number of variants tested on Zen 5 and its bound,
+and confirm that the VP2INTERSECT variants are among
+them; state whether DOITM was enabled on C4 (TDX hides
+the microcode version). PDEP is microcoded on Zen+ and
+Zen 2 [38], so state that those processors are out of scope or
+avoid PDEP there.]
+Comparison with prior work. Let n be the number of
+records, w the bytes per record, and m the number of 64-
+slot buckets, with n = Θ(m) at fixed nominal load. Counting
+logical byte-processing work, the main butterfly network per-
+forms Θ(mw) work per routing stage and has log2 m stages,
+for Θ(nw log n) work. A bitonic network with full-record
+compare-exchanges processes Θ(nw log2 n) bytes across its
+compare-exchange layers [17]. These counts cover the main
+networks, not total rebuild work or transfers from main mem-
+ory. Within them, the logarithmic-factor difference comes
+from routing records to hash buckets, and fixed-width AVX-
+512 byte slicing further reduces the cost within each stage.
+[Tianyao: TODO: Bound index planning, duplicate handling,
+and residual collection/recovery under the final parameters
+before extending this comparison to complete rebuilds. State
+the machine model and failure assumptions explicitly.] In our
+evaluation, the network builds a hash table of 220 records on
+one core in 10.6 ms with 8-byte values, whereas H2O2RAM’s
+bitonic sort takes 2.5 s. The build measurements appear in the
+online full version. [Tianyao: The measured network excludes
+duplicate removal and the sweep that recovers residuals; time
+a complete merge before calling this an end-to-end rebuild
+speedup.]
+2.3. Deamortization-friendly Hierarchical ORAM
+We now build a hierarchical ORAM whose rebuilds route
+records with byte-sliced merge-splits. Moreover, we design it
+to make deamortization easier, namely, to let rebuilds run in
+the background while requests continue (Section 3).
+Read-only hash tables. An access that finds a key in a table
+writes the possibly updated record to the online stash, so the
+table still holds an older copy of the key. Some schemes mark
+this older copy as erased, so that the next rebuild discards
+it [10], [23], [26], [27], [30], [39]. Others leave the copy in
+place [5], [11], [12], [24], where the newer copy shadows it:
+later accesses find the newer copy first and send only dummy
+probes to the older copy’s table.
+Marking complicates background rebuilding. A rebuild
+reads its input tables while accesses continue, so every mark
+made during the rebuild would have to be logged and replayed
+on the rebuilt table. We therefore leave older copies in place,
+so accesses write only to the online stash, and a hash table
+never changes after it is built. A rebuild then reads a fixed
+snapshot of its inputs, and accesses and rebuilds never write
+to the same memory.
+Leaving older copies in place also makes writes cheap.
+Because the newer copy shadows the older one, a write or
+an erasure need not locate the older copy, so MICRORAMA
+appends the new record to the online stash without probing the
+hash tables, which makes these requests faster than lookups.
+For an erasure, the appended record is a tombstone, whose
+metadata marks the key absent. Skipping the probes, however,
+reveals that a request is a write. An application that must hide
+whether a request reads, writes, or erases can therefore issue
+every request through one access, which probes the tables,
+returns the key’s current value, and then appends the record
+that the request asks for. [Tianyao: Report the latency of a
+write without probes against a lookup once the library exposes
+it.]
+Shadowing also hides repeated lookups of an absent key.
+Such a lookup finds no record to write back. H2O2RAM then
+appends an unkeyed dummy record, so a repeated lookup of
+the key probes the same buckets again and reveals the repe-
+tition [25]. Following earlier work [23], [24], MICRORAMA
+instead appends a tombstone, exactly as an erasure does. A
+later access for the key then finds the tombstone first, so the
+tables already probed for the key receive only dummy probes.
+The top level eventually discards tombstones (Appendix A).
+Incremental merges. When the online stash fills, its records
+may move up several levels at once. H2O2RAM and
+MegaBlocks rebuild all of these levels in one step, building a
+single table from the stash and the tables of the levels [10],
+[22]. We instead view this rebuild as a cascade of merges of
+two tables at a time: the stash with the smallest hash table, the
+result with the next table, and so on. We call each completed
+table that a level passes to the next level a carry. Unlike a
+rebuild in one step, a cascade produces a usable table after
+every merge. Skipping ahead, Section 3 uses this to run the
+merges in the background: accesses continue on the tables
+built so far, so they do not stall while a large table is rebuilt.
+Every merge of a cascade routes records by the hash of
+the cascade’s final table, so the merges together form one
+butterfly network over the final table’s buckets (Figure 3).
+Comparing to a one-step rebuild, our incremental merges
+essentially perform the same work, only in a different order.
+The earlier merges have already routed the carry, so a merge’s
+preparation routes only its level’s table, the older table, and
+the merge’s last stage then combines the two tables.
+Duplicate keys. Merging two tables at a time also makes
+deduplication easy to analyze. Each input table holds at most
+one copy of a key, so a merge need only keep the newer
+copy when a key occurs in both. Goldreich and Ostrovsky
+remove such duplicates by sorting [5]. Our merges avoid this
+sort: because a record’s routing tag is a hash of its key, both
+copies reach the same merge-split in the last stage of their
+5

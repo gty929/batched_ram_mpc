@@ -1,0 +1,118 @@
+assumption is natural when the client is physically separate
+from the server, but it does not hold in a doubly-oblivious
+TEE implementation, where the client memory resides in the
+enclave and accesses to it must themselves be oblivious.
+H2O2RAM. H2O2RAM [10] shows that hierarchical ORAM
+can nevertheless be practical inside a TEE. Instead of directly
+implementing the theoretical primitives, H2O2RAM designs
+several concrete oblivious hash tables and selects among them
+according to the table size and expected number of accesses.
+It reports up to 103× faster map operations than the tree-based
+EnigMap [8].
+Deamortized hierarchical ORAM. Deamortization of hier-
+archical ORAM predates modern practical constructions. Ta-
+ble 1 compares the storage, rebuild speed, and lookup cost of
+Ostrovsky and Shoup’s schedule [11] and later schemes [12],
+[13] with ours.
+MegaBlocks. MegaBlocks [22] uses a large branching fac-
+tor to achieve sublogarithmic I/O overhead when external-
+memory transfers contain many logical words. It trades addi-
+tional bulk rebuilding for fewer random lookup transfers. We
+use the same tradeoff in memory, where vectorized rebuilds
+are cheap (Section 2.4).
+Tree-based ORAM and OMAP. Path ORAM [14] and
+Ring ORAM [16] are practical tree-based designs. Enclave
+systems such as Oblix [7], GraphOS [31], and EnigMap [8]
+provide doubly oblivious access on tree-based constructions.
+SONIC [32] builds on Ring ORAM and improves throughput
+through concurrent accesses and parallel eviction.
+While tree-based ORAM directly supports dense integer
+addresses, handling sparse keys efficiently requires an ad-
+ditional mapping. Oblix and EnigMap support sparse keys
+through self-balancing search trees over ORAM [7], [8], at
+the cost of key traversal and balance maintenance. [Tianyao:
+TODO: Verify the asymptotic comparison with ORAM under
+matched block-size, client-memory, and cost metrics; quantify
+traversal and balancing costs before claiming a substantial
+practical penalty.]
+2. Accelerating Hierarchical ORAM with Vector
+Instructions
+2.1. Background
+Hierarchical ORAM. Our construction follows Goldreich
+and Ostrovsky’s hierarchical ORAM [5], [9]. Its smallest level
+is a dense array, the online stash, which every access scans
+in full. Larger levels have exponentially increasing capacities
+and store records in bucket hash tables. A secret hash function
+assigns each key to one bucket of a table.
+An access searches the levels from smallest to largest,
+scanning the requested key’s bucket in each larger level. Once
+a level returns the record, every later level receives a dummy
+probe of a random bucket, and the access writes the possibly
+updated record into the online stash. For a key found in a
+table, later accesses find this newer copy first, so that table
+receives no further real lookup for the key between rebuilds,
+hiding whether the key is accessed again [5], [10].
+Records written to the online stash eventually fill it,
+so scheduled rebuilds merge records into larger levels. The
+schedule depends only on the number of accesses, and each
+level is rebuilt with a frequency inversely proportional to
+its capacity. A rebuild must place each record in the bucket
+selected by the destination table’s hash function without re-
+vealing that bucket. Goldreich and Ostrovsky’s construction
+and H2O2RAM [10] perform this placement with oblivious
+sorting. Sorting by bucket alone does not give every bucket the
+same size, so the rebuild also pads each bucket with dummy
+records before the sort and removes the surplus dummies
+afterward. H2O2RAM’s implementation performs both the
+sort and the removal with bitonic sorts [17], [25].
+Butterfly networks and merge-split. We instead rebuild the
+table by routing each record to its hash bucket through a
+butterfly network. Because a lookup scans only that bucket,
+the network’s output is the table itself, and no sort needs to
+follow it.
+A butterfly network routes records into m = 2h buckets
+that each hold up to Z records.1 Each record carries a secret
+routing tag, and the low h bits of the tag name its destination
+bucket. To build a hash table, the tag is the new table’s
+secret hash of the record’s key. Each bucket starts about
+half full, and dummies fill its remaining slots. The network’s
+basic operation, merge-split, reads two buckets and writes the
+records whose tag bit for the current stage is zero to the first
+output bucket and the others to the second. A merge-split
+overflows if more than Z records go to one output.
+The network visits the same bucket pairs regardless of the
+tags. Stage b pairs bucket i with bucket i + 2b whenever bit b
+of i is zero, and splits the pair by tag bit b. After stage b,
+the low b + 1 bits of each record’s bucket index therefore
+match its tag. After h stages, every record is in its destination
+bucket. The sequence of bucket pairs depends only on m, so
+the memory trace reveals nothing as long as each merge-split
+is itself oblivious.
+Butterfly networks underlie several oblivious sorting algo-
+rithms [18], [19], [33], but their concrete speedup over bitonic
+sort remains limited, especially for small entries. One reason
+is the bucket size. The probability that a bucket overflows
+decreases exponentially in Z, so at a fixed load, a negligible
+failure probability requires large buckets. Prior butterfly-based
+sorts use buckets of at least Z = 512 records [18], [33]. A
+merge-split cannot write a record directly to its output slot,
+because the location of the write would reveal the record’s
+tag. It instead passes the records of its input buckets through
+a compaction or sorting network of depth at least log Z. These
+merge-splits therefore make many passes over the data to
+resolve each tag bit. A hash-table rebuild that used them would
+inherit the same cost.
+AVX-512 instructions. AVX-512 is an extension of the x86
+instruction set, supported by current Intel and AMD server
+processors, whose instructions operate on 512-bit vector reg-
+isters. One instruction applies the same operation to every part
+of a register, for example adding eight pairs of 64-bit integers
+at once. Prior ORAMs for TEEs have used AVX-512 to speed
+up the conditional copies and swaps of records [8], [25], [32]:
+one instruction moves up to 64 bytes of a record, against 8
+bytes for a scalar instruction.
+1. In general, the network’s buckets need not be the hash table’s buckets. A
+rebuild could, for example, route records into larger buckets and then divide
+each of them into several smaller hash-table buckets. In this work, however,
+we simplify the scheme by setting both kinds of buckets to the same size.
+3

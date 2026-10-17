@@ -1,0 +1,38 @@
+\contentsline {section}{\numberline {1}Scope, result, and assumptions}{3}{section.1}%
+\contentsline {section}{\numberline {2}Hierarchy, records, and the binary rebuild schedule}{3}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Mutable tables and unique occupied copies}{3}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}One hash-table base and one batch deduplication}{4}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Direct binary-counter rebuilds}{4}{subsection.2.3}%
+\contentsline {section}{\numberline {3}PRFs and the mixed representation}{4}{section.3}%
+\contentsline {subsection}{\numberline {3.1}All addresses come from secret PRFs}{4}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Boolean metadata and packed value carriers}{5}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}A 160-byte secret word operation}{5}{subsection.3.3}%
+\contentsline {section}{\numberline {4}A complete rebuild with local refinement}{6}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Source compaction includes old stashes}{6}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}The 512-slot butterfly}{6}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Select exact leaf excess using only metadata}{6}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}One local residual stash and recursive ORCompact}{7}{subsection.4.4}%
+\contentsline {subsection}{\numberline {4.5}Merge all parent residuals}{7}{subsection.4.5}%
+\contentsline {section}{\numberline {5}Lookup, deletion, and batch parallelism}{7}{section.5}%
+\contentsline {section}{\numberline {6}Overflow and fingerprint error budgets}{8}{section.6}%
+\contentsline {subsection}{\numberline {6.1}512-slot routing buckets}{8}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}A 64-slot local residual buffer}{8}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}The merged table stash}{9}{subsection.6.3}%
+\contentsline {subsection}{\numberline {6.4}Finite fingerprints and implementation qualification}{9}{subsection.6.4}%
+\contentsline {section}{\numberline {7}Circuit and communication accounting}{10}{section.7}%
+\contentsline {subsection}{\numberline {7.1}ORCompact and exact-padding planners}{10}{subsection.7.1}%
+\contentsline {subsection}{\numberline {7.2}Local refinement costs}{10}{subsection.7.2}%
+\contentsline {subsection}{\numberline {7.3}Read and frontend ledger}{11}{subsection.7.3}%
+\contentsline {section}{\numberline {8}Numerical results and sensitivities}{11}{section.8}%
+\contentsline {subsection}{\numberline {8.1}Primary traffic comparison}{11}{subsection.8.1}%
+\contentsline {subsection}{\numberline {8.2}Rebuild decomposition}{12}{subsection.8.2}%
+\contentsline {subsection}{\numberline {8.3}Batch-size sensitivity}{12}{subsection.8.3}%
+\contentsline {subsection}{\numberline {8.4}Packed operation sensitivity}{13}{subsection.8.4}%
+\contentsline {section}{\numberline {9}Space, parallel work, and latency}{13}{section.9}%
+\contentsline {subsection}{\numberline {9.1}Persistent state and rebuilding workspace}{13}{subsection.9.1}%
+\contentsline {subsection}{\numberline {9.2}Mixed-protocol depth}{13}{subsection.9.2}%
+\contentsline {subsection}{\numberline {9.3}Replicas and throughput}{14}{subsection.9.3}%
+\contentsline {subsection}{\numberline {9.4}An optional parent-local persistent stash}{14}{subsection.9.4}%
+\contentsline {section}{\numberline {10}Validation, remaining work, and recommendation}{14}{section.10}%
+\contentsline {section}{\numberline {A}Planner derivation and finite counts}{15}{appendix.A}%
+\contentsline {section}{\numberline {B}Reproduction and source provenance}{15}{appendix.B}%

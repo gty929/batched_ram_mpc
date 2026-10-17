@@ -1,0 +1,780 @@
+\documentclass[11pt]{article}
+\usepackage[letterpaper,margin=0.85in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern,microtype,amsmath,amssymb,booktabs,tabularx,array,longtable}
+\usepackage{xcolor,enumitem,fancyhdr}
+\usepackage[hyphens]{url}
+\usepackage{hyperref}
+\definecolor{navy}{HTML}{17324D}
+\definecolor{teal}{HTML}{176B73}
+\hypersetup{colorlinks=true,linkcolor=navy,citecolor=teal,urlcolor=teal,
+ pdftitle={Binary Hierarchical ORAM for Interactive Two-Party Computation},
+ pdfauthor={Technical design and cost study}}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{5pt}
+\setlength{\emergencystretch}{2em}
+\setlength{\headheight}{14pt}
+\setlist{nosep,leftmargin=1.6em}
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\small\textcolor{navy}{Hierarchical ORAM for 2PC}}
+\fancyhead[R]{\small Construction and cost analysis}
+\fancyfoot[C]{\thepage}
+\newcommand{\xor}{\mathbin{\oplus}}
+\newcommand{\AND}{\mathbin{\wedge}}
+\newcommand{\ORC}{\operatorname{ORCompact}}
+\newcommand{\PRF}{\operatorname{PRF}}
+\newcommand{\occ}{\operatorname{occ}}
+\newcommand{\pres}{\operatorname{present}}
+\newcommand{\ceil}[1]{\left\lceil #1\right\rceil}
+\newcommand{\floor}[1]{\left\lfloor #1\right\rfloor}
+\newcommand{\todo}[1]{\par\textbf{TODO.} #1\par}
+\begin{document}
+{\color{teal}\large TECHNICAL REPORT\par}
+{\color{navy}\LARGE\bfseries Binary Hierarchical ORAM\\for Interactive Two-Party Computation\par}
+\vspace{5pt}
+\textbf{Large routing buckets, small lookup buckets, and packed payloads}\par
+17 October 2026 \quad $\cdot$ \quad Semi-honest two-server setting
+\vspace{6pt}
+
+\begin{abstract}
+We adapt the hierarchical design of Microrama to streamed, interactive
+two-party computation. A read invalidates its old copy and reinserts one
+batch representative, eliminating key deduplication during rebuilding.
+The hierarchy is binary, its base is a hash table, and no recursive position
+map or deamortized schedule is required. Secret PRFs compress application
+keys to 128 bits and generate all table addresses.
+
+Rebuilding first routes records through 512-slot buckets, then refines each
+bucket into 64- or 128-slot lookup buckets using recursive ORCompact.
+A metadata-only planner identifies exact final-bucket excess before entries
+move. One 64-slot residual buffer per parent collects this excess; a further
+ORCompact merges all parent buffers into a fixed table stash. Every read
+searches its selected small bucket and that stash. We include the cost of
+re-admitting the stash at the next rebuild.
+
+With a batch of 1024, 64-slot lookup buckets use approximately 21.4 and
+28.5 MB per lookup at $N=2^{28}$ and $2^{32}$, including rebuilding, reads,
+initial PRF evaluation, duplicate handling, and packed-payload movement.
+Rebuilding accounts for about 11.1 and 15.0 MB and is now the larger component.
+The current Circuit OPRAM planning ledger uses 226.5 and 286.9 MB.
+These are communication estimates for specified kernels, not measured
+throughput. Payloads use a concrete XOR-share/word-OT backend; base-OT setup,
+CPU, initialization, replication, and implementation validation remain separate.
+\end{abstract}
+%%SUMMARY%%
+All traffic tables use decimal MB and omit packet framing unless stated.
+The probability analysis assumes ideal fresh PRFs and treats 128-bit
+fingerprint collisions separately. Its numerical evaluations are not
+interval-certified proofs.
+
+\clearpage
+{\small\setlength{\parskip}{0pt}\tableofcontents}
+\clearpage
+
+\section{Scope, result, and assumptions}
+This report specifies a private dictionary for fixed-length 32-byte keys and
+32-byte values. Garbler $G$ and evaluator $E$ are noncolluding servers; a
+static semi-honest adversary corrupts at most one of them. A query arrives as
+two XOR shares of its application key. The answer and its presence bit remain
+shared. Database contents are similarly shared or encoded during initialization.
+The main workload is a fixed dictionary with application reads; each read
+still mutates the ORAM representation. The reference service rate is
+10,000 lookups/s, but no particular deployment is assumed to achieve it.
+
+Our principal conclusion is a communication feasibility result. Refining
+large routing buckets removes much of the earlier read-scan overhead while
+adding modest amortized work to rebuilding. A 64-slot leaf performs best
+in the evaluated average-traffic cases. A 128-slot leaf has a much smaller
+largest-table stash, which can matter for latency and large-table contention.
+The comparison is against the current Circuit-OPRAM-inspired compilation
+ledger, not a lower bound for all Circuit OPRAM implementations.
+
+\begin{center}\small
+\begin{tabularx}{\linewidth}{lX}\toprule
+Symbol & Meaning\\\midrule
+$N$ & Dictionary capacity, $2^{28}$ or $2^{32}$ genuine records\\
+$b$ & Request batch size; primary choice 1024\\
+$n_i=b2^i$ & Logical capacity of lower level $i$\\
+$L=\log_2(N/b)$ & Number of lower levels; permanent top has capacity $N$\\
+$Z=512$ & Routing-bucket capacity; nominal mean occupancy 256\\
+$z\in\{64,128\}$ & Lookup-bucket capacity; nominal mean occupancy $z/2$\\
+$d=\log_2(Z/z)$ & Additional PRF bits for the local refinement\\
+$s=64$ & Temporary residual capacity per 512-slot parent\\
+$G_z(n)$ & Fixed capacity of the merged residual stash of an $n$-record table\\
+$Q=2^{32}$ & Access horizon used for capacity calculations\\
+$c_V=160$ & Bytes per secret swap or product of a complete 256-bit payload\\
+\bottomrule\end{tabularx}
+\end{center}
+
+Public information includes capacities, batch size, level occupancy,
+rebuild times, selected physical bucket indices, and message sizes. Keys,
+record occupancy, absence markers, hit locations, routing controls, and
+residual counts remain private. All operations have fixed public capacity.
+Failure events are explicitly bounded; an implementation must handle an
+overflow without silently discarding a valid entry.
+
+\section{Hierarchy, records, and the binary rebuild schedule}
+\subsection{Mutable tables and unique occupied copies}
+Lower levels have capacities $b,2b,\ldots,N/2$, with a permanent top of
+capacity $N$. A table of logical capacity $n$ has $2n$ main slots. After
+refinement these slots form $2n/z$ lookup buckets. A separate $G_z(n)$-slot
+stash holds excess records. Unlike Microrama's read-only tables, access
+clears an old occupied bit before reinsertion~\cite{microrama}.
+
+An entry consists of a 128-bit canonical fingerprint, two Boolean flags,
+and a packed 256-bit value. The flags are distinct:
+\begin{itemize}
+\item $\occ=0$ denotes a dummy or an invalidated old copy.
+\item $\occ=1,\pres=1$ denotes a present dictionary record.
+\item $\occ=1,\pres=0$ denotes a keyed cached absence, also called a tombstone.
+\end{itemize}
+The steady metadata width is therefore $R=130$ bits. Routing tags exist
+only during rebuilding. The construction maintains one occupied copy of
+each represented fingerprint across main buckets and stashes.
+
+On a hit, including a cached absence, clear the old occupied bit and carry
+the entry into the new batch. On a miss, create a keyed cached absence.
+Repeated misses must find that absence before returning to older table
+hashes. Inserting an unkeyed dummy on a miss would reveal repeated queries.
+Only the full top refresh can discard cached absences: it retires all old
+hashes and empties every lower level. Application deletion and concurrent
+writes require an additional functionality specification.
+
+\subsection{One hash-table base and one batch deduplication}
+The base is a hash table of logical capacity $b$, not a dense online stash.
+For $b=1024$ it initially has four 512-slot routing buckets and ends with
+32 buckets of 64 slots or 16 buckets of 128 slots, plus its residual stash.
+
+At batch entry, compute canonical fingerprints, bitonically sort them, and
+privately mark one representative per distinct key. Duplicate request slots
+remain in the fixed batch and issue dummy probes. Representatives alone
+are reinserted as occupied entries. At batch exit, a segmented propagation
+copies the representative's answer through its equal-key run, then saved
+sort controls restore original request order. None of these controls is
+opened. This is a one-time batch cost; there is no position-map recursion.
+
+\subsection{Direct binary-counter rebuilds}
+After a batch, rebuild directly into the smallest empty lower level, merging
+the new batch and every occupied smaller level. If all lower levels are full,
+refresh the top together with all lower levels. Intermediate carry tables
+need not be materialized. The schedule depends on batch count even when a
+batch has fewer than $b$ distinct keys.
+
+Over a full counter cycle, lower capacity $n_i$ is the destination once per
+$2n_i$ accesses; the top is rebuilt once per $N$ accesses. Consequently,
+\begin{equation}\label{eq:amort}
+ \overline C=\sum_{i=0}^{L-1}\frac{C(n_i)}{2n_i}
+                  +\frac{C_{\rm top}(N)}N.
+\end{equation}
+Each lower table is present half the time. The mean number of searched
+tables is $L/2+1$, while the maximum is $L+1$: 10/19 at $N=2^{28}$ and
+12/23 at $N=2^{32}$ for $b=1024$.
+
+Independent ORAM replicas can service requests while one replica rebuilds.
+This avoids requiring a deamortized construction, but does not remove
+amortized rebuilding work or the storage cost of replicas. Static application
+data allow replicas to evolve independently; application writes require a
+separate consistency protocol.
+
+\section{PRFs and the mixed representation}
+\subsection{All addresses come from secret PRFs}
+Compute the 16-byte canonical key using AES-CMAC under a jointly secret key.
+For a fixed 32-byte application key, this uses two AES encryptions. Use fresh
+independent secret contexts for each published table epoch's real and dummy
+addresses. A table's AES output supplies both its parent-bucket bits and
+the $d$ refinement bits. This is one PRF evaluation per retained rebuild
+slot, not one evaluation per routing stage. Dummy-slot evaluations are
+also charged to preserve the fixed circuit schedule.
+
+We use the NIST-listed 5120-AND AES encryption datapath and 1280-AND key
+schedule~\cite{nistcircuits}. Thus initial key compression costs 10,240
+ANDs per query. The shared CMAC subkey and expanded-key setup cost 6400
+ANDs once per initialized state. A fresh table's two key schedules are
+charged at 2560 ANDs, with two 128-bit shared key inputs. All Boolean
+ANDs cost 32 bytes in the half-gate ledger~\cite{halfgates}. XORs contribute
+CPU work but no garbled-table bytes.
+
+For a read, the ledger computes both a true address and a fresh dummy
+address, then privately selects between them. The dummy PRF input contains
+a unique epoch/request identifier. Neither party knows the unused dummy
+address in clear, preventing identification of the hit level by comparison.
+The next table's selected index is disclosed only after updating the hidden
+found flag. Requested bucket indices are visible; fingerprints and full
+routing tags remain secret.
+
+\subsection{Boolean metadata and packed value carriers}
+Metadata stays in ordinary Boolean GC representation. Each party retains
+16 bytes per encoded metadata bit. A 256-bit payload is represented as
+ordinary XOR shares $V=V_G\xor V_E$, each share occupying two 128-bit
+words. This is a precise packed-value interface; it is not an assertion
+that two ordinary Boolean wire labels encode a 256-bit value.
+
+Payloads stay in this representation throughout compaction, routing,
+selection, and result propagation. No share-to-GC re-input is needed for
+pure movement. A later application that computes on the returned value
+must pay for its selected representation boundary. Initialization must
+establish these payload shares; conversion from a different preexisting
+opaque encoding is not free.
+
+\subsection{A 160-byte secret word operation}
+Let the GC output control bit $c$ have zero-label color $c_G$ and active-label
+color $c_E$. With the standard Free-XOR offset satisfying
+$\operatorname{color}(\Delta)=1$, these give local XOR shares
+$c=c_G\xor c_E$, with no network
+conversion. For payload shares $x_P,y_P$, define $d_P=x_P\xor y_P$.
+Use the two word OTs below with fresh independent random 256-bit masks:
+\begin{align*}
+ G\longrightarrow E &: (r_G,\ r_G\xor d_G),\quad\text{choice }c_E,
+                   \quad\text{received }u_E;\\
+ E\longrightarrow G &: (r_E,\ r_E\xor d_E),\quad\text{choice }c_G,
+                   \quad\text{received }u_G.
+\end{align*}
+Set
+\begin{align*}
+ t_G&=c_Gd_G\xor r_G\xor u_G,&
+ t_E&=c_Ed_E\xor r_E\xor u_E,\\
+ x'_P&=x_P\xor t_P,& y'_P&=y_P\xor t_P.
+\end{align*}
+Then $t_G\xor t_E=c(x\xor y)$, so the outputs are a conditional swap.
+Replacing $d$ by a single word gives a secret bit-times-word product,
+used for one-hot read extraction.
+
+With chosen-message OT extension, each directed OT budgets two 32-byte
+ciphertexts and 16 bytes of extension matrix communication at security
+parameter 128: 80 bytes per direction, 160 bytes total~\cite{iknp}.
+Base OTs are amortized separately. The two directions have independent
+extension instances and domain-separated pad hashes. Fresh masks hide each
+output share. The circuit controls remain shared, and no routing schedule
+is opened. This explicit semi-honest construction requires implementation
+validation; malicious security would require additional checks.
+
+\section{A complete rebuild with local refinement}\label{sec:rebuild}
+\subsection{Source compaction includes old stashes}
+A lower rebuild into capacity $n$ initially has $2n$ \emph{main-array}
+source slots: all smaller main tables plus the new batch padded to $2b$.
+A top rebuild has $4N$ main-array source slots. Old global stashes add
+physical slots beyond these counts and cannot be ignored.
+
+We use two compactions. First compact the main arrays by occupied bits and
+keep the first $n$ slots. At the top, first clear $\occ$ for cached absences.
+There are at most $n$ occupied retained keys in all sources combined, so
+keeping this main-array prefix is safe. Append every source stash at fixed
+public offsets after slot $n$, clear absent records there at the top, and
+pad the combined array to $2n$. A second ORCompact keeps its first $n$
+slots. The sum of source stash capacities is at most $n$ in every evaluated
+configuration, and the model checks this assertion. The base has no old
+stash and needs only the first compaction.
+
+This extra pass avoids a hidden source-size increase or a free stash merge.
+All old tags can be discarded before these compactions. Next compute the
+new PRF tags for the $n$ retained slots and distribute these slots publicly
+into $2n/Z$ parents with $Z/2$ designated input positions each, padding
+the rest. Every initial parent has at most $Z/2$ occupied slots.
+
+\subsection{The 512-slot butterfly}
+Let $p=2n/Z=2^h$. A binary butterfly routes records by $h$ parent-index
+bits. It has $h$ stages, each containing $p/2$ independent merge-splits.
+Every merge-split acts on $2Z=1024$ slots. It marks real entries for the
+left output and enough dummies to make exactly $Z$ marks, then invokes
+ORCompact~\cite{orcompact}. This works unless a real side exceeds $Z$;
+Section~\ref{sec:failure} bounds that event.
+
+The $d$ extra leaf-index bits travel through this network too. They are
+not used to choose a 512-slot parent but are needed for local refinement.
+Dropping them and silently recomputing them would omit another PRF cost.
+After global routing, the parent-index bits can be discarded, leaving
+130 metadata bits plus $d$ suffix bits per entry.
+
+\subsection{Select exact leaf excess using only metadata}\label{sec:selection}
+A naive shrinking binary split can eject records at an intermediate node
+even when their final leaf has room. We instead determine final leaf excess
+first, using one-bit planners, and then recursively split a feasible array.
+For one 512-slot parent, let $g=512/z=2^d$ and let $X_j$ count occupied
+records whose suffix names leaf $j$.
+
+For every leaf $j$, perform the following fixed procedure:
+\begin{enumerate}
+\item Form $M_j[i]=\occ_i\AND[\mathrm{suffix}_i=j]$ for all 512 slots.
+\item Compute the ORCompact routing controls for $M_j$.
+\item Run those controls \emph{backwards} on the public one-bit vector
+      $1^z0^{512-z}$. This maps the first $z$ output positions back to
+      selected input positions.
+\item AND the inverse mask with $M_j$. This keeps exactly
+      $\min(X_j,z)$ marked entries of leaf $j$.
+\end{enumerate}
+If $X_j<z$, the inverse mask also contains unmarked slots; the last AND
+removes them. ORCompact is stable on marked entries, although any fixed
+private choice of $z$ entries would suffice. Invert the keep mask within
+$M_j$ to obtain that leaf's excess mask. These masks are disjoint across
+leaves, so their union is a free XOR. The final residual count is exactly
+\begin{equation}\label{eq:residual}
+ r=\sum_{j=0}^{g-1}(X_j-z)_+.
+\end{equation}
+Only one-bit arrays move during this selection step. Neither keys nor
+payloads are routed separately for each leaf.
+
+\subsection{One local residual stash and recursive ORCompact}
+ORCompact the complete 512-slot parent once using the residual mask. The
+first $r$ records are residuals. Copy the first 64 slots' data into a local
+stash at fixed public offsets, set its occupied bits to $[i<r]$, and set
+the main occupied bits to $\occ_i\AND\neg[i<r]$ for $0\le i<64$.
+Slots $r,\ldots,63$ keep their original occupied bits; the remaining main
+slots are also unchanged. The copies are unconditional and
+local; no conditional payload move is added. Preserve the presence bit in
+the stash. Check $r>64$ privately as an overflow condition.
+
+Every remaining leaf now has at most $z$ occupied records. Recursively
+partition the main 512 slots into two 256-slot arrays, then four 128-slot
+arrays, and, for $z=64$, eight 64-slot arrays. Each node uses the same
+exact-padding ORCompact split. No intermediate node can overflow: its
+occupied count is at most the sum of the capacities of its descendant
+leaves. Consumed suffix bits may be dropped after each stage.
+
+This construction uses \emph{one} shared local stash per original parent,
+not a stash per split node. Its capacity depends on final excess only.
+In the worst deterministic input, 512 keys can name one leaf and require
+$512-z$ residual slots. The choice of 64 is probabilistic and is justified
+over the access horizon below.
+
+\subsection{Merge all parent residuals}
+There are $p=2n/512$ parents. Concatenate their fixed 64-slot buffers and
+ORCompact the resulting
+\begin{equation}
+ p\cdot64=n/4
+\end{equation}
+slots by occupied bits. Keep the first $G_z(n)$ slots as the table's
+persistent global stash, preserving all 130 metadata bits and packed
+payload shares. Check whether more occupied entries remain. Because $n/4$
+is already a power of two, this collector needs no extra padding.
+The local buffers are temporary and can be reclaimed after publication.
+
+The table now consists of $2n/z$ small lookup buckets and one global stash.
+The total occupied count remains at most $n$. Entry uniqueness holds across
+both parts. No residual count, destination, or compaction control is revealed.
+
+\section{Lookup, deletion, and batch parallelism}
+For each occupied table, first select the request's true or dummy index
+using the hidden found flag. Reveal only that selected index. The evaluator
+requests a fresh circuit for the corresponding $z$-slot bucket and the
+table's fixed $G_z(n)$-slot stash. Both parties already know the table
+version and the public set of requested indices.
+
+Inside the circuit, compare the 128-bit fingerprint with every occupied
+candidate, gated by $\mathrm{active}=\mathrm{representative}\AND\neg\mathrm{found}$.
+A dummy physical probe therefore cannot delete an occupied record even
+if its stored key happens to match. A present
+record returns its value; a cached absence stops further real probes and
+returns absent. Compute all bit-times-payload products in parallel and
+XOR their output shares. No sequential chain of payload OTs is required
+for scanning a bucket or stash. Clear the occupied bit of each matched
+entry. Unique occupied copies and request deduplication make the matching
+requests disjoint.
+
+All requests to the same public bucket must use one combined circuit with
+aggregated deletion masks, or serial fresh circuits linked through the
+updated state. The global stash is shared by \emph{all} requests to that
+table, so its updates must likewise be combined. Independent circuits
+reading the same old stash version could restore records deleted by another
+request. The model retains $bG_z(n)$ stash comparisons per batch and does
+not assume this coordination removes them.
+
+Garbled tables, gate tweaks, and mutable output labels must be fresh for
+each invocation/version. On-demand garbling solves the scheduling problem
+of knowing which bucket circuits are needed. It does not authorize
+reusing a one-time garbled circuit on changing bucket contents.
+
+Queries and buckets within one table stage parallelize, as do the
+merge-splits within a rebuild stage. A single query's table probes retain
+a dependency: the next disclosed index depends on whether it has already
+found its key. Computing candidate PRFs ahead of time does not allow all
+real indices to be disclosed at once. This limitation is also present in
+Microrama's lookup description~\cite{microrama}.
+
+\section{Overflow and fingerprint error budgets}\label{sec:failure}
+\subsection{512-slot routing buckets}
+After balanced initial placement, an intermediate bucket receives a sum
+of fresh-PRF routing indicators with mean at most $Z/2$. Capping previous
+buckets only removes records, so a first-overflow argument compares with
+the uncapped network. Chernoff gives
+\begin{equation}
+ \Pr[X\ge Z]\le(e/4)^{Z/2}.
+\end{equation}
+At $Z=512$ this is at most $2^{-142.67}$ per bucket-stage. Multiply by
+the public number of bucket-stage tests over the horizon. For the primary
+cases the resulting bounds are below $2^{-111}$.
+
+\subsection{A 64-slot local residual buffer}
+For a parent with $g=512/z$ children, let $R=\sum_j(X_j-z)_+$. If $R>s$,
+some subset of $a$ overflowing leaves jointly contains at least
+$u_a=az+s+1$ records. Before conditioning on the parent load, its mean
+is at most $\mu_a=az/2$. A subset union bound gives
+\begin{equation}\label{eq:localtail}
+ \Pr[R>s,\ X_{\rm parent}\le512]
+ \le \sum_{\substack{1\le a\le g\\u_a\le512}}
+ \binom ga\exp\{-u_a\ln(u_a/\mu_a)+u_a-\mu_a\}.
+\end{equation}
+Terms with $u_a>512$ are impossible when the parent routing succeeds.
+This is not a claim conditioned on an adversarially fixed full parent;
+it is a joint event bound under the fresh hash distribution. Parent-routing
+failure is budgeted separately.
+
+The number of parent refinements over $Q$ accesses is
+\begin{equation}
+ H=\frac{Q(L+2)}{512}.
+\end{equation}
+Using $s=64$, Equation~\eqref{eq:localtail} and a union bound yield lifetime
+probabilities below $2^{-87}$ for 64-slot leaves and below $2^{-91}$ for
+128-slot leaves in both primary cases.
+
+\subsection{The merged table stash}
+For a table of capacity $n$, let $M=2n/z$ and $Y\sim\operatorname{Pois}(z/2)$.
+The exact moment generating function of a leaf's excess is
+\begin{align}
+ f_z(t)&=\mathbb E[e^{t(Y-z)_+}]\nonumber\\
+ &=\Pr[Y\le z]+e^{-tz+(z/2)(e^t-1)}
+        \Pr[\operatorname{Pois}((z/2)e^t)>z].\label{eq:mgf}
+\end{align}
+Under Poissonization the bucket occupancies are independent. Overflow is
+monotone in the total number of balls, and
+$\Pr[\operatorname{Pois}(n)\ge n]\ge1/2$ for integer $n$. Coupling with
+exactly $n$ balls therefore gives
+\begin{equation}\label{eq:globaltail}
+ \Pr[R_{\rm table}>G]
+ \le2\inf_{t>0}\exp[-t(G+1)]\,f_z(t)^M.
+\end{equation}
+Fewer occupied records only decrease the event. This argument does not
+assume independence between levels or rebuilds.
+
+There are $Q/b=2^{22}$ rebuilds at $b=1024$. Choose each $G_z(n)$ so that
+Equation~\eqref{eq:globaltail} is below $2^{-88}$, then round up to a
+multiple of eight. A union bound gives a global-stash lifetime budget
+below $2^{-66}$. The actual evaluated sums are smaller. The optimizer
+only chooses a positive Chernoff witness $t$; evaluating any such witness
+already gives a valid analytic bound.
+%%CAPACITIES%%
+
+At the top, the Poisson model predicts about 3.20/51.22 residual records
+for 64-slot leaves at $N=2^{28}/2^{32}$. For 128-slot leaves the corresponding
+expectations are approximately $5.1\cdot10^{-6}/8.2\cdot10^{-5}$. Expected
+size does not determine a safe capacity: rare large excesses still require
+a stash. In particular, omitting residual handling for 128-slot leaves
+does not meet the stated lifetime target.
+
+\subsection{Finite fingerprints and implementation qualification}
+The above are routing-capacity bounds under ideal PRFs and distinct
+fingerprints. With $D$ distinct application keys, 128-bit compression has
+the elementary collision bound $\binom D2/2^{128}$. For $N=2^{32}$ and
+another $2^{32}$ distinct queried keys, $D\le2^{33}$ gives a bound near
+$2^{-63}$. The routing bounds therefore do not establish a combined
+$2^{-64}$ failure guarantee for this maximum workload. A 128-bit label
+length also does not imply a 128-bit service-lifetime error guarantee.
+
+Fresh table keys are chosen after the source record set is fixed. This
+supports a conditional analysis for adaptive access histories; a complete
+reduction still needs to specify exposure of truncated outputs, the PRF
+instantiation, initialization, and the canonical-key collision event.
+\todo{If a strict total lifetime target is required, allocate its budget
+between fingerprint collisions, finite-PRF advantages, and capacity failures;
+consider a wider fingerprint or an explicit collision-resolution mechanism.}
+\todo{Certify the numerical Chernoff witnesses with interval arithmetic.
+The present calculation uses stable floating-point tail and log-MGF formulas
+and rounds capacities upward, but is not machine-checked analysis.}
+
+\section{Circuit and communication accounting}\label{sec:cost}
+\subsection{ORCompact and exact-padding planners}
+For $a=2^k$ slots, ORCompact has exactly
+\begin{equation}
+ S(a)=\frac a2\log_2a
+\end{equation}
+conditional swaps~\cite{orcompact}. A constructive Boolean schedule planner
+used in this ledger costs at most
+\begin{equation}
+ P(a)=a(k-\tfrac12)-k+1
+\end{equation}
+ANDs. To split $a$ slots evenly, forming exactly $a/2$ marks adds at most
+$3ka+4a-2k-2$ ANDs, giving
+\begin{equation}
+ A_{\rm split}(a)=4ka+\tfrac72a-3k-1.
+\end{equation}
+These Boolean counts are this report's compilation allowances, not gate
+counts claimed by the ORCompact paper. Appendix~\ref{app:planner} explains
+the decomposition and the dummy-rank width requirement.
+
+A conditional swap of an $r$-bit Boolean record costs $r$ ANDs: compute
+$t=c\AND(x\xor y)$ bitwise, then $x'=x\xor t,y'=y\xor t$.
+The complete mixed-record operation therefore costs $32r+c_V$ bytes.
+Public copies, public permutations, and XOR-share fan-out add no garbled
+tables, although they do incur memory and CPU work.
+
+For the global butterfly, $p=2n/512$ and $h=\log_2p$. Its $ph/2$ calls
+each have $S(1024)=5120$ record swaps. The model conservatively carries
+all $h+d$ routing bits through this global network, for
+\begin{equation}
+ C_{\rm butterfly}=
+ \frac{nh}{512}\left[32A_{\rm split}(1024)
+              +5120\{32(130+h+d)+c_V\}\right].
+\end{equation}
+The initial PRF cost is $5120n$ ANDs, plus table-key setup. Old source
+compactions and the global residual collector move only 130 metadata bits.
+
+\subsection{Local refinement costs}
+Each leaf's excess planner costs
+$512d+P(512)+S(512)+512$ ANDs: membership flags, schedule planning,
+one-bit inverse routing, and mask intersection. Multiply by $512/z$.
+The residual extraction uses $S(512)=2304$ complete-entry swaps and
+$P(512)+197$ planner/check ANDs. Recursive splits cost the sum of the
+node costs at sizes 512, 256, and optionally 128; already consumed suffix
+bits are discarded. The resulting kernel is:
+%%LOCALCOUNTS%%
+
+For each rebuilt table, multiply these counts by $p=2n/512$. The global
+collector adds $P(n/4)$ planner ANDs and $S(n/4)$ swaps of a 130-bit
+metadata record plus its packed value. The two-stage source admission
+adds a full second $2n$-slot compaction whenever old stashes exist.
+Both costs are included before applying Equation~\eqref{eq:amort}.
+
+\subsection{Read and frontend ledger}
+One occupied table scans $z+G_z(n)$ slots. A conservative read allowance is
+\begin{equation}\label{eq:read}
+ A_{\rm read}(n)=10240+134[z+G_z(n)]+h+d+4
+\end{equation}
+ANDs, plus $z+G_z(n)$ packed word products at $c_V$ bytes each. The
+10240 term charges true and dummy PRFs. The scan coefficient covers
+fingerprint equality, occupancy/active gating, presence reduction, deletion,
+and accumulation. Disclosed address bits add a small explicit bidirectional
+term. Sum lower levels with weight $1/2$ and the top with weight one.
+
+For $b=2^\beta$, a bitonic network has
+$b\beta(\beta+1)/4$ comparators. The model charges 511 ANDs per comparator
+for 128-bit comparison, fingerprint swapping, and inverse presence-bit
+routing, plus one packed result swap on the inverse network. It also
+reserves 140 ANDs and three packed selectors per adjacent input for a
+work-efficient parallel segmented propagation. This is deliberately more
+than the earlier sequential propagation allowance.
+
+The initial 32-byte secret-shared query input costs 16,384 bytes under
+the existing input convention; AES-CMAC adds 327,680 bytes. No initial
+database hashing, base-OT setup, client delivery, or application computation
+on the result is amortized into the steady-state rows.
+
+\section{Numerical results and sensitivities}\label{sec:results}
+\subsection{Primary traffic comparison}
+%%RESULTS%%
+All rows use complete application lookups. Our hierarchy directly stores
+canonical keys and has no recursive position maps or outer pair of cuckoo
+table probes. The Circuit OPRAM ledger includes both cuckoo probes and its
+recursive machinery. It also uses ordinary Boolean payload movement in
+its primary row. These are complete alternative layouts, not identical
+circuits with only one kernel substituted. Its selected batch is 32;
+the hierarchical primary batch is 1024. The comparison does not equalize
+batch-fill delay or measured latency.
+
+Refinement makes rebuilding the larger component for both leaf sizes.
+The 64-slot choice minimizes average traffic in the primary rows, but at
+$N=2^{32}$ its top lookup scans $64+264=328$ slots, versus $128+64=192$
+for 128-slot leaves. Thus the smaller main bucket is not universally the
+smaller read operation. Much of the average advantage comes from the
+smaller tables' more modest stashes.
+
+\subsection{Rebuild decomposition}
+%%DECOMPOSITION%%
+The dominant rebuild terms move Boolean metadata through the global
+butterfly and source compactions. One-bit planners are important but do not
+make record movement free. Packing the payload does not pack the 128-bit
+fingerprint or the routing bits used by GC.
+
+\subsection{Batch-size sensitivity}
+%%BATCHSWEEP%%
+Larger batches reduce the number of levels and the per-lookup rebuild
+frequency of the smallest tables, while increasing initial sort work and
+batch-fill time. At rate $q$, ideal mean fill delay is $(b-1)/(2q)$:
+51.15 ms at $b=1024$ and 10,000 requests/s. This is only fill delay,
+before circuit service and queueing. The evaluated sweep is not a full
+latency-constrained optimization.
+
+\subsection{Packed operation sensitivity}
+%%PAYLOADSWEEP%%
+The 160-byte row corresponds to the specified two-direction word-OT
+backend. The 80/320-byte rows are parameter sensitivities. The 8192-byte
+row is an ordinary 256-AND Boolean-payload movement reference, with the
+same metadata kernels; it is not the storage cost of two packed shares.
+It illustrates how much of the conclusion survives without a packed
+movement discount.
+
+\section{Space, parallel work, and latency}\label{sec:resources}
+\subsection{Persistent state and rebuilding workspace}
+Before a full top rebuild, the maximum main-array allocation is
+$4N-2b$ slots. Add the public global stash capacity of every table. A
+packed record uses $16\cdot130+32=2112$ bytes per party. This gives:
+%%RESOURCES%%
+These are steady representation allocations, not peak process memory.
+Rebuilding also needs transient tag labels, saved secret controls, metadata
+planner workspace, and the $n/4$-slot parent residual collection. A copied
+main-array source or a second compaction buffer must be charged if the
+implementation does not operate in place. OT seeds, queues, GC streaming
+buffers, and extra replicas are additional. The model does not yet price
+storage I/O or claim that a whole state fits in one machine.
+
+\subsection{Mixed-protocol depth}
+GC metadata planning can be computed before payload routing, because the
+planning depends only on keys, flags, and tags. The packed word operations
+remain interactive: an OT layer's sender inputs depend on the payload
+shares produced by previous layers. Independent swaps in a layer batch
+together, but precomputing random OTs does not remove all online dependencies.
+
+The primary top rebuild has 512-bucket butterfly depth $10h$ payload
+swap layers, plus source compactions, local extraction/refinement, and
+global stash collection. The model reports this serial-layer count; it is
+not a measured number of RTTs because OT preprocessing and transport
+scheduling can differ. Read payload products for all candidate slots run
+in parallel, so scanning a 64- or 128-slot leaf does not imply that many
+serial OT rounds. Duplicate propagation uses a parallel prefix rather
+than a linear chain in the new ledger.
+
+\subsection{Replicas and throughput}
+At 10,000 lookups/s, multiply the unframed MB/query by 10 to get aggregate
+GB/s across both communication directions. Directional provisioning must
+separate predominantly garbler-to-evaluator GC tables from the symmetric
+word-OT traffic. Aggregate bandwidth alone does not establish a state's
+batch service time or the replica count needed while the top rebuilds.
+For batch service time $T_b$, a steady-state group count must satisfy at
+least the relevant arrival/service constraint; long periodic rebuilds need
+an explicit availability schedule as well. Neither annual cloud cost nor
+CPU-limited throughput is claimed here.
+
+\subsection{An optional parent-local persistent stash}
+Instead of globally merging the residuals, one could retain each parent's
+64-slot stash and search it with that parent's small bucket. The parent
+index is already determined by the disclosed small-bucket address, so this
+does not add address leakage if both addresses derive from the same
+true-or-dummy choice. It scans $z+64$ slots and avoids the global collector,
+but adds $n/4$ persistent slots per table. Different children share a parent
+stash and must coordinate updates. Source admission must include those
+extra slots. This alternative is not included in the primary numbers,
+which follow the requested merged-residual organization.
+
+\section{Validation, remaining work, and recommendation}
+The cost program is a ledger of explicit kernels rather than a full 2PC
+implementation. Its checks cover binary-counter frequencies, exact
+ORCompact swap arithmetic, final-excess selection, conservation of keys,
+recursive leaf capacities, threshold boundary cases, and numerical tail
+formulas. Constructive simulations include empty, balanced, highly skewed,
+and random parents, plus residual counts 0, 1, 63, 64, and 65. Overflow
+conditions are tested before truncation.
+
+\textbf{Recommendation.} Pursue the 512-to-64 design as the primary
+communication candidate, retaining 512-to-128 as a useful alternative
+when largest-table stash scanning or contention matters. The additional
+refinement and stash work is comfortably below the savings in ordinary
+512-slot reads. Rebuilding again becomes the main amortized traffic term,
+as anticipated. No early rejection against the current Circuit OPRAM
+ledger is justified by these counts.
+
+The following work remains before an implementation or stronger performance
+claim:
+\begin{enumerate}
+\item \textbf{Compile and count the actual circuits.} Replace the planner,
+      scan, and parallel-propagation allowances by emitted-circuit counts;
+      prove their label interfaces compose safely.
+\item \textbf{Implement the packed backend.} Validate GC color-bit sharing,
+      both OT directions, fresh masks/tweaks, scheduling, and application
+      input/output boundaries. Benchmark local hashing and XOR work.
+\item \textbf{Complete the security argument.} Prove adaptive lookup
+      indistinguishability with absent tombstones, grouped bucket/stash
+      updates, fresh epochs, and bounded failures. The sketch here is not
+      a complete simulation proof.
+\item \textbf{Certify probability calculations.} Check the analytic proof
+      conditions and numerical witnesses, and choose a total fingerprint,
+      PRF, and capacity failure budget for the intended service lifetime.
+\item \textbf{Measure a distributed rebuild.} Account for metadata-label
+      traffic inside each party, peak memory, SSD/RAM I/O, OT dependency
+      layers, and the largest rebuild pause.
+\item \textbf{Choose a deployment schedule.} Choose batch size and replica
+      count from measured service time and latency targets; application
+      writes additionally require replica consistency.
+\end{enumerate}
+
+\appendix
+\section{Planner derivation and finite counts}\label{app:planner}
+For $a=2^k$, a concrete ORCompact planner comprises balanced subtree
+popcounts, offset additions, shared threshold decoding, and leaf controls.
+Their AND allowances are respectively
+\[
+ 2a-2k-2,\qquad a-k-1,\qquad a(k-4)+2k+4,\qquad a/2.
+\]
+Their sum is $P(a)=a(k-1/2)-k+1$. A shared decoder for all comparisons
+of a $q$-bit secret threshold against public indices uses
+$D(q)=2^{q+1}-2q-2$ ANDs. This avoids charging a separate full comparator
+for every index.
+
+Exact-padding marks first identify real-left entries and their total,
+then compute the needed dummy quota. Use \emph{exclusive} dummy prefix
+ranks, which are at most $a-1$, and select a dummy iff its rank is below
+the quota. Inclusive ranks can equal $a$ and would require another bit.
+A work-efficient parallel prefix scan, comparisons, and gating give the
+$3ka+4a-2k-2$ marking allowance. The construction assumes both real
+output counts fit; the probability argument or the preselection invariant
+establishes that condition.
+
+For extracting a parent's residuals, $P(512)=4344$ and $S(512)=2304$.
+The additional 197 planner/check ANDs cover a nine-bit residual count,
+the 64 prefix occupancy flags, and the $r>64$ test. At most $512-z$
+records can be residual, so nine bits suffice. The data copy into fixed
+stash positions is public; live flags preserve its secrecy.
+
+The complete local kernel counts and per-level rebuild contributions are
+stored in the accompanying JSON. The model retains all global routing
+bits through the butterfly as a conservative choice; discarding consumed
+bits there offers a further optimization that is not included.
+
+\section{Reproduction and source provenance}
+From the repository root, with Python, SciPy, and mpmath available:
+\begin{verbatim}
+python -m mpc_cost.hierarchical_split_cost
+python -m unittest mpc_cost.test_hierarchical_split -v
+python -m mpc_cost.render_hierarchical_split_report
+\end{verbatim}
+Compile the delivered self-contained LaTeX source twice with pdfLaTeX.
+It embeds all numerical tables and bibliography entries and requires no
+project-specific input files or external figure files. The model writes
+\path{mpc_cost/results/hierarchical_split_comparison.json}; the report
+generator writes \path{output/latex/hierarchical_batch_oram_report.tex}.
+
+Microrama supplies the hierarchical/butterfly design and the necessity of
+cached absences. ORCompact supplies the compaction network and exact swap
+counts. The mutable 2PC adaptation, exact-excess preselection, mixed
+payload interface, stash bounds, and numerical ledger are the present
+analysis. The Circuit OPRAM comparison uses the repository's 16 October
+2026 interactive-shuffle ledger, whose traffic is 226.506916/286.945386 MB
+unframed and 237.832261/301.292656 MB with 5\% framing. That ledger is
+itself a conditional circuit-composition model.
+
+\begin{thebibliography}{9}
+\bibitem{microrama} Anonymous submission.
+\emph{Microrama: Microsecond Oblivious Access to Gigabytes of Data}.
+User-supplied ongoing draft, \path{microrama.pdf}, especially Sections 2.1--2.4.
+The draft's native TEE measurements are not used as 2PC performance measurements.
+\bibitem{orcompact} Sajin Sasy, Aaron Johnson, and Ian Goldberg.
+\emph{Fast Fully Oblivious Compaction and Shuffling}. CCS 2022, extended version.
+\url{https://eprint.iacr.org/2022/1333}. Sections 3 and 5.1, Appendix B.
+\bibitem{nistcircuits} NIST. \emph{Circuit Complexity: List of Circuits}.
+AES-128 with expanded key: 5120 ANDs; with key schedule: 6400 ANDs.
+\url{https://csrc.nist.gov/projects/circuit-complexity/list-of-circuits}.
+Accessed 17 October 2026.
+\bibitem{halfgates} Samee Zahur, Mike Rosulek, and David Evans.
+\emph{Two Halves Make a Whole: Reducing Data Transfer in Garbled Circuits
+Using Half Gates}. EUROCRYPT 2015.
+\url{https://www.cs.virginia.edu/~evans/pubs/ec2015/}.
+\bibitem{iknp} Yuval Ishai, Joe Kilian, Kobbi Nissim, and Erez Petrank.
+\emph{Extending Oblivious Transfers Efficiently}. CRYPTO 2003.
+\url{https://www.iacr.org/archive/crypto2003/27290145/27290145.pdf}.
+The 160-byte word operation is this report's explicit chosen-message
+accounting, including a conventional 128-bit extension-matrix allowance.
+\bibitem{opram} T.-H. Hubert Chan and Elaine Shi.
+\emph{Circuit OPRAM: Unifying Statistically and Computationally Secure
+ORAMs and OPRAMs}. Cryptology ePrint Archive, 2016/1084, revised 2020.
+\url{https://eprint.iacr.org/2016/1084}.
+The comparison uses a repository compilation template rather than a
+performance number reported in this paper.
+\end{thebibliography}
+\end{document}

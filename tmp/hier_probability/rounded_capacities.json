@@ -1,0 +1,424 @@
+{
+  "batch": 1024,
+  "horizon": 4294967296,
+  "global_horizon_budget_bits": 66,
+  "global_per_build_budget_bits": 88.0,
+  "depoissonization_factor": 2,
+  "local_parent_stash": 64,
+  "rows": [
+    {
+      "log_capacity": 10,
+      "capacity": 1024,
+      "z64": {
+        "minimum_capacity": 53,
+        "rounded_capacity": 56,
+        "per_build_log2": -94.57012446000046,
+        "tilt": 1.1871820173304644,
+        "poisson_mean_residual": 1.2211747055226527e-05
+      },
+      "z128": {
+        "minimum_capacity": 51,
+        "rounded_capacity": 56,
+        "per_build_log2": -98.56924113865853,
+        "tilt": 1.2222415328587062,
+        "poisson_mean_residual": 1.9486297021217315e-11
+      }
+    },
+    {
+      "log_capacity": 11,
+      "capacity": 2048,
+      "z64": {
+        "minimum_capacity": 53,
+        "rounded_capacity": 56,
+        "per_build_log2": -93.1223242084264,
+        "tilt": 1.1704118080846238,
+        "poisson_mean_residual": 2.4423494110453053e-05
+      },
+      "z128": {
+        "minimum_capacity": 51,
+        "rounded_capacity": 56,
+        "per_build_log2": -97.9149985027851,
+        "tilt": 1.2143910486671379,
+        "poisson_mean_residual": 3.897259404243463e-11
+      }
+    },
+    {
+      "log_capacity": 12,
+      "capacity": 4096,
+      "z64": {
+        "minimum_capacity": 54,
+        "rounded_capacity": 56,
+        "per_build_log2": -91.62007560607324,
+        "tilt": 1.1532102735778127,
+        "poisson_mean_residual": 4.884698822090611e-05
+      },
+      "z128": {
+        "minimum_capacity": 51,
+        "rounded_capacity": 56,
+        "per_build_log2": -97.25278949157577,
+        "tilt": 1.2065064704883635,
+        "poisson_mean_residual": 7.794518808486926e-11
+      }
+    },
+    {
+      "log_capacity": 13,
+      "capacity": 8192,
+      "z64": {
+        "minimum_capacity": 55,
+        "rounded_capacity": 56,
+        "per_build_log2": -90.05118690163684,
+        "tilt": 1.1354022638479988,
+        "poisson_mean_residual": 9.769397644181221e-05
+      },
+      "z128": {
+        "minimum_capacity": 52,
+        "rounded_capacity": 56,
+        "per_build_log2": -96.57984124393046,
+        "tilt": 1.1985289229798712,
+        "poisson_mean_residual": 1.5589037616973852e-10
+      }
+    },
+    {
+      "log_capacity": 14,
+      "capacity": 16384,
+      "z64": {
+        "minimum_capacity": 56,
+        "rounded_capacity": 56,
+        "per_build_log2": -88.40399903120674,
+        "tilt": 1.1168515194424637,
+        "poisson_mean_residual": 0.00019538795288362443
+      },
+      "z128": {
+        "minimum_capacity": 52,
+        "rounded_capacity": 56,
+        "per_build_log2": -95.89438979517777,
+        "tilt": 1.1904250875092341,
+        "poisson_mean_residual": 3.1178075233947705e-10
+      }
+    },
+    {
+      "log_capacity": 15,
+      "capacity": 32768,
+      "z64": {
+        "minimum_capacity": 57,
+        "rounded_capacity": 64,
+        "per_build_log2": -99.35412017946892,
+        "tilt": 1.1011843226476468,
+        "poisson_mean_residual": 0.00039077590576724885
+      },
+      "z128": {
+        "minimum_capacity": 52,
+        "rounded_capacity": 56,
+        "per_build_log2": -95.19514277910102,
+        "tilt": 1.1821738305678604,
+        "poisson_mean_residual": 6.235615046789541e-10
+      }
+    },
+    {
+      "log_capacity": 16,
+      "capacity": 65536,
+      "z64": {
+        "minimum_capacity": 59,
+        "rounded_capacity": 64,
+        "per_build_log2": -97.27580273090682,
+        "tilt": 1.0809646022589736,
+        "poisson_mean_residual": 0.0007815518115344977
+      },
+      "z128": {
+        "minimum_capacity": 53,
+        "rounded_capacity": 56,
+        "per_build_log2": -94.48101103511058,
+        "tilt": 1.1737598247887473,
+        "poisson_mean_residual": 1.2471230093579082e-09
+      }
+    },
+    {
+      "log_capacity": 17,
+      "capacity": 131072,
+      "z64": {
+        "minimum_capacity": 60,
+        "rounded_capacity": 64,
+        "per_build_log2": -95.06058912408805,
+        "tilt": 1.059623943727674,
+        "poisson_mean_residual": 0.0015631036230689954
+      },
+      "z128": {
+        "minimum_capacity": 53,
+        "rounded_capacity": 56,
+        "per_build_log2": -93.75096840887456,
+        "tilt": 1.1651703032269647,
+        "poisson_mean_residual": 2.4942460187158164e-09
+      }
+    },
+    {
+      "log_capacity": 18,
+      "capacity": 262144,
+      "z64": {
+        "minimum_capacity": 61,
+        "rounded_capacity": 64,
+        "per_build_log2": -92.68364970247667,
+        "tilt": 1.0369887765423655,
+        "poisson_mean_residual": 0.003126207246137991
+      },
+      "z128": {
+        "minimum_capacity": 53,
+        "rounded_capacity": 56,
+        "per_build_log2": -93.00397437830475,
+        "tilt": 1.156393335501367,
+        "poisson_mean_residual": 4.988492037431633e-09
+      }
+    },
+    {
+      "log_capacity": 19,
+      "capacity": 524288,
+      "z64": {
+        "minimum_capacity": 63,
+        "rounded_capacity": 64,
+        "per_build_log2": -90.1131378583319,
+        "tilt": 1.0128460269823898,
+        "poisson_mean_residual": 0.006252414492275982
+      },
+      "z128": {
+        "minimum_capacity": 54,
+        "rounded_capacity": 56,
+        "per_build_log2": -92.23892743386227,
+        "tilt": 1.1474168723291283,
+        "poisson_mean_residual": 9.976984074863265e-09
+      }
+    },
+    {
+      "log_capacity": 20,
+      "capacity": 1048576,
+      "z64": {
+        "minimum_capacity": 65,
+        "rounded_capacity": 72,
+        "per_build_log2": -98.7245682401539,
+        "tilt": 0.991405088572472,
+        "poisson_mean_residual": 0.012504828984551963
+      },
+      "z128": {
+        "minimum_capacity": 54,
+        "rounded_capacity": 56,
+        "per_build_log2": -91.4546328834363,
+        "tilt": 1.1382283098958337,
+        "poisson_mean_residual": 1.995396814972653e-08
+      }
+    },
+    {
+      "log_capacity": 21,
+      "capacity": 2097152,
+      "z64": {
+        "minimum_capacity": 67,
+        "rounded_capacity": 72,
+        "per_build_log2": -95.307430793978,
+        "tilt": 0.9637495450213102,
+        "poisson_mean_residual": 0.025009657969103927
+      },
+      "z128": {
+        "minimum_capacity": 55,
+        "rounded_capacity": 56,
+        "per_build_log2": -90.64977644975657,
+        "tilt": 1.1288139397014774,
+        "poisson_mean_residual": 3.990793629945306e-08
+      }
+    },
+    {
+      "log_capacity": 22,
+      "capacity": 4194304,
+      "z64": {
+        "minimum_capacity": 70,
+        "rounded_capacity": 72,
+        "per_build_log2": -91.49741755597903,
+        "tilt": 0.9336070254420344,
+        "poisson_mean_residual": 0.05001931593820785
+      },
+      "z128": {
+        "minimum_capacity": 55,
+        "rounded_capacity": 56,
+        "per_build_log2": -89.82289881563294,
+        "tilt": 1.1191588232105116,
+        "poisson_mean_residual": 7.981587259890612e-08
+      }
+    },
+    {
+      "log_capacity": 23,
+      "capacity": 8388608,
+      "z64": {
+        "minimum_capacity": 73,
+        "rounded_capacity": 80,
+        "per_build_log2": -97.61156531849502,
+        "tilt": 0.9056076701066645,
+        "poisson_mean_residual": 0.1000386318764157
+      },
+      "z128": {
+        "minimum_capacity": 56,
+        "rounded_capacity": 56,
+        "per_build_log2": -88.97236807658336,
+        "tilt": 1.1092463840510418,
+        "poisson_mean_residual": 1.5963174519781225e-07
+      }
+    },
+    {
+      "log_capacity": 24,
+      "capacity": 16777216,
+      "z64": {
+        "minimum_capacity": 77,
+        "rounded_capacity": 80,
+        "per_build_log2": -92.23882190576111,
+        "tilt": 0.8691982577886009,
+        "poisson_mean_residual": 0.2000772637528314
+      },
+      "z128": {
+        "minimum_capacity": 56,
+        "rounded_capacity": 56,
+        "per_build_log2": -88.09634781161073,
+        "tilt": 1.0990582099185682,
+        "poisson_mean_residual": 3.192634903956245e-07
+      }
+    },
+    {
+      "log_capacity": 25,
+      "capacity": 33554432,
+      "z64": {
+        "minimum_capacity": 82,
+        "rounded_capacity": 88,
+        "per_build_log2": -95.5733871065436,
+        "tilt": 0.833966299814481,
+        "poisson_mean_residual": 0.4001545275056628
+      },
+      "z128": {
+        "minimum_capacity": 57,
+        "rounded_capacity": 64,
+        "per_build_log2": -99.76846350838916,
+        "tilt": 1.0905840442475931,
+        "poisson_mean_residual": 6.38526980791249e-07
+      }
+    },
+    {
+      "log_capacity": 26,
+      "capacity": 67108864,
+      "z64": {
+        "minimum_capacity": 89,
+        "rounded_capacity": 96,
+        "per_build_log2": -96.75658168309658,
+        "tilt": 0.7937150055619698,
+        "poisson_mean_residual": 0.8003090550113257
+      },
+      "z128": {
+        "minimum_capacity": 58,
+        "rounded_capacity": 64,
+        "per_build_log2": -98.7106080120435,
+        "tilt": 1.0798423559583645,
+        "poisson_mean_residual": 1.277053961582498e-06
+      }
+    },
+    {
+      "log_capacity": 27,
+      "capacity": 134217728,
+      "z64": {
+        "minimum_capacity": 98,
+        "rounded_capacity": 104,
+        "per_build_log2": -95.22002754899287,
+        "tilt": 0.7470348106425613,
+        "poisson_mean_residual": 1.6006181100226513
+      },
+      "z128": {
+        "minimum_capacity": 58,
+        "rounded_capacity": 64,
+        "per_build_log2": -97.61613268802837,
+        "tilt": 1.0687599706325162,
+        "poisson_mean_residual": 2.554107923164996e-06
+      }
+    },
+    {
+      "log_capacity": 28,
+      "capacity": 268435456,
+      "z64": {
+        "minimum_capacity": 110,
+        "rounded_capacity": 112,
+        "per_build_log2": -90.25353262037626,
+        "tilt": 0.691913230763438,
+        "poisson_mean_residual": 3.2012362200453026
+      },
+      "z128": {
+        "minimum_capacity": 59,
+        "rounded_capacity": 64,
+        "per_build_log2": -96.48155117373902,
+        "tilt": 1.0573076316766679,
+        "poisson_mean_residual": 5.108215846329992e-06
+      }
+    },
+    {
+      "log_capacity": 29,
+      "capacity": 536870912,
+      "z64": {
+        "minimum_capacity": 128,
+        "rounded_capacity": 128,
+        "per_build_log2": -88.31066463965871,
+        "tilt": 0.6328768391001343,
+        "poisson_mean_residual": 6.402472440090605
+      },
+      "z128": {
+        "minimum_capacity": 60,
+        "rounded_capacity": 64,
+        "per_build_log2": -95.30280517093615,
+        "tilt": 1.0454518139487283,
+        "poisson_mean_residual": 1.0216431692659984e-05
+      }
+    },
+    {
+      "log_capacity": 30,
+      "capacity": 1073741824,
+      "z64": {
+        "minimum_capacity": 155,
+        "rounded_capacity": 160,
+        "per_build_log2": -92.71946846831327,
+        "tilt": 0.5744211193304561,
+        "poisson_mean_residual": 12.80494488018121
+      },
+      "z128": {
+        "minimum_capacity": 60,
+        "rounded_capacity": 64,
+        "per_build_log2": -94.07512783034585,
+        "tilt": 1.033153843017328,
+        "poisson_mean_residual": 2.0432863385319968e-05
+      }
+    },
+    {
+      "log_capacity": 31,
+      "capacity": 2147483648,
+      "z64": {
+        "minimum_capacity": 196,
+        "rounded_capacity": 200,
+        "per_build_log2": -91.5275121640889,
+        "tilt": 0.5056762783386477,
+        "poisson_mean_residual": 25.60988976036242
+      },
+      "z128": {
+        "minimum_capacity": 61,
+        "rounded_capacity": 64,
+        "per_build_log2": -92.79286400060741,
+        "tilt": 1.0203687516640543,
+        "poisson_mean_residual": 4.0865726770639935e-05
+      }
+    },
+    {
+      "log_capacity": 32,
+      "capacity": 4294967296,
+      "z64": {
+        "minimum_capacity": 260,
+        "rounded_capacity": 264,
+        "per_build_log2": -90.50832816281239,
+        "tilt": 0.43407739985670835,
+        "poisson_mean_residual": 51.21977952072484
+      },
+      "z128": {
+        "minimum_capacity": 62,
+        "rounded_capacity": 64,
+        "per_build_log2": -91.44923056981321,
+        "tilt": 1.0070437839617576,
+        "poisson_mean_residual": 8.173145354127987e-05
+      }
+    }
+  ]
+}

@@ -1,0 +1,2764 @@
+=== PAGE 1 ===
+Fast Fully Oblivious Compaction and Shuffling∗
+Sajin Sasy
+University of Waterloo
+Waterloo, ON, Canada
+ssasy@uwaterloo.ca
+Aaron Johnson
+U.S. Naval Research Laboratory
+Washington, D.C., U.S.A.
+aaron.m.johnson@nrl.navy.mil
+Ian Goldberg
+University of Waterloo
+Waterloo, ON, Canada
+iang@uwaterloo.ca
+ABSTRACT
+Several privacy-preserving analytics frameworks have been pro-
+posed that use trusted execution environments (TEEs) like Intel
+SGX. Such frameworks often use compaction and shuffling as core
+primitives. However, due to advances in TEE side-channel attacks,
+these primitives, and the applications that use them, should be fully
+oblivious; that is, perform instruction sequences and memory ac-
+cesses that do not depend on the secret inputs. Such obliviousness
+would eliminate the threat of leaking private information through
+memory or timing side channels, but achieving it naively can result
+in a significant performance cost.
+In this work, we present fast, fully oblivious algorithms for com-
+paction and shuffling. We implement and evaluate our designs to
+show that they are practical and outperform the state of the art.
+Our oblivious compaction algorithm, ORCompact, is always faster
+than the best alternative and can yield up to a 5× performance
+improvement. For oblivious shuffling, we provide two novel algo-
+rithms: ORShuffle and BORPStream. ORShuffle outperforms
+prior fully oblivious shuffles in all experiments, and it provides the
+largest speed increases—up to 1.8×—when shuffling a large num-
+ber of small items. BORPStream outperforms all other algorithms
+when shuffling a large number of large items, with a speedup of
+up to 1.4× in such cases. It can obtain even larger performance im-
+provements in application settings where the items to shuffle arrive
+incrementally over time, obtaining a speedup of as much as 4.2×.
+We additionally give parallel versions of all of our algorithms, prove
+that they have low parallel step complexity, and experimentally
+show a 5–6× speedup on an 8-core processor.
+Finally, ours is the first work with the explicit goal of ensuring
+full obliviousness of complex functionalities down to the implemen-
+tation level. To this end, we design Fully Oblivious Assembly Veri-
+fier (FOAV), a tool that verifies the binary has no secret-dependent
+conditional branches.
+1
+INTRODUCTION
+The recent advances and availability of trusted execution envi-
+ronments (TEEs) have provided an opportunity to deploy privacy-
+preserving data analytics with high utility. As long as the TEEs are
+correctly designed and implemented, they can guarantee to a re-
+mote party that a given set of instructions is correctly and privately
+executed by an enclave (secure container) on the local server.
+For instance, Bittau et al. [9] design the Prochlo system to sup-
+port large-scale monitoring of software activities such as teleme-
+try, error reporting, or demographic profiling. Prochlo uses TEEs
+(namely Intel SGX [2]) to provide strong privacy guarantees to
+user data. Similarly, the Private Sampling-based Query Framework
+∗This is an extended version of our CCS 2022 paper. [49]
+(PSQF) [50] uses TEEs to provide confidentiality and integrity guar-
+antees to user data while performing differentially private queries
+based on sampling [7].
+Both of these frameworks make key use of shuffling; that is,
+putting data items in a uniformly random order. A major component
+of Prochlo is the Stash Shuffle algorithm, which is designed to
+overcome performance limitations of SGX enclaves. Prochlo shuffles
+data to logically separate incoming data items from the identities
+of their contributors before the analysis is performed. In PSQF,
+shuffling is used for random sampling. The privacy guarantees of
+these shuffles rest heavily on their obliviousness; that is, the extent
+to which their observable actions, such as memory accesses, are
+independent of the data items and the random order they are put in.
+However, the shuffling algorithms used in these systems are not in
+fact oblivious with respect to state-of-the-art TEE adversaries [11,
+30, 32, 38, 39]. Such adversaries can observe memory accesses in
+supposedly “protected” memory and at high granularity (e.g., within
+pages), which additionally allows them to observe conditional code
+branching behaviour.
+Therefore, in this work, we design and evaluate novel oblivious
+shuffling algorithms that are fully oblivious in that all memory ac-
+cesses and code branching are independent of the inputs and output
+order. While it is always possible to make an existing algorithm
+fully oblivious (e.g., by replacing memory accesses with linear scans
+and executing all possible code branches), doing so can come at a
+high performance cost. We present the Oblivious Recursive Shuf-
+fling algorithm, ORShuffle, which experimentally outperforms
+the classic (and still state-of-the-art, as explained by Asharov et
+al. [3, §1]) method for oblivious shuffling using random labels and a
+bitonic sorting network (Bitonic Shuffle). ORShuffle achieves the
+greatest speedup when shuffling many small items. We also present
+the BORPStream algorithm, which provides experimental perfor-
+mance competitive to Bitonic Shuffle with notable performance
+improvements when shuffling many large items. BORPStream is
+based on the Bucket Oblivious Random Permutation (BORP) of
+Asharov et al. [3], but includes significant modifications to BORP in
+order to obtain obliviousness and efficiency. These changes further
+enable significant speed increases in the incremental data setting,
+where data items arrive sequentially over time. An example applica-
+tion in this setting is Prochlo, as the data are submitted by clients in
+an uncoordinated way, and to provide privacy enough items must
+accumulate before shuffling and analysis.
+A key component of our shuffling algorithms is a novel obliv-
+ious algorithm for compaction; that is, the problem of permuting
+items in an array so that a “marked” subset of them appears at the
+beginning. Oblivious compaction is a generally useful tool for obliv-
+ious algorithms, with one common use being to filter out “dummy”
+items inserted earlier to mask conditional memory writes (e.g., in
+an ORAM [5] or an oblivious database query [29]). Several oblivious
+1
+
+=== PAGE 2 ===
+Sajin Sasy, Aaron Johnson, and Ian Goldberg
+compaction algorithms have been given recently [5, 6, 18, 34], but
+these algorithms have high constants, and practical improvements
+have not been observed since Goodrich [22]. Our oblivious recur-
+sive compaction algorithm, ORCompact, improves performance
+in practice, which we demonstrate experimentally. Moreover, OR-
+Compact is order-preserving; that is, it maintains the relative order
+among marked items. This property, also provided by Goodrich
+compaction, is useful when compaction is used as a subroutine and
+later steps require that marked items stay in the same order [29].
+It is also important that our algorithms be parallelizable because
+many TEE systems, including Prochlo and PSQF, are designed to
+process large amounts of data. We therefore give efficient paral-
+lel versions of our shuffling and compaction algorithms, and we
+implement and test them. We note that our parallel compaction algo-
+rithm is the first practical such algorithm to be explicitly described,
+and a straightforward parallelization of Goodrich compaction adds
+significant overhead (see §7).
+We summarize our contributions as follows:
+1) We design and analyze the novel fully oblivious compaction
+algorithm ORCompact (§3). We analytically show it is efficient and
+give an efficient parallel version. Experiments show good practical
+performance, for example compacting 223 items of 8 bytes each in
+under 200 ms. They also show a 2–5.2× performance improvement
+over the state of the art, Goodrich’s tight compaction [22].
+2) We design and analyze the fully oblivious shuffling algorithm
+ORShuffle (§4). ORShuffle internally uses ORCompact. Our anal-
+yses show that it is practically efficient and parallelizes well. Exper-
+imentally, it consistently outperforms prior fully oblivious shuffles,
+achieving the most improvement when shuffling a large number of
+small items. For example, ORShuffle shuffles 224 8-byte items in
+9.56±0.05 s, while Bitonic Shuffle takes 16.78±0.03 s.
+3) We design and analyze BORPStream. BORPStream internally
+uses both ORShuffle and ORCompact. Our experiments show
+that naively adapting BORP results in poor performance but that
+BORPStream yields competitive performance overall and signifi-
+cant improvements when shuffling a large number of large items.
+For example, BORPStream shuffles 220 4 KiB items in 371.9±0.8 s,
+while Bitonic Shuffle takes 523.9±0.2 s. Moreover, it can partially
+shuffle data items individually as they arrive, reducing the time
+needed to produce a shuffle after the last item is received. For ex-
+ample, BORPStream finishes a shuffle of 220 4 KiB items in just
+124.7±0.1 s after the last item’s arrival.
+4) We design Fully Oblivious Assembly Verifier (FOAV), a tool that
+helps us ensure that the binaries produced after compilation are
+indeed fully oblivious (§6). FOAV tracks all the conditional jumps in
+the final binary and verifies that the operands of such jumps have
+been marked safe by our code instrumentation. All of our code is
+available at https://crysp.uwaterloo.ca/software/obliv/.
+2
+BACKGROUND
+2.1
+Trusted Execution Environments (TEEs)
+Since their inception with Intel TXT [25] more than a decade ago,
+TEEs have undergone several iterations of refinements. Recent
+advances in hardware-aided TEEs such as Intel SGX [2], AMD
+SEV [28], and their open-source sibling Keystone [31] can provably
+execute programs securely in hardware-protected containers called
+enclaves that provide strong confidentiality and integrity guarantees,
+even if its host is malicious. Effectively they provide a small Trusted
+Computing Base (TCB) on otherwise malicious servers. For ease
+of exposition, we limit the discussion of how TEEs provide these
+guarantees by just detailing how it is achieved in Intel SGX. Intel
+SGX is the most mature TEE among the choices available today, and
+we use it to implement and benchmark our algorithms. However,
+the techniques used by other TEEs are similar to those of SGX,
+making our work applicable to them as well.
+In Intel SGX, the enclaves provide trusted execution environ-
+ments by bootstrapping security from cryptographic keys that are
+fused into the processor at manufacture time [2]. At boot time such
+processors set aside a portion of their available DRAM as Processor
+Reserved Memory (PRM). All accesses to memory pages in the PRM
+occur through Intel’s Memory Encryption Engine (MEE), which
+uses the processor-fused keys to encrypt these pages every time
+they leave the system cache and return to the PRM. Similarly MEE
+decrypts and integrity checks all pages loaded from the PRM be-
+fore they are moved to the cache for use by the SGX-supported
+processor; thus the contents of these pages are always protected.
+The SGX threat model allows an adversary to control the soft-
+ware stack of an SGX-supported server, including in particular the
+OS. The adversary may have physical access to server but is as-
+sumed to be incapable of physically tampering with the processor
+chip, extracting the processor-fused keys, or snooping the state
+of the processor registers, which would void the purported secu-
+rity guarantees. Nonetheless, the adversary is formidable and can
+observe all the shared resources and peripherals.
+Researchers have identified several attacks on SGX [11, 30, 32,
+38, 39, 53, 57, 58]. Most of these attacks break confidentiality by ex-
+ploiting side channels or metadata that arise from secret-dependent
+memory accesses or control-flow branching. These attacks motivate
+designing the trusted code to be data-oblivious as a defense [43, 48].
+2.2
+Degrees of Obliviousness
+Motivated by attacks on TEEs, we identify three independent ways
+in which an enclave program can be oblivious to secret data.
+1) External-memory oblivious: Memory accesses to data outside
+of the PRM are independent of any secret data.
+2) Protected-memory oblivious: Memory accesses to data within
+the PRM are independent of any secret data. The literature has
+provided two finer granularities of attack surfaces on protected
+memory access patterns, namely:
+i) Page oblivious: Several proposed attacks leverage the fact
+that the untrusted OS is still responsible for page table management
+of enclave programs. These attacks induce page faults on enclave
+programs to extract the memory locations accessed by the program.
+However, SGX masks the last 12 bits of a page fault address to the
+untrusted OS, thus limiting the immediate memory access pattern
+leakage to a malicious OS to page-level granularity (4 KiB) [53, 57].
+ii) Cacheline oblivious: Advanced attacks [11, 30, 38] can ex-
+tract the precise address of the (64 B) cacheline loaded during a
+page fault.
+iii) Subcacheline oblivious: There have been no side-channel
+attacks at a finer granularity than cache level. Nonetheless it is
+conceivable that future research might discover attacks that can
+2
+
+=== PAGE 3 ===
+Fast Fully Oblivious Compaction and Shuffling
+extract the exact (8 B) word loaded from a cacheline to a register in
+a memory fetch operation.
+3) Control-Flow oblivious: Orthogonal to leakages from data
+accesses induced by the execution of the trusted program, an-
+other form of leakage arises with secret-dependent control flow
+branches [32, 39]. These attacks can extract the exact branch chosen
+in a secret-dependent control flow branch, thus leaking information
+about the secret. We say a program is control-flow oblivious if it
+has no control branches in its execution dependent on secret data.
+We say that a program is fully oblivious if it satisfies all the above
+definitions of obliviousness (see Appendix A for a formal definition).
+While previous work using TEEs [9, 29, 36, 45, 59] has satisfied a few
+of these definitions, none has targeted all of them. By providing full
+obliviousness, we defend against all attacks that depend on memory
+or control-flow side channels [11, 30, 32, 38, 39, 53, 57, 58]. Note that
+we do not defend against hardware side channel attacks [12, 41, 56].
+We provide more details on TEE attacks in Section 2.3.
+An obstacle to obtaining full obliviousness is that even if source
+code is control-flow oblivious, compilation may not preserve that
+obliviousness. Compilers are notorious for optimizing away pro-
+gramming logic that was intended to provide security guarantees
+like constant-time code, or side-channel resilient memory access
+patterns [54]. To address this, we design FOAV, a tool that helps
+verify the control-flow obliviousness of the program binary. We
+describe FOAV in Section 6.4.
+Without fully oblivious algorithms a TEE adversary, in the worst
+case, can distinguish the locations of real blocks in the array from
+those of dummies in the compaction setting, and can infer the final
+permutation of a shuffle. These algorithms are typically used as
+building blocks for applications like Prochlo to provide an anonym-
+ity set to users’ data by shuffling them before analysis, or for provid-
+ing strong differential privacy guarantees for data in PSQF. Leakages
+in the underlying oblivious shuffle hence either deanonymize users
+or provide significantly weaker privacy properties than claimed.
+Ours is the first work that designs compaction and shuffling algo-
+rithms with the explicit goal of being fully oblivious, and the first
+to provide a fully oblivious implementation.
+2.3
+TEE Attacks
+The taxonomy of obliviousness we present above is informed by
+various recent side-channel attacks on programs running in TEEs.
+Page-granular attacks: Xu et al. [58] presented controlled-chan-
+nel attacks, which allow a malicious OS to infer sensitive data when
+the victim program has input-dependent control or data transfer.
+Similarly, Shinde et al. [53] demonstrate that this page fault side
+channel can be used to extract encryption keys from implementa-
+tions of cryptographic routines. This led to defences that suppress
+page faults during enclave execution [52, 53]. However, a malicious
+OS observing side effects of the address translation process can still
+extract this leakage without relying on page faults explicitly [57].
+Cacheline-granular attacks: PRIME+PROBE [35, 44] and other
+cache attacks have been demonstrated outside of the SGX setting
+for more than a decade now. Several works [11, 23, 38] have demon-
+strated that such attacks in fact translate well to the SGX setting.
+However, these type of attacks are typically quite noisy and lossy,
+from cache activities of other processes on the same system and the
+probing process having non-negligible probability of missing the
+victim’s access patterns. Hence they require several measurements
+of the victim program executions to reliably extract cache access
+patterns. Additionally, they require forcing interruptions of enclave
+executions to precise the cache access patterns. This led to defense
+mechanisms such as T-SGX [52] and Déjà vu [13] that detect fre-
+quent interrupts as an indicator of the enclave program being under
+attack. More recently, Lee et al. demonstrated Membuster [30], an
+off-chip physical attack that snoops the memory addresses accessed
+on the memory bus, which in conjunction with novel cache manip-
+ulation tricks that force cache misses allows them to extract cache
+usage patterns from the victim process with minimal overheads
+and without inducing interrupts.
+Control Flow Attacks: While several cache attacks can be used
+to attack the control flow of programs executing in an enclave,
+Lee et al. [32] demonstrated a precise technique of tracing control
+flow execution by leveraging the branch prediction history, which
+was not cleared while switching out of enclave mode. Moghimi et
+al. [39] demonstrated a control flow attack, which precisely counts
+the number of instructions executed within an enclave execution,
+which when combined with the coarse-grained page-level leakages
+can reconstruct the exact control flow taken by the enclave program.
+Such side-channel attacks can be thwarted by designing the
+enclave program to be fully oblivious, as it eliminates these vulner-
+abilities at their introduction point. As more powerful attacks that
+amplify a TEE adversary’s ability to violate the privacy guarantees
+of programs running in an enclave become efficient and practical,
+it becomes paramount to ensure that security and privacy critical
+components of such programs be implemented in a fully oblivious
+fashion. We note that obliviousness, including fully obliviousness,
+only protects against software side channels. However, previous
+work has shown microachitectural side channels like speculative
+execution [12, 56] or the voltage scaling interface [41]. Attacks such
+as these that violate the SGX, and indeed the processor, security
+model, are mitigated with microcode patches from Intel [26, 27].
+Importantly, the kinds of memory-access side channels described
+above are not considered to violate the SGX security model—SGX
+makes no claim to protect the addresses of accessed memory. There-
+fore, these side channels must be addressed in software, using the
+kinds of fully oblivious algorithms we propose.
+3
+RECURSIVE COMPACTION
+We introduce the fully oblivious recursive compaction algorithm
+ORCompact. Compaction is a fundamental primitive for ORAMs
+and TEE systems, and we will also use it for oblivious shuffling
+(see §4). ORCompact takes as input an array 𝐷of 𝑛data items
+and a bit array 𝑀of length 𝑛. The positions of 𝑀with a 1 value
+indicate “marked” items, and the positions with a 0 value indicate
+“unmarked” items. ORCompact rearranges the items in 𝐷such that
+all marked items appear before all unmarked items. Furthermore, as
+we will show, ORCompact is order-preserving; that is, it maintains
+the relative order of the marked items. Note that the relative order
+of the unmarked items may change, however.
+This algorithm has time complexity𝑂(𝑛log𝑛), which is the same
+as the algorithm of Goodrich [22] and which is higher asymptotic
+complexity than the linear-time optimum [5, 18]. However, unlike
+3
+
+=== PAGE 4 ===
+Sajin Sasy, Aaron Johnson, and Ian Goldberg
+Figure 1: OROffCompact(𝐷, 𝑀,𝑧): Compact items in 𝐷, as
+marked in 𝑀, to an offset 𝑧. 𝐷and 𝑀must have a power-of-
+two length.
+1: 𝑛←|𝐷|, 𝑚←Í 𝑛
+2 −1
+𝑖=0 𝑀𝑖
+2: if 𝑛= 2
+3:
+OSwap(𝐷0, 𝐷1, ((1 −𝑀0)𝑀1) ⊕𝑧)
+4: else if 𝑛> 2
+5:
+OROffCompact
+
+𝐷0.. 𝑛
+2 −1, 𝑀0.. 𝑛
+2 −1,𝑧mod 𝑛
+2
+
+6:
+OROffCompact
+
+𝐷𝑛
+2 ..𝑛−1, 𝑀𝑛
+2 ..𝑛−1, (𝑧+ 𝑚) mod 𝑛
+2
+
+7:
+𝑠←
+ (𝑧mod 𝑛
+2 ) + 𝑚 ≥𝑛
+2
+
+⊕
+
+𝑧≥𝑛
+2
+
+8:
+for 𝑖←0 . . . 𝑛
+2 −1
+9:
+𝑏←𝑠⊕
+
+𝑖≥ (𝑧+ 𝑚) mod 𝑛
+2
+
+10:
+OSwap(𝐷𝑖, 𝐷𝑖+ 𝑛
+2 , 𝑏)
+Figure 2: ORCompact(𝐷, 𝑀): Compact items in 𝐷as marked
+in 𝑀. 𝐷and 𝑀need not have a power-of-two length.
+1: if |𝐷| = 0 return
+2: 𝑛←|𝐷|, 𝑛1 ←2⌊log2(𝑛)⌋, 𝑛2 ←𝑛−𝑛1, 𝑚←Í𝑛2−1
+𝑖=0
+𝑀𝑖
+3: ORCompact(𝐷0..𝑛2−1, 𝑀0..𝑛2−1)
+4: OROffCompact(𝐷𝑛2..𝑛−1, 𝑀𝑛2..𝑛−1, (𝑛1 −𝑛2 + 𝑚) mod 𝑛1)
+5: for 𝑖←0 . . .𝑛2 −1 do
+6:
+𝑏←[𝑖≥𝑚]
+7:
+OSwap(𝐷𝑖, 𝐷𝑖+𝑛1, 𝑏)
+the asymptotically optimal algorithms, ORCompact is practically
+efficient for realistic values of 𝑛, and it is faster than the Goodrich
+algorithm by a factor of at least 2. It is also more efficiently paral-
+lelizable. See Section 7 for more details on these other algorithms.
+3.1
+Algorithm
+We use 𝐷𝑗..𝑘to indicate the subarray (𝐷𝑗, . . . , 𝐷𝑘). We denote the
+oblivious computation of the comparison 𝑐as a boolean value
+with [𝑐] (e.g., [𝑥< 𝑦] has value 1 if 𝑥< 𝑦and 0 otherwise).
+OSwap(𝐷𝑖, 𝐷𝑗,𝑏) refers to an oblivious swap subroutine that swaps
+the 𝑖th and 𝑗th values of 𝐷if 𝑏= 1 and leaves 𝐷unchanged if 𝑏= 0.
+It can be efficiently implemented obliviously (cf. Section 3.3). Arith-
+metic operations must also be implemented in an oblivious way.
+The core compaction logic is contained in the subroutine OROff-
+Compact(𝐷, 𝑀,𝑧) (see Figure 1). OROffCompact compacts marked
+items to a region starting at an offset position 𝑧, with possible
+wraparound. However, it can only be called on an array 𝐷with
+a length that is a power of two because it divides 𝐷into halves
+to perform pairwise OSwaps. OROffCompact is fully oblivious to
+its input values (though not their sizes) including in particular the
+offset 𝑧. Because |𝐷| is a power of two, simple bitwise operators
+can obliviously implement the division and modulo operations.
+The full ORCompact(𝐷, 𝑀) algorithm is given in Figure 2. Intu-
+itively, ORCompact divides 𝐷into a right side, which is the largest
+suffix with size 𝑛1 a power of two, and a left side, which is the
+remainder of size 𝑛2 = 𝑛−𝑛1. It then recursively compacts the 𝑛2
+items on the left and also computes the number of selected items
+𝑚on that side. Finally, it compacts the right side with an offset
+that is 𝑛2 −𝑚items from the end, and the final 𝑛2 items on the
+right are conditionally swapped pairwise with the 𝑛2 items on the
+left. OROffCompact works similarly, although it also takes into
+account that there may be an offset for the desired compaction.
+Because it can assume its input is a power of two, items on the left
+side and right side can be paired for potential swaps, which is why
+it can produce an offset in any position obliviously.
+3.2
+Correctness
+Theorem 1 shows that ORCompact compacts the marked items
+and maintains their relative order. Its proof appears in Appendix B.
+Theorem 1. Given 𝐷and 𝑀, let (𝐷′
+0, . . . , 𝐷′
+𝑤−1) be the subsequence
+of 𝐷consisting of all 𝑤items marked in 𝑀. ORCompact(𝐷, 𝑀) rear-
+ranges the items in 𝐷such that (𝐷0, . . . , 𝐷𝑤−1) = (𝐷′
+0, . . . , 𝐷′
+𝑤−1).
+3.3
+Obliviousness
+We now explain how ORCompact is fully oblivious (cf. Section 2.2),
+assuming an implementation that follows Figure 2 in the straightfor-
+ward way. The result is fully oblivious with respect to the values of
+its input arrays, although not to their size or location in memory. In
+fact, not only are all instructions and memory accesses independent
+of the input array values, as required for full obliviousness, they
+are deterministic given the size and location of those arrays. See
+Appendix A for a formal statement and proof of this obliviousness.
+Prior work [14, 43] has shown how to efficiently implement
+comparisons (e.g., [𝑖≥𝑚]) and swaps (OSwap) fully oblivously.
+These implementations are deterministic and either use conditional
+instructions such as SETB and CMOVZ or Boolean arithmetic. The
+comparisons are oblivious to the compared values but not to the
+comparison operator. OSwap is oblivious to the input values and
+to the swap flag 𝑏. It is not oblivious to locations of the inputs.
+We next argue that OROffCompact is fully oblivious. We can
+see that the only conditional branching (i.e., the if/else and for) is
+based on the length 𝑛of the input arrays and not on their contents
+or on the offset 𝑧. Thus, the instruction sequence is deterministic
+given the input size. We then observe that all accesses to the inputs
+are deterministic given 𝑛. As previously argued, the computation
+of comparisons is fully and deterministically oblivious to the val-
+ues of its inputs. Similarly, the calls to OSwap are oblivious to its
+last argument, and we observe that the other arguments are de-
+terministic locations given 𝑛. We can recursively assume that the
+calls to OROffCompact are fully and deterministically oblivious.
+Therefore, OROffCompact is fully oblivious, and its instruction
+sequence and memory accesses are deterministic given the length
+of its input arrays 𝐷and 𝑀.
+Finally, we argue that ORCompact (Figure 2) is fully oblivious.
+We observe that its only conditional execution is a for loop (Line 5)
+that executes a number of times that depends deterministically on
+𝑛. We can also see that its variable accesses are all a deterministic
+function of 𝑛. By our previous arguments, the comparisons and
+OROffCompact call are fully oblivious. Similarly, each OSwap call
+is fully oblivious to its last argument, and the other arguments are
+deterministic functions of 𝑛. Finally, we can recursively assume that
+the ORCompact call is fully oblivious. Therefore, ORCompact is
+fully oblivious, and its instruction sequence and memory accesses
+are deterministic given the input size.
+4
+
+=== PAGE 5 ===
+Fast Fully Oblivious Compaction and Shuffling
+3.4
+Efficiency
+We analyze the time and space efficiency of ORCompact as the
+number and size of data items grow. Theorem 2 gives the asymptotic
+runtime of ORCompact (see Appendix B for a proof). As previously
+noted, this runtime is not the asymptotic optimal linear time, but,
+as our experiments results will show, the constants are low enough
+that it outperforms all other oblivious algorithms for realistic input
+sizes.
+Theorem 2. ORCompact runs in time 𝑂(𝑛log𝑛).
+We next consider the number of oblivious swaps (i.e., calls to
+OSwap) because the data items themselves are only accessed during
+swaps. Each swap takes time linear in the item size, and so, for
+large enough items, oblivious swaps will constitute an arbitrarily
+large fraction of the runtime. We count the number of oblivious
+swaps, which admits a concrete (rather than purely asymptotic)
+estimate, thereby enabling a direct comparison to other swap-based
+algorithms. Let 𝑛be the length of the input arrays to ORCompact.
+Theorem 3 provides upper and lower bounds on the exact number
+of OSwap calls in ORCompact. Theorem 3 is proved in Appendix B.
+Theorem 3. Let 𝑆1(𝑛) count the OSwap calls in ORCompact. Then
+
+2⌊log2 𝑛⌋/2
+
+⌊log2 𝑛⌋≤𝑆1(𝑛) ≤⌊(𝑛/2) log2 𝑛⌋.
+Theorem 3 shows that ORCompact performs approximately
+(𝑛/2) log2 𝑛OSwaps. We can use this estimate to compare perfor-
+mance to the tight oblivious compaction algorithm of Goodrich [22],
+which appears to date to be the fastest algorithm in practice [29].
+This algorithm can be adapted to perform compaction fully oblivi-
+ously using OSwaps (the original algorithm description assumes
+some private memory and does not require unmarked items to be
+output). However, it uses more than (log2 𝑛−2)𝑛OSwaps, which
+suggests a runtime of about 2× that of ORCompact when item sizes
+are large enough for swaps to constitute most of the runtime (for
+small item sizes, we see in Section 6 that ORCompact outperforms
+Goodrich by an even larger factor).
+We note that ORCompact performs in-place compaction and
+thus need not maintain extra copies of possibly large data items.
+Moreover, the additional memory requirements are very small,
+with a small constant amount of memory needed at each of the
+⌈log2 𝑛⌉levels of recursion. We also observe that the memory-
+access patterns are highly regular (linear scans) and generally with
+high locality (especially at the deeper levels of recursion), which
+yields good practical performance due to caching and prefetching.
+3.5
+Parallelization
+We describe how ORCompact can be parallelized by giving a ver-
+sion of it in the EREW PRAM model [40]. In this model, multiple
+processors proceed in synchronized steps, and they access shared
+memory with exclusive read and write (i.e., only one processor can
+read or write a given memory location in a given step). OROCPar,
+given in Figure 3, performs parallel oblivious compaction to an
+offset when 𝑛is a power of two, and ORCPar, given in Figure 4,
+performs parallel oblivious compaction for any 𝑛. We indicate par-
+allel computations with a do in parallel block, in which each line
+can be computed in parallel, and a parallel for block, in which
+each loop iteration can be computed in parallel. This presentation
+Figure 3: OROCPar(𝐷,𝑆,𝑧): Parallel compaction of 𝐷to offset
+𝑧. 𝑆is prefix sums of marked items. 𝐷must be a power-of-two
+length.
+1: 𝑛←|𝐷|, 𝑚←𝑆𝑛
+2 −𝑆0
+2: if 𝑛= 2 then
+3:
+OSwap(𝐷0, 𝐷1, ((1 −(𝑆1 −𝑆0))(𝑆2 −𝑆1)) ⊕𝑧)
+4: else if 𝑛> 2 then
+5:
+do in parallel
+6:
+OROCPar
+
+𝐷0.. 𝑛
+2 −1,𝑆0.. 𝑛
+2 ,𝑧mod 𝑛
+2
+
+7:
+OROCPar
+
+𝐷𝑛
+2 ..𝑛−1,𝑆𝑛
+2 ..𝑛, (𝑧+ 𝑚) mod 𝑛
+2
+
+8:
+𝑠←[ (𝑧mod 𝑛
+2 ) + 𝑚 ≥𝑛
+2 ] ⊕[𝑧≥𝑛
+2 ]
+9:
+parallel for 𝑖←0 . . . 𝑛
+2 −1
+10:
+𝑏←𝑠⊕[𝑖≥(𝑧+ 𝑚) mod 𝑛
+2 ]
+11:
+OSwap(𝐷𝑖, 𝐷𝑖+ 𝑛
+2 ,𝑏)
+Figure 4: ORCPar(𝐷, 𝑀,𝑆): Parallel compaction of 𝐷as
+marked in 𝑀. 𝐷and 𝑀need not be power-of-two lengths.
+Pass empty 𝑆in initial call.
+1: if |𝐷| = 0 then return
+2: if |𝑆| = 0 then 𝑆←PrefixSumPar(𝑀)
+3: 𝑛←|𝐷|, 𝑛1 ←2⌊log2(𝑛)⌋, 𝑛2 ←𝑛−𝑛1
+4: do in parallel
+5:
+ORCPar(𝐷0..𝑛2−1, ∅,𝑆0..𝑛2)
+6:
+OROCPar(𝐷𝑛2..𝑛−1,𝑆𝑛2..𝑛, (𝑛1 −𝑛2 + 𝑆𝑛2) mod 𝑛1)
+7: parallel for 𝑖←0 . . .𝑛2 −1
+8:
+𝑏←[𝑖≥𝑆𝑛2]
+9:
+OSwap(𝐷𝑖, 𝐷𝑖+𝑛1,𝑏)
+omits explicit assignment to processors. For our algorithms, we
+consider the work (i.e., total computations across all processors) and
+the number of parallel steps (i.e., longest sequence of operations
+that any single processor might execute).
+ORCPar uses the subroutine PrefixSumPar to compute the array
+𝑆containing the sums of prefixes of the boolean array 𝑀. 𝑆is used
+by both ORCPar and OROCPar to compute offsets in constant time.
+Hillis and Steele [24] give an algorithm to compute the prefix sums
+obliviously in ⌈log2 𝑛⌉steps and 𝑂(𝑛log𝑛) total work. Note that
+ORCPar takes 𝑆as an extra argument, which should initially be
+empty, and that 𝑆is produced with a length of 𝑛+ 1, where each
+element is the sum of the preceding positions in 𝑀(with 𝑆0 = 0). 𝑆
+can thereby be used recursively to compute subsequence sums.
+We observe that the parallelization does not significantly affect
+the work. As with ORCompact, the work in ORCPar is 𝑂(𝑛log𝑛).
+In addition, the total number of the OSwap calls remains the same
+as in ORCompact (quantified in Theorem 3). At the same time, par-
+allelization significantly improves step complexity, with 𝑂(log𝑛)
+parallel steps and ⌈log2 𝑛⌉steps involving OSwap calls.
+4
+RECURSIVE SHUFFLING
+We now present the fast fully oblivious recursive shuffling algorithm
+ORShuffle, which uses ORCompact as a key subroutine. It takes
+5
+
+=== PAGE 6 ===
+Sajin Sasy, Aaron Johnson, and Ian Goldberg
+Figure 5: ORShuffle(𝐷): Put items in 𝐷in uniformly ran-
+dom order.
+1: 𝑛←|𝐷|
+2: if 𝑛= 2 then
+3:
+Generate 𝑏∈{0, 1} uniformly at random.
+4:
+OSwap(𝐷0, 𝐷1, 𝑏)
+5: else if 𝑛> 2 then
+6:
+𝑀←MarkHalf(𝑛)
+7:
+ORCompact(𝐷, 𝑀)
+8:
+ORShuffle(𝐷0..⌈𝑛/2⌉−1)
+9:
+ORShuffle(𝐷⌈𝑛/2⌉..𝑛−1)
+Figure 6: MarkHalf(𝑛): Mark random half of boolean array
+of length 𝑛.
+1: Create boolean array 𝑀of length 𝑛.
+2: ℓ←⌈𝑛/2⌉
+3: for 𝑖←0 . . .𝑛−1 do
+4:
+Generate 𝑟∈[0, 1) uniformly at random.
+5:
+𝑀𝑖←[𝑟< ℓ/(𝑛−𝑖)]
+6:
+ℓ←ℓ−𝑀𝑖
+7: return 𝑀
+as input an array 𝐷of 𝑛items and rearranges the items of 𝐷so that
+they appear in a uniformly random order.
+This algorithm has time complexity 𝑂(𝑛log2 𝑛). This complex-
+ity is the same as some efficient sorting networks [8], which can
+themselves be used for shuffling by attaching random labels to
+items before sorting based on those labels. However, ORShuffle
+represents an efficiency improvement because it does not need to
+attach labels and move them around with the data. The complexity
+is also higher than the 𝑂(𝑛log𝑛) complexity achieved by other ap-
+proaches [5]. The constants are low, though, and we will show that
+the performance of ORShuffle exceeds that of other approaches.
+4.1
+Algorithm
+ORShuffle follows the high-level approach of the PerfectORP
+algorithm of Asharov et al. [4, Algorithm 6.8]. In that algorithm, the
+array of items to shuffle is split into two halves, each is recursively
+shuffled, and then the items in each half are randomly interleaved
+with an Intersperse algorithm. Intersperse effectively performs
+a “reverse” compaction, sometimes called “expansion” [22]. We
+can therefore use ORCompact directly by reversing these steps
+(alternatively, running ORCompact in reverse itself would yield an
+expansion algorithm). That is, we randomly separate the items into
+two halves using ORCompact and then recursively shuffle each
+half. The result is the fully oblivious shuffle algorithm ORShuffle
+(see Appendix A for a formal statement and proof of obliviousness).
+Unlike PerfectORP, ORShuffle is a practically efficient algorithm
+because of its use of ORCompact in place of Intersperse (see §7.1).
+The ORShuffle algorithm is given in Figure 5. It uses the sub-
+routine MarkHalf(𝑛) (Figure 6) to mark a random half of the 𝑛
+positions, which is also essentially given by Asharov et al. [4, Algo-
+rithm 6.1]. ORShuffle rearranges the items in 𝐷into a uniformly
+random order. It is fully oblivious to the values in 𝐷, and it is also
+fully oblivious to its random bits and therefore to the permutation
+it applies. ORShuffle is not oblivious to the size or location of 𝐷.
+Its correctness and obliviousness follow from the correctness and
+obliviousness of ORCompact, using arguments similar to those of
+Asharov et al. [5] regarding PerfectORP.
+4.2
+Efficiency
+The asymptotic runtime of ORShuffle is given in Theorem 4. A
+proof of it appears in Appendix B.
+Theorem 4. ORShuffle runs in time 𝑂(𝑛log2 𝑛).
+While this runtime is not asymptotically optimal (oblivious shuf-
+fling algorithms exist with runtime 𝑂(𝑛log𝑛)), the constants make
+it practically efficient. Theorem 5 gives an exact count of the num-
+ber of OSwap calls. These oblivious swaps are relatively expensive
+operations, and, as with ORCompact, the data items themselves
+are only accessed via these swaps, and so the swaps dominate the
+runtime for large enough items. Theorem 5 is proved in Appendix B.
+Theorem 5. Let 𝑆2(𝑛) count the number of OSwap calls performed
+by ORShuffle(𝐷), with |𝐷| = 𝑛. For 𝑛= 2𝑘,𝑘∈N, 𝑆2(𝑛) =
+(𝑛/4)(log2 𝑛+1) log2 𝑛. For all 𝑛, 𝑆2(𝑛) < (𝑛/4)(log2 𝑛+1) log2 𝑛+
+𝑛/(6 ln 2), and 𝑆2(𝑛) ≥
+
+2⌊log2 𝑛⌋/4
+
+(⌊log2 𝑛⌋+ 1)⌊log2 𝑛⌋.
+This shows that ORShuffle performs roughly (𝑛/4)((log2 𝑛) +
+1) log2 𝑛oblivious swaps. We can compare this to the oblivious
+swaps performed using a sorting network. A sorting network per-
+forms pairwise compare-and-swap operations in a fixed sequence
+and thus can be used for oblivious shuffling by attaching random
+labels to items. Using the bitonic sorting network [8] is the com-
+mon choice for existing TEE systems that require oblivious sort-
+ing [1, 20, 29, 59]. The odd-even mergesort network [8] is slightly
+smaller but experimentally performs worse due to poor memory
+locality. The bitonic sorting network also requires (𝑛/4)((log2 𝑛) +
+1) log2 𝑛oblivious swaps. Therefore, for large data items, we can
+expect that ORShuffle will perform similarly to Bitonic Shuffle.
+However, for smaller items, ORShuffle can yield an efficiency im-
+provement because random labels need not be added and included
+in the oblivious swaps. Indeed, for word-sized items, random labels
+can approximately double the cost of the swaps.
+The memory used by ORShuffle is little more than the memory
+already occupied by the data items. The data items are swapped in
+place. At most an additional𝑛bits are created to mark items for com-
+paction, and a small constant amount of memory is needed for each
+of the ⌈log2 𝑛⌉levels of recursion. We also note that the algorithm
+can benefit significantly from memory caching and prefetching due
+to its regular memory-access patterns and good locality.
+4.3
+Parallelization
+We give a parallel version of ORShuffle in Figure 7, again in the
+EREW PRAM model. This algorithm, ORSPar, is nearly identical
+to the sequential version except that it calls parallel versions of
+the subroutines, namely MarkPar and ORCPar, and makes its
+recursive calls in parallel.
+MarkPar, given in Figure 8, marks a random 𝑚of 𝑛locations.
+This algorithm is a variant of the algorithm given by Sanders et
+6
+
+=== PAGE 7 ===
+Fast Fully Oblivious Compaction and Shuffling
+Figure 7: ORSPar(𝐷): In parallel, put items in 𝐷in uniformly
+random order.
+1: 𝑛←|𝐷|
+2: if 𝑛= 2 then
+3:
+Generate 𝑏∈{0, 1} uniformly at random.
+4:
+OSwap(𝐷0, 𝐷1,𝑏)
+5: else if 𝑛> 2 then
+6:
+𝑀←MarkPar(⌈𝑛/2⌉,𝑛)
+7:
+ORCPar(𝐷, 𝑀, ∅)
+8:
+do in parallel
+9:
+ORSPar
+
+𝐷0..⌈𝑛/2⌉−1
+
+10:
+ORSPar
+
+𝐷⌈𝑛/2⌉..𝑛−1
+
+Figure 8: MarkPar(𝑚,𝑛): In parallel, mark a random 𝑚of 𝑛
+positions.
+1: if 𝑛= 1 then
+2:
+return 𝑚
+3: else if 𝑛> 1
+4:
+𝑛1 ←⌈𝑛/2⌉, 𝑛2 ←𝑛−𝑛1
+5:
+𝑘←HyperGeomPar(𝑛,𝑛1,𝑚)
+6:
+do in parallel
+7:
+𝑀1 ←MarkPar(𝑘,𝑛1)
+8:
+𝑀2 ←MarkPar(𝑚−𝑘,𝑛2)
+9:
+return 𝑀1||𝑀2
+al. [47, Algorithm P]. The differences from the original algorithm
+are that it is fully specified (i.e., no unspecified “local sampler”)
+and outputs a full boolean array of length 𝑛(i.e., not only the
+marked index values). These changes are needed to guarantee full
+obliviousness with respect to 𝑚and to the random bits.
+MarkPar uses HyperGeomPar for hypergeometric sampling.
+HyperGeomPar(𝑛,𝑑,𝑚) samples the number of successes among 𝑑
+random draws without replacement from a set of 𝑛items that con-
+tain 𝑚total successes. Following Sanders et al. [47], we perform hy-
+pergeometric sampling with an algorithm of Stadlober [55]. We use
+an oblivious implementation that uses the HRUE𝑡variant, computes
+ln(𝑥!) with a Stirling approximation, omits the fast-acceptance op-
+timization, and repeats the rejection sampling a constant number
+of times to obtain a given failure probability.
+The work of ORSPar is similar to that of ORShuffle. The only
+difference in the operations executed is from calling ORCPar in-
+stead of ORCompact and MarkPar instead of MarkHalf. As
+discussed in Section 3, ORCPar has the same 𝑂(𝑛log𝑛) complexity
+as ORCompact and the same number of OSwap calls. MarkPar
+has the same 𝑂(𝑛) complexity as MarkHalf given a fixed failure
+probability. Therefore, ORSPar has the same 𝑂(𝑛log2 𝑛) asymp-
+totic runtime as ORShuffle. Moreover, the number of OSwap calls
+is the same in both.
+Parallelization does improve the step complexity of shuffling.
+ORSPar takes 𝑂(log2 𝑛) parallel steps, and it has (⌈log2 𝑛⌉+ 1)
+⌈log2(𝑛)⌉/2 parallel steps that include an OSwap call. These results
+show that ORSPar is appropriate for large-scale private data analy-
+sis, where many processors might be available for fast processing.
+5
+BUCKET OBLIVIOUS RANDOM
+PERMUTATION (BORP)
+We next introduce the BORPStream shuffling algorithm, which is
+inspired by the Bucket Oblivious Random Permutation (BORP) of
+Asharov et al. [3]; BORPStream leverages entirely different ma-
+chinery than BORP to efficiently shuffle while attaining full oblivi-
+ousness, and reuses just the underlying butterfly routing network
+(BRN) used by BORP. BORP is a promising alternative to ORShuf-
+fle because of its small constants, and indeed its authors present it
+as a faster alternative to Bitonic Shuffle. However, it is given in a
+client-server setting where the client has private memory. Oblivi-
+ous sorting or compaction are suggested as ways to avoid needing
+private memory, but using them increases the complexity in 𝑛, and,
+as our experiments will show, this approach yields poor shuffling
+performance (despite using the new and faster ORCompact).
+At a high level, Asharov et al. [3] randomly permute items by
+passing them through a well-parameterised BRN. First the algo-
+rithm partitions the 𝑛input items across B = 2𝑛
+Z buckets, with
+each bucket containing Z elements. The constant Z dictates the
+correctness guarantee of BORP, and the authors recommend Z=512.
+These initial-layer buckets contain exactly half real items and half
+dummy items. Real items get assigned a random destination from
+among the B output buckets, while the dummies are assigned ⊥
+as their destination. The butterfly routing network of depth log2 B
+is then used to route all the real items to their destination buckets
+obliviously. In order to do so, the algorithm performs a MergeSplit
+operation on the B/2 pairs of buckets that are 2𝑖apart in layer 𝑖.
+The MergeSplit operation distributes the real items of both its input
+buckets into two output buckets based on the 𝑖th bit of their destina-
+tion label, and pads each output bucket with enough dummy items
+to make exactly Z in each output bucket. These output buckets are
+then locally shuffled by the client to randomize the order of items
+before returning them to the server. Once the routing is completed,
+the dummy items from each output bucket are discarded to obtain
+the randomly permuted real items.
+Executing BORP naively within a TEE would break its security
+guarantees. During the MergeSplit operation or the final discard
+of dummies, an adversary could use observations of the memory
+access patterns to distinguish real and dummy items. The straight-
+forward solution is to replace the private-memory computations
+with oblivious variants (largely by changing MergeSplit to use
+ORCompact). We call this algorithm BORPCompact, which we
+present in Section 5.1. It is unfortunately not competitive with the
+state of the art, as we will see in Section 6. We therefore design
+BORPStream, which operates in a very different way: by pushing
+items through the BORP BRN one by one. Not only does this yield
+much better efficiency overall, it allows much of the work to happen
+while items are being input in a streaming manner.
+5.1
+BORPCompact
+BORPCompact is almost identical to the original BORP. The dif-
+ference is that the MergeSplit operation is instantiated with our
+ORCompact(𝐷, 𝑀). To produce the correct bit array 𝑀used by
+7
+
+=== PAGE 8 ===
+Sajin Sasy, Aaron Johnson, and Ian Goldberg
+Figure 9: MSN: MergeSplitNode class
+1: Internal State Variables: c, buffer[], out_streams[]
+2: Initialize(f, s, b, streams):
+3:
+initializeBuffer(buffer, s, b)
+4:
+c ←0 // c is the current eviction stream ∈[0, f −1]
+5:
+out_streams ←streams // MSNs this node connects to; or
+final buckets if this is a last layer MSN
+6: ProcessItem(p):
+7:
+for i ←0 . . . s −1 do
+8:
+e ←extractStream(p) // Assigns ⊥if p is ⊥
+9:
+z1 ←[extractStream(buffer[i])=c]
+10:
+z2 ←isReal(p) ∧[e ≠c]
+11:
+z ←z1 ∨z2
+12:
+OSwap(p, buffer[i], z)
+13:
+if self.isLastLayerNode then
+14:
+Append(out_streams[c], p))
+15:
+else
+16:
+out_streams[c].ProcessItem(p)
+17:
+c ←(c + 1) mod f
+ORCompact, the algorithm makes two linear passes over 𝐷(the
+concatentated two input buckets going into the ORCompact op-
+eration, |𝐷| = 2Z). In the first linear pass it obliviously counts the
+number of real items going into each of the output buckets. In the
+second linear pass it marks real items correctly in 𝑀, while addi-
+tionally also marking the right number of dummies by using the
+counts from the first pass, such that the total number of marked
+items will be exactly Z. Once all the items have been processed
+through the BRN as described above, the final output buckets are
+compacted to just the real items in each of them by leveraging OR-
+Compact again. Furthermore, the real items in each bucket are then
+obliviously shuffled using ORShuffle, to break any correlations in
+relative ordering of items within an output bucket. Finally all these
+items are concatenated together to produce the required output
+array of randomly permuted items. The correctness argument for
+this variant is identical to that of BORP [3], but our variant is fully
+oblivious and can by design be safely run in a TEE.
+5.2
+BORPStream
+BORPStream converts BORP into an algorithm processing “stream-
+ing” data that arrives incrementally. At a high level, instead of pro-
+cessing items layer by layer at a bucket-level granularity, we stream
+each input item as it arrives through the entire butterfly routing
+network. Each of the discrete MergeSplit operations are replaced
+with a stateful processing node we call a MergeSplitNode (MSN),
+described in Figure 9. Every MSN in a layer of the network is con-
+nected directly to the appropriate MSN in the next layer that their
+logical output bucket would have been connected to, effectively
+building a butterfly routing network of purely MSNs, followed by a
+layer of B output buckets. To uphold obliviousness in this streamed
+model, items have to be processed in a deterministic fashion; i.e.,
+Figure 10: BORPStream(𝑛,𝑏, 𝜆) where 𝑛is the number of
+elements to shuffle, 𝑏is the size of each element, and 𝜆is the
+failure probability parameter.
+1: Initialize(𝑛, b, 𝜆):
+2:
+f, d, s ←BORP_Optimizer(𝑛,𝑏, 𝜆)
+3:
+B ←fd // Number of buckets at start/end of BRN
+4:
+m ←fd−1 // Number of MSNs in each layer of BRN
+5:
+𝑐←0 // Number of data elements processed so far
+6:
+𝐷′ ←[] // Output array to be populated
+7:
+BRN ←InitializeBRN(f, d, s,𝑏) // InitializeBRN sets up the
+BRN of MSNs defined by the parameters f, d, s, and𝑏, returning
+a 2D array of MSN nodes, BRN: MSN[d][fd−1]
+8:
+9: BORPStream_Phase1(p): // Call for each arriving packet p
+10:
+entry_node ←⌊m𝑐/𝑛⌋
+11:
+Generate label ∈[0, B −1] uniformly at random
+12:
+p′ ←⟨label, p⟩
+13:
+BRN[0][entry_node].ProcessItem(p′)
+14:
+BRN[0][entry_node].ProcessItem(⊥) // Send dummy item
+15:
+𝑐←𝑐+ 1
+16:
+if 𝑐= 𝑛then
+17:
+return BORPStream_Phase2(BRN)
+18:
+19: BORPStream_Phase2(BRN):
+20:
+FlushBuffers(BRN)
+21:
+for i ∈[0, B −1] do
+22:
+M,r ←MarkReal(buckets[i]) // M is a bit array; r ←
+Í 𝑀𝑖; buckets is the array of B buckets at the end of the BRN.
+23:
+ORCompact(buckets[i], M)
+24:
+ORShuffle(buckets[i]0..r−1)
+25:
+Append(𝐷′, buckets[i]0..r−1)
+26:
+return 𝐷′
+routing decisions cannot be based on the destination of the item be-
+ing routed. Therefore, all MSNs follow a strict round robin schedule
+for routing data across all of its f output streams.
+The schedule is clearly at odds with the requirement of routing
+items to their correct destination. To ensure correctness, each MSN
+is imbued with a local buffer of capacity s items. When an MSN
+receives an item to process it scans across its local buffer and swaps
+the incoming item with one destined for the current eviction stream
+using oblivious swaps (Figure 9, lines 7–12). Figure 10 details BORP-
+Stream in its entirety. BORPStream can be split into two phases: i)
+Phase 1 processes input data packets as they arrive, assigning each
+element a random destination label ∈[0, B −1] and then routing it
+through the BRN (Lines 9–15); ii) Phase 2 starts once all input data
+have been received and processed through the BRN.
+In scenarios where data items are acquired over time, this two-
+phase division takes advantage of time otherwise spent waiting
+for all items to arrive. Several real world use-cases provide such
+scenarios, including application telemetry, software profiling, or
+error reporting. Typically such data accumulate over time as they
+are generated by user activity, and shuffling is performed only after
+enough users have provided inputs to yield a sufficiently large
+8
+
+=== PAGE 9 ===
+Fast Fully Oblivious Compaction and Shuffling
+anonymity set. Later in Section 6.2 we will illustrate the concrete
+performance improvements obtained by this division by measuring
+the time taken by Phase 2, which reflects the turnaround time for
+the shuffle once all data items have arrived.
+Given the number of items 𝑛to shuffle, the size of each item b,
+and the desired correctness parameter 𝜆, we design and leverage an
+optimizer that returns the optimal choice of parameters (f: the fan of
+the network, d: the depth of the network, and s: the internal buffer
+size of each MSN) for the underlying BRN. The failure probability
+of the returned set of parameters will be smaller than 2−𝜆. In our
+experiments we set 𝜆= 80. Once the optimal parameters are known,
+the enclave initializes and sets up the BRN by initializing a grid of
+MSNs and connecting them appropriately. For every real item, we
+also propagate a dummy item through the network. The dummy
+elements are required in order to provide sufficient slack in the
+internal buffers of the MSN, lest they overflow and trigger a failure.
+Once all the real and dummy items have been processed through
+the network, there may still be real items in the MSN local buffers.
+We therefore additionally flush all the local buffers, one layer at a
+time. To maintain obliviousness, during the flush operation, each
+MSN performs s·f evictions, and there are fd−1 MSNs in each of the
+d layers of the BRN, thus resulting in s·d additional items in each of
+the B = fd final buckets. We then use ORCompact on the buckets
+to reduce the buckets down to just the real items. Finally, we shuffle
+just the real items of each bucket using ORShuffle to reorder them,
+as real items would otherwise arrive in the final bucket in the order
+that they entered the network.
+5.3
+Correctness and Obliviousness
+The use of MSNs for BORPStream changes its correctness argu-
+ment significantly from the original BORP. We are no longer con-
+cerned about the possibility of individual bucket overflows through
+the network, but instead our correctness argument rests on the
+union bound of the probability of buffer overflows of each of the
+MSNs’ internal buffers, P. We empirically evaluate P via a failure
+probability calculator that performs a Markov chain analysis; see
+Appendix C for details.
+The original BORP algorithm is fully oblivious from the server’s
+perspective, since the algorithm retrieves and stores buckets in a de-
+terministic fashion, but it requires unobservable client memory. For
+BORPStream, obliviousness rests on the ProcessItem algorithm
+(Figure 9) of MSN being oblivious. For every incoming item, MSNs
+perform the same set of operations (Figure 9, Lines 7–17). An adver-
+sary can only view the memory access patterns for these OSwap
+operations, which are deterministic and secret independent. The
+final operations of Phase 2 of BORPStream are ORCompact and
+ORShuffle, and their obliviousness has already been established.
+Note that revealing the number of real items in a bucket after the
+ORCompact step does not violate obliviousness [3]. The number of
+real items in these buckets is an artifact of the distribution of ran-
+dom labels assigned, but it does not reveal any information about
+which real item ends up in a given bucket. See Appendix A for a
+formal statement and proof of the obliviousness of BORPStream.
+5.4
+Efficiency and Parallelization
+The efficiency of BORPStream depends on some key parameter
+choices for the BRN: the fan f, the depth d, and the buffer size s. We
+use a numerical optimizer to set these as a function of the desired
+failure probability 2−𝜆. We can obtain an asymptotic upper bound
+on the runtime of 𝑂(𝑛log2 𝑛) (see Appendix B).
+Parallelization for BORPStream is not as immediate due to the
+two phases. However, both phases in isolation lend themselves to
+parallelization in a straightforward fashion. Phase 1 can be par-
+allelized by viewing the entire network as a pipeline of OSwap
+operations. For Phase 1, the number of OSwaps without paralleliza-
+tion is 2 · 𝑛· s · d, since each of the 2𝑛items (𝑛real and 𝑛dummy)
+have to perform an OSwap comparison against each item of the s
+sized internal buffer of the d MSNs it passes through. Pipelining
+this brings down the number of OSWAP steps to 2 · 𝑛+ s · d. While
+the speedup from parallelization here is just a small factor s · d, we
+additionally note that since Phase 1 only handles incoming data
+items, and since we envision such packets to arrive haphazardly,
+the notion of parallelism only arises in the case that items arrive
+in rapid succession (or even simultaneously), in which case we get
+the aforementioned step complexity reduction.
+Phase 2 is innately more parallelizable; the FlushBuffers compo-
+nent of Phase 2 requires s · fd · (1 + s · d·(d−1)
+2
+) OSwaps, which are
+trivially parallelizable across the fd−1 MSNs at each layer of the
+BRN, and can be pipelined along the depth of the network resulting
+in a parallel step complexity of d · f · s + s(d −1). For the remainder
+of Phase 2 all the B = fd buckets can be individually computed
+upon in parallel. Each ORCompact takes 𝑉
+2 log𝑉OSwaps where
+𝑉= 2𝑛
+B + s · d is the number of items in each bucket at the end of
+Phase 1, and each ORShuffle takes about r
+4 log2 r OSwaps, where
+r = 𝑛
+B is the expected number of real items in each bucket.
+In addition, ORCPar can be leveraged to parallelize the com-
+paction within each bucket, and the final counts of real items in
+each bucket can be established after the PrefixSumPar function is
+invoked within ORCPar each to ensure that writes are done to the
+correct positions in the output array in parallel. This can be done by
+executing PrefixSumPar on an array of B size, populated with the
+sum of the outputs of PrefixSumPar of each individual bucket; i.e.,
+the number of real items in each bucket. Additionally, the recursive
+shuffles of real items in each of the B buckets are also completely
+parallelizable, and even parallelizable within a bucket by leveraging
+ORSPar. The final parallel step complexity of the compaction and
+shuffle then boils down to 𝑂(log𝑉+ max(log B, log2 r)).
+The max term arises from the fact that depending on the un-
+derlying BRN configuration, the dominant term could either be B
+or log2 r, from running (in parallel) PrefixSumPar on the number
+of real items in each bucket and ORSPar within each bucket. It is
+safe to execute these operations in parallel because the locations
+of where to write the real items in each bucket need to be known
+only by the end of the shuffle itself.
+6
+IMPLEMENTATION
+We implement and benchmark our algorithms on a server-grade
+Intel Xeon E3-1270 running Ubuntu 20.04 with four physical cores,
+64 GB of DDR4 RAM, and support for Intel SGX. The fundamental
+9
+
+=== PAGE 10 ===
+Sajin Sasy, Aaron Johnson, and Ian Goldberg
+(a) Number of OSwaps with b=8 B
+(b) Computation time (in ms) with b=8 B
+(c) Computation time (in s) against block size
+Figure 11: Comparison of Goodrich compaction and ORCompact on number of OSwaps and computation time over varying
+problem sizes. We also provide a zoomed-in version of Figure 11b as Figure 14 in Appendix D to clarify the gap between the
+two algorithms for smaller values of 𝑛. The elbow for Goodrich compaction in Figure 11c corresponds to it incurring paging
+overheads from exceeding the PRM limit.
+building block of our algorithms are oblivious swaps (OSwaps).
+Given two data elements and a swap_flag, OSwap swaps them if
+swap_flag is true, while not leaking any side-channel information
+about the contents or whether the swap was performed. Similar to
+prior work [43, 46, 48], we develop these building blocks by leverag-
+ing the x86 CMOV instruction. In our implementation we develop a
+library of templated inline assembly functions that perform OSwap
+on buffers. These functions are templated on the size of the buffer
+so that we can measure performance across varying problem sizes.
+Although the amount of PRM is limited, Intel SGX does allow
+applications to use PRM beyond that limit via virtual memory. Using
+more memory than the PRM limit does however incur additional
+paging overheads of bringing the encrypted memory pages into the
+PRM, since the MEE performs an integrity and freshness verification
+on these pages via the Enclave Page Cache Map (EPCM) [15], which
+is a portion of the PRM that is inaccessible to user space and set
+aside to ensure SGX’s isolation guarantees.
+6.1
+Compaction Algorithms
+In Figure 11a, we compare the performance of our ORCompact
+algorithm against Goodrich’s compaction algorithm [22] in terms of
+the number of OSwaps performed. As expected from Theorem 3, our
+ORCompact algorithm performs about half the number of OSwaps
+as Goodrich’s compaction algorithm. Furthermore from Figure 11b,
+we see that the performance gap can grow much larger than 2×
+for larger choices of 𝑛with a block size of 8 B. For instance, at the
+largest value of 𝑛= 223.33 that we see in Figure 11b, ORCompact
+takes 243.1±0.3 ms, while Goodrich compaction takes 1263±0.3 ms;
+i.e., a 5.2× speedup over the state of the art. The larger performance
+gap is because Goodrich compaction must update a distance array
+of size 𝑛in each of its log𝑛rounds, while ORCompact performs
+a single linear-time computation to track the number of marked
+items in every subarray of the given problem.
+This additional cost becomes less significant as the block size
+b increases, however. In Figure 11c, we plot how the computation
+time varies for both of these compaction algorithms as b increases
+using a fixed 𝑛= 107. It shows that the timing gap persists even
+across larger block sizes. As the block size increases, however, the
+timing cost is dominated by OSwaps on those larger blocks, and so
+the performance gap becomes closer to 2×.
+6.2
+Shuffling Algorithms
+We implement and evaluate the performance of the three fully
+oblivious shuffling algorithms presented in previous sections: OR-
+Shuffle, BORPCompact, and BORPStream. We also implement
+and evaluate fully oblivious versions of shuffling via OddEvenMerge
+sort and Bitonic sort [8]. Figure 12a shows the performance results
+for various problem sizes 𝑛, with a fixed block size of b = 8.
+As mentioned in Section 4, shuffles based on sorting networks,
+such as Bitonic Shuffle, require attaching additional random tags
+to the data elements. In Figure 12a, we see the concrete overheads
+of these approaches when compared to our ORShuffle algorithm.
+For instance, with 𝑛= 224 from Figure 12a we see that ORShuffle
+takes 9.556±0.005 s, while Bitonic Shuffle takes 16.78±0.03 s, the
+performance gap widening with increasing problem size. We note
+that the stddevs for all our algorithm implementations are small,
+by virtue of their oblivious design.
+Figure 12a has four lines for BORPStream. The “V1” variants
+correspond to the timings (total and just for Phase 2) when the
+BORPStream optimizer is tuned to reduce the total time taken.
+However, as we alluded in Section 5.2, in the context where the data
+to be shuffled arrives intermittently, one could tune the optimizer to
+reduce the Phase 2 time instead (“V2”), and this is in fact the setting
+where BORPStream shines. For instance, with 𝑛= 224 when tuned
+to minimize total time (optimizer parameters f=4, d=1, s=48), we
+see that it takes a total time of 19.37±0.03 s, of which 11.14 ±0.03s
+is spent on Phase 2, implying a per-packet cost of approximately
+0.49 𝜇s as packets arrive. When tuned to minimize the time taken in
+Phase 2 (optimizer parameters f=4, d=5, s=49), BORPStream takes
+a total time of 42.42 ±0.05s, however only requires 6.784±0.002 s for
+Phase 2, implying a per packet cost of approximately 2.1 𝜇s. While
+this is larger than that from the V1 variant, we note that this cost
+10
+
+=== PAGE 11 ===
+Fast Fully Oblivious Compaction and Shuffling
+(a) Computation time (in s) with b=8 B
+(b) Computation time (in s) with varying block sizes for 𝑛= 220
+Figure 12: Comparison of shuffling algorithms in computation time (in s) over varying problem sizes. Error bars are plotted
+in the graph, but are too small to be seen. We provide a version of Figure 12a covering smaller values of 𝑛as Figure 15 in
+Appendix D to demonstrate how even for smaller values of 𝑛our proposed algorithms consistently perform well.
+is still quite small in practice. In this example, if the server is likely
+to have 2.1 𝜇s of otherwise idle time on average after each user
+submits their data, it would behoove it to use the V2-optimized
+BORPStream algorithm, so that once the final data arrives, the
+shuffle can be completed more quickly in order to reduce the latency
+of the overall protocol.
+Finally, Figure 12b illustrates the overheads of the various obliv-
+ious shuffling algorithms with increasing block sizes, while main-
+taining a fixed problem size of 𝑛= 220. The advantage of BORP-
+Stream overall is clear here; for instance, for 𝑛= 220 4 KiB blocks,
+ORShuffle and Bitonic Shuffle cost 515.2 ±0.3s and 523.9±0.3 s re-
+spectively, while BORPStream V1 (optimizer parameters f=4, d=3,
+s=47) and V2 (optimizer parameters f=4, d=4, s=47) cost 371.8 ±0.8 s
+and 494.7 ±0.8 s respectively, a 1.4× improvement over the state of
+the art. Furthermore, BORPStream V2’s Phase 2 cost is 124.7±0.1 s
+which is a 4.2× improvement over the state of the art and ORShuf-
+fle. We observe performance benefits for BORPStream V1 even
+though it requires about 3× more OSwaps than Bitonic Shuffle; this
+is because BORPStream has significantly better memory locality
+than Bitonic Shuffle, as all the memory required for the MSNs in
+the first phase of BORPStream even at such large problem sizes can
+fit within the 90 MB PRM limit, avoiding expensive PRM paging
+overheads for the majority of the algorithm. The second half of
+BORPStream is also locality efficient as it handles items one bucket
+at a time. BORPStream V2 has the same memory advantages as
+mentioned earlier, although it incurs more than 4× the number of
+OSwaps in total than Bitonic Shuffle. However in Phase 2 alone,
+BORPStream V2 only incurs about half the number of OSwaps as
+Bitonic Shuffle does in total, and these OSwaps again have better
+locality than that of Bitonic Shuffle as the OSwaps are all contained
+within a single bucket, while in Bitonic Shuffle they are distributed
+over all the items in the entire problem. Additionally, in our eval-
+uated range of block sizes the performance gap clearly widens as
+the block sizes get larger. While comparing just the Phase 2 cost of
+BORPStream with that of the entire ORShuffle/Bitonic Shuffle
+may seem unfair, note that the latter shuffles can only be performed
+once all the data elements are available. Therefore, ignoring the
+per-item timing costs of BORPStream during Phase 1 may be a
+fair comparison for scenarios in which data items trickle in over a
+relatively long time period.
+To summarize, our results show that ORShuffle consistently
+outperforms the fastest existing fully oblivious shuffle, Bitonic Shuf-
+fle, for all problem sizes. For small block sizes, ORShuffle provides
+a 1.8× improvement, and BORPStream’s two-phase division pro-
+vides a 2.5× improvement over Bitonic Shuffle once all the packets
+have arrived. As block sizes get larger, ORShuffle gives only minor
+performance improvements over Bitonic Shuffle, but BORPStream
+provides a 1.4× speedup, and with the two-phase division it pro-
+vides a 4.2× improvement once all the packets have arrived. Despite
+recent work on practical oblivious shuffling, which has targeted
+varying levels of partial obliviousness [3, 9, 42], this work demon-
+strates the first practical improvements in fully oblivious shuffling
+over the classic Bitonic Shuffle.
+6.3
+Parallel Implementation
+We also implement and evaluate the parallel versions of our pro-
+posed algorithms on an 8-core Intel Xeon Gold 6334. In Fig 13 we
+present the speedup factor for these algorithms with increasing
+numbers of threads that execute the algorithm in parallel. We ob-
+serve that all our algorithms get 5-6× speedup when run with 8
+threads, beyond which the effect saturates as there are only 8 phys-
+ical cores on our processor. While processors with SGX support are
+currently limited to ones with few physical cores, we envision that
+in the future GPU-style high core count TEEs will be available, and
+will benefit significantly from our algorithms.
+11
+
+=== PAGE 12 ===
+Sajin Sasy, Aaron Johnson, and Ian Goldberg
+Figure 13: Speedup factor for implementations of ORSPar,
+ORCPar, and parallel BORPStream
+6.4
+Fully Oblivious Assembly Verifier (FOAV)
+In order to ensure that the binary executed by the processor is
+control-flow oblivious, we instrument our C/C++ source files to
+insert assembly comments that state if a value in a register is “safe”
+before any (possibly) conditional branch inducing instructions, us-
+ing __asm__ macros. We then designed a tool that analyzes the
+output assembly produced by the compiler, to verify control-flow
+obliviousness. The tool tracks all the conditional jump instructions
+in the final assembly, and the corresponding flag-manipulating
+instruction (FMI) (such as test, cmp, dec, etc.) for each of these
+conditional jumps, and parses the lines above them to check if the
+operands of these FMIs have been marked as safe. Compiler op-
+timizations make automating this process challenging since the
+optimizations may move operands to different registers before per-
+forming any FMI on them, which causes our registers marked safe
+by the comments to mismatch with the ones used by the FMI. To
+resolve this, our tool parses the assembly lines above each of the
+conditional jump, tracking both the register operands of the FMI,
+and the registers that were already marked explicitly safe from
+source comments, to identify other registers that may be deemed
+safe as well. This close analysis is performed up until it hits the
+start of a function or a jump instruction, and if it still cannot resolve
+a conditional branch as safe it marks it for closer human inspection.
+Our tool automatically marks 638 out of the 660 conditional
+branches in our code as safe, and we manually verified the oblivi-
+ousness of the remaining 22 to ensure that they are all safe as well.
+A majority of them arise from our use of try-catch blocks that
+ensure that the enclave was able to allocate dynamic memory for its
+execution, and hence these too are in fact safe conditional branches,
+as they do not depend on secret data.
+7
+RELATED WORK
+7.1
+Oblivious Compaction
+Goodrich [22] defines compaction as outputting only the 𝑚marked
+elements among 𝑛total elements. Variants for tight and loose com-
+paction are given where the output array is of size exactly 𝑚or
+of size 𝑂(𝑚). Goodrich gives an 𝑂(𝑛log𝑛) order-preserving tight
+compaction algorithm. It can be implemented in a way that outputs
+all 𝑛elements, starting with the 𝑚marked items in their original
+relative order (but possibly reordering the unmarked ones), using
+as few as (log2 𝑛−2)𝑛oblivious swaps. Note that this number is
+roughly a factor two more swaps than in ORCompact. Goodrich
+compaction can also be parallelized with log2 𝑛rounds at the costs
+of i) using a second array to move items into in parallel (otherwise
+items would be read and written in the same step), and ii) perform-
+ing compaction on both the marked and unmarked items separately
+and then merging the result (otherwise the unmarked items would
+be overwritten). This parallel form requires approximately double
+the work and quadruple the memory cost of the sequential one, in
+contrast to ORCompact, for which the total parallel and sequential
+costs are about the same.
+Asharov et al. [5] give a linear-time tight compaction algorithm.
+Dittmer and Ostrovsky [18], however, show that the constant for
+this compaction algorithm is more than 2228. They give a different
+𝑂(𝑛) tight compaction algorithm that runs in time at most 9405.73𝑛,
+which, for realistic 𝑛, is much larger than the additional log𝑛and
+constant factor in Goodrich compaction. Similarly, Mitchell and
+Zimmerman [37] give an 𝑂(𝑛log log𝑛) algorithm for compaction,
+but the analysis by Falk and Ostrovsky [21] indicates that the al-
+gorithm requires 4𝑛log log𝑛+ 14𝑛OSwaps (with a 2−40 failure
+probability), which is more than in ORCompact unless 𝑛> 278.
+We also note that fully oblivious compaction is suitable for other
+(non-TEE) secure computing technologies, such as secure multi-
+party computation (MPC) and fully homomorphic encryption. For
+example, Blanton and Aguiar [10] use Goodrich compaction to per-
+form MPC set operations. They could instead use ORCompact and
+reduce the expensive comparisons by a factor of two.
+7.2
+Oblivious Shuffling
+Melbourne Shuffle [42] is a data-oblivious shuffle designed for cloud
+storage with minimal client storage overheads. Its optimized (recur-
+sive) variant requires 𝑂( 𝑐√𝑛) client or private memory to store and
+permute items, and this private memory needs to be obscure to the
+server. To instantiate Melbourne Shuffle in a TEE, one would have
+to convert the computation that happens within this client memory
+to be fully oblivious. This computation however is non-trivial to
+convert into a fully oblivious variant; it requires obliviously dis-
+tributing
+𝑐√𝑛items across
+𝑐√𝑛logical buckets (that reside on the
+server), as well as padding them up to 𝑝· 𝑐√𝑛items for each of those
+buckets, where the constant 𝑝dictates the failure probability of the
+algorithm. The algorithm fails if the shuffle permutation requires
+moving more than 𝑝· 𝑐√𝑛items to any of the destination buckets.
+The algorithm induces 𝑂((𝑐−1)(𝑛
+𝑐−1
+𝑐)) such client-side operations
+over 𝑛1/𝑐items. One could convert this into a fully oblivious variant
+in quadratic time over the 𝑛1/𝑐items it operates on, which leads
+to an algorithm of 𝑂((𝑐−1)(𝑛
+𝑐+1
+𝑐)) complexity, asymptotically
+worse than the ones we proposed. Additionally, there are constants
+missing here that further blow up the cost of implementing this in
+practice within a TEE.
+Stash Shuffle, the shuffling algorithm in Prochlo [9], was de-
+signed to be efficient for the TEE setting. The shuffle is similar to a
+Melbourne shuffle without the recursion, but it also uses a stash
+of size 𝑂(√𝑛) to hold items that cannot be distributed in a given
+round to their intended output buckets. Stash Shuffle is designed to
+reduce the number of times a single item has to be processed by the
+shuffler, which in classical oblivious shuffling algorithms is log2 𝑛;
+12
+
+=== PAGE 13 ===
+Fast Fully Oblivious Compaction and Shuffling
+their work reduces this down to a constant factor. Their construc-
+tion succeeds in their desired efficiency goal only in the setting
+where access patterns within PRM are safe from side channels, but
+as we detail in Section 2.3, this is no longer a realistic assumption.
+Sorting networks with random labels are a natural approach
+for oblivious shuffling [3]. They are a common tool for oblivious
+sorting inside TEE systems [1, 20, 29, 59]. The bitonic network [8]
+is preferred because it performs better in practice [19], even though
+the odd-even mergesort network [8] is slightly smaller. Probabilistic
+sorting networks [33] can achieve smaller size at the cost of failing
+to sort correctly with certain probability. They have not been eval-
+uated for oblivious use in TEEs. Random sorting networks appear
+to be asymptotically efficient [51], but their practical performance
+has not been demonstrated [16].
+7.3
+Systems Using TEEs and Oblivious
+Algorithms
+Several privacy-preserving systems have been proposed that make
+use of TEEs and oblivious algorithms.
+The Oblix system [36] provides secure search of encrypted data
+using a TEE. Oblix uses “doubly oblivious” algorithms, in which
+memory accesses are oblivious to both protected memory and exter-
+nal memory. The definition of double obliviousness does not include
+the control flow, in contrast to full obliviousness. The authors note
+that the Oblix implementation does not guarantee obliviousness
+after compilation, an issue we address with FOAV.
+Opaque [59] is a TEE-based platform for secure data analytics.
+It performs SQL-type queries on tables, such as filter and join.
+Opaque assumes the existence of some memory where accesses are
+not observable to the adversary, and it does not provide control-
+flow obliviousness. Opaque performs compaction to filter unwanted
+records and to remove dummy records created during oblivious
+processing, and it could benefit from our oblivious compaction
+algorithm ORCompact.
+Prochlo [9] provides privacy-preserving telemetry, for exam-
+ple to collect information on how a web browser is used. The
+Prochlo architecture includes shuffling as a major component to
+help anonymize user data. Prochlo introduces the aforementioned
+Stash Shuffle algorithm, which is external-memory oblivious. To
+obtain security against memory and timing side channels, Prochlo
+could instead use our ORShuffle algorithm. Alternatively, Prochlo
+could replace the algorithms it uses to process data in protected
+memory with oblivious versions. These algorithms accomplish shuf-
+fling and compaction tasks, and so our algorithms could be used.
+Krastnikov et al. [29] give oblivious algorithms for database
+joins. A key operation uses a reverse compaction operation (called
+“distribution”), for which they need order preservation. They use
+Goodrich compaction in reverse, and ORCompact in reverse could
+be used instead to improve performance.
+Ohrimenko et al. [43] propose to use TEEs for privacy-preserving
+machine learning. They give several machine-learning algorithms
+in which all memory accesses are data-oblivious. Several of their al-
+gorithms use shuffling as a key component, including to randomize
+the training samples for SVMs and neural networks and to random-
+ize initial clusters for k-means clustering. These algorithms could
+use ORShuffle or BORPStream to improve performance.
+Scramble-then-Compute (StC) [17] makes certain non-oblivious
+algorithms oblivious by preceding them with an oblivious shuffle.
+StC can eliminate memory side channels within TEEs for other-
+wise non-oblivious algorithms for problems including compaction,
+sorting, and selection. StC is described and evaluated using the Mel-
+bourne shuffle [42], which only provides external-memory oblivi-
+ousness. ORShuffle or BORPStream could be used instead in StC
+to provide fully oblivious algorithms for the same problems.
+8
+CONCLUSION
+TEE systems are gaining traction as a candidate to enable large-
+scale applications and data analytics that maintain user privacy. In
+parallel, however, we observe ever-growing side-channel attacks
+against these systems. In this work we demonstrate fully oblivious
+algorithm designs and implementations for the fundamental prim-
+itives of tight compaction and shuffling, which serve as building
+blocks for myriad applications that have been proposed in the TEE
+setting. Our algorithms outperform the state of the art in concrete
+timing benchmarks as illustrated by our experimental results. We
+additionally verify that our implementations indeed achieve the
+most elusive degree of obliviousness, control-flow obliviousness,
+by instrumenting an assembly checker tool to this end. The more
+recent side-channel attacks that precisely extract cache granular
+memory access patterns or fine-grained control flow information of
+programs executing in a TEE illustrate how much more powerful
+such attack vectors are than previously understood. It is therefore
+critical that we design applications that run in TEEs to be fully
+oblivious lest they be susceptible to these side channels.
+ACKNOWLEDGMENTS
+This work was supported by the Office of Naval Research. We
+thank the Ontario Graduate Scholarships program, NSERC (CRDPJ-
+534381), and the Royal Bank of Canada for supporting this work.
+This research was undertaken, in part, thanks to funding from the
+Canada Research Chairs program. This work benefited from the
+use of the CrySP RIPPLE Facility at the University of Waterloo. We
+thank Xian Wang for corrections to the compaction pseudocode.
+REFERENCES
+[1] A K M Mubashwir Alam, Sagar Sharma, and Keke Chen. 2021. SGX-MR: Regulat-
+ing Dataflows for Protecting Access Patterns of Data- Intensive SGX Applications.
+Proceedings on Privacy Enhancing Technologies 2021, 1 (2021).
+[2] Ittai
+Anati,
+Shay
+Gueron,
+Simon
+Johnson,
+and
+Vincent
+Scarlata.
+2013.
+Innovative Technology for CPU Based Attestation and Sealing.
+https://software.intel.com/content/www/us/en/develop/articles/innovative-
+technology-for-cpu-based-attestation-and-sealing.html. Accessed December
+2021.
+[3] Gilad Asharov, TH Hubert Chan, Kartik Nayak, Rafael Pass, Ling Ren, and
+Elaine Shi. 2020. Bucket oblivious sort: An extremely simple oblivious sort. In
+Symposium on Simplicity in Algorithms.
+[4] Gilad Asharov, Ilan Komargodski, Wei-Kai Lin, Kartik Nayak, Enoch Peserico,
+and Elaine Shi. 2018. OptORAMa: Optimal Oblivious RAM. Cryptology ePrint
+Archive, Report 2018/892.
+[5] Gilad Asharov, Ilan Komargodski, Wei-Kai Lin, Kartik Nayak, Enoch Peserico,
+Elaine Shi, and Yuval Ishai. 2020. OptORAMa: Optimal Oblivious RAM. In
+Advances in Cryptology (EUROCRYPT).
+[6] Gilad Asharov, Ilan Komargodski, Wei-Kai Lin, Enoch Peserico, and Elaine Shi.
+2020. Oblivious Parallel Tight Compaction. In Conference on Information-Theoretic
+Cryptography (ITC).
+[7] Borja Balle, Gilles Barthe, and Marco Gaboardi. 2018. Privacy Amplification by
+Subsampling: Tight Analyses via Couplings and Divergences. In Advances in
+Neural Information Processing Systems (NeurIPS).
+13
+
+=== PAGE 14 ===
+Sajin Sasy, Aaron Johnson, and Ian Goldberg
+[8] Kenneth E Batcher. 1968. Sorting networks and their applications. In Proceedings
+of the April 30–May 2, 1968, Spring Joint Computer Conference.
+[9] Andrea Bittau, Úlfar Erlingsson, Petros Maniatis, Ilya Mironov, Ananth Raghu-
+nathan, David Lie, Mitch Rudominer, Ushasree Kode, Julien Tinnes, and Bernhard
+Seefeld. 2017. Prochlo: Strong Privacy for Analytics in the Crowd. In Symposium
+on Operating Systems Principles (SOSP).
+[10] Marina Blanton and Everaldo Aguiar. 2016. Private and oblivious set and multiset
+operations. International Journal of Information Security 15, 5 (2016).
+[11] Ferdinand Brasser, Urs Müller, Alexandra Dmitrienko, Kari Kostiainen, Srdjan
+Capkun, and Ahmad-Reza Sadeghi. 2017. Software Grand Exposure: SGX Cache
+Attacks Are Practical. In USENIX Workshop on Offensive Technologies (WOOT).
+[12] Guoxing Chen, Sanchuan Chen, Yuan Xiao, Yinqian Zhang, Zhiqiang Lin, and
+Ten H. Lai. 2019. SgxPectre: Stealing Intel Secrets from SGX Enclaves Via
+Speculative Execution. In IEEE European Symposium on Security and Privacy
+(EuroS&P). https://doi.org/10.1109/EuroSP.2019.00020
+[13] Sanchuan Chen, Xiaokuan Zhang, Michael K. Reiter, and Yinqian Zhang. 2017.
+Detecting Privileged Side-Channel Attacks in Shielded Execution with DéJà Vu.
+In ACM Asia Conference on Computer and Communications Security (AsiaCCS).
+[14] Scott D Constable and Steve Chapin. 2018. libOblivious: A C++ Library for Obliv-
+ious Data Structures and Algorithms. Technical Report 184. Syracuse University
+Electrical Engineering and Computer Science.
+[15] Victor Costan and Srinivas Devadas. 2016. Intel SGX Explained. Technical Report
+2016/086. IACR ePrint.
+[16] Artur Czumaj. 2015. Random permutations using switching networks. In ACM
+Symposium on Theory of Computing (STOC).
+[17] Hung Dang, Tien Tuan Anh Dinh, Ee-Chien Chang, and Beng Chin Ooi. 2017.
+Privacy-Preserving Computation with Trusted Computing via Scramble-then-
+Compute. Proceedings on Priviacy Enhancing Technologies 2017, 3 (2017).
+[18] Sam Dittmer and Rafail Ostrovsky. 2020. Oblivious tight compaction in O(n) time
+with smaller constant. In Conference on Security and Cryptography for Networks
+(SCN).
+[19] Kris Vestergaard Ebbesen. 2015. On the Practicality of Data-oblivious Sorting.
+Ph. D. Dissertation. Aarhus Universitet, Datalogisk Institut.
+[20] Saba Eskandarian and Matei Zaharia. 2019. ObliDB: Oblivious Query Processing
+for Secure Databases. Proceedings of the VLDB Endowment 13, 2 (2019).
+[21] Brett Hemenway Falk and Rafail Ostrovsky. 2021. Secure Merge with O (n log
+log n) Secure Operations. In Information-Theoretic Cryptography (ITC 2021).
+[22] Michael T Goodrich. 2011. Data-oblivious external-memory algorithms for the
+compaction, selection, and sorting of outsourced data. In ACM Symposium on
+Parallelism in Algorithms and Architectures (SPAA).
+[23] J. Götzfried, Moritz Eckert, Sebastian Schinzel, and Tilo Müller. 2017. Cache
+Attacks on Intel SGX. European Workshop on Systems Security (EuroSec) (2017).
+[24] W Daniel Hillis and Guy L Steele Jr. 1986. Data parallel algorithms. Commun.
+ACM 29, 12 (1986).
+[25] Intel. 2012.
+Intel Trusted Execution Technology.
+https://www.intel.
+com/content/www/us/en/architecture-and-technology/trusted-execution-
+technology/trusted-execution-technology-security-paper.html.
+Accessed
+December 2021.
+[26] Intel. 2018.
+Q3 2018 Speculative Execution Side Channel Update.
+https://www.intel.com/content/www/us/en/security-center/advisory/intel-sa-
+00161.html. Accessed December 2021.
+[27] Intel. 2019.
+Intel Processors Voltage Settings Modification Advisory.
+https://www.intel.com/content/www/us/en/security-center/advisory/intel-sa-
+00289.html. Accessed December 2021.
+[28] David Kaplan, Jeremy Powell, and Tom Woller. 2016.
+AMD memory en-
+cryption. https://developer.amd.com/wordpress/media/2013/12/AMD_Memory_
+Encryption_Whitepaper_v7-Public.pdf. Accessed December 2021.
+[29] Simeon Krastnikov, Florian Kerschbaum, and Douglas Stebila. 2020. Efficient
+Oblivious Database Joins. Proceedings of the VLDB Endowment 13, 12 (2020).
+[30] Dayeol Lee, Dongha Jung, Ian T. Fang, Chia-Che Tsai, and Raluca Ada Popa.
+2020. An Off-Chip Attack on Hardware Enclaves via the Memory Bus. In USENIX
+Security Symposium.
+[31] Dayeol Lee, David Kohlbrenner, Shweta Shinde, Krste Asanović, and Dawn
+Song. 2020. Keystone: An Open Framework for Architecting TEEs. In European
+Conference on Computer Systems (EuroSys).
+[32] Sangho Lee, Ming-Wei Shih, Prasun Gera, Taesoo Kim, Hyesoon Kim, and Marcus
+Peinado. 2017. Inferring Fine-grained Control Flow Inside SGX Enclaves with
+Branch Shadowing. In USENIX Security Symposium.
+[33] Tom Leighton, Yuan Ma, and Torsten Suel. 1997. On probabilistic networks for
+selection, merging, and sorting. Theory of Computing Systems 30, 6 (1997).
+[34] Wei-Kai Lin, Elaine Shi, and Tiancheng Xie. 2019. Can we overcome the n log n
+barrier for oblivious sorting?. In ACM-SIAM Symposium on Discrete Algorithms
+(SODA).
+[35] Fangfei Liu, Yuval Yarom, Qian Ge, Gernot Heiser, and Ruby B. Lee. 2015. Last-
+Level Cache Side-Channel Attacks are Practical. In IEEE Symposium on Security
+and Privacy (S&P).
+[36] Pratyush Mishra, Rishabh Poddar, Jerry Chen, Alessandro Chiesa, and Raluca Ada
+Popa. 2018. Oblix: An Efficient Oblivious Search Index. In IEEE Symposium on
+Security and Privacy (S&P).
+[37] John C Mitchell and Joe Zimmerman. 2014. Data-oblivious data structures. In
+Symposium on Theoretical Aspects of Computer Science (STACS).
+[38] Ahmad Moghimi, Gorka Irazoqui, and Thomas Eisenbarth. 2017. CacheZoom:
+How SGX Amplifies the Power of Cache Attacks. In Cryptographic Hardware
+and Embedded Systems (CHES).
+[39] Daniel Moghimi, Jo Van Bulck, Nadia Heninger, Frank Piessens, and Berk Sunar.
+2020. CopyCat: Controlled Instruction-Level Attacks on Enclaves. In USENIX
+Security Symposium.
+[40] Rajeev Motwani and Prabhakar Raghavan. 1995. Randomized algorithms. Cam-
+bridge University Press.
+[41] Kit Murdock, David Oswald, Flavio D Garcia, Jo Van Bulck, Daniel Gruss, and
+Frank Piessens. 2020. Plundervolt: Software-based fault injection attacks against
+Intel SGX. In IEEE Symposium on Security and Privacy (S&P).
+[42] Olga Ohrimenko, Michael T Goodrich, Roberto Tamassia, and Eli Upfal. 2014.
+The Melbourne shuffle: Improving oblivious storage in the cloud. In International
+Colloquium on Automata, Languages, and Programming (ICALP).
+[43] Olga Ohrimenko, Felix Schuster, Cédric Fournet, Aastha Mehta, Sebastian
+Nowozin, Kapil Vaswani, and Manuel Costa. 2016. Oblivious multi-party machine
+learning on trusted processors. In USENIX Security Symposium.
+[44] Dag Arne Osvik, Adi Shamir, and Eran Tromer. 2006. Cache Attacks and Coun-
+termeasures: The Case of AES. In RSA Conference (CT-RSA).
+[45] Rishabh Poddar, Ganesh Ananthanarayanan, Srinath Setty, Stavros Volos, and
+Raluca Ada Popa. 2020. Visor: Privacy-Preserving Video Analytics as a Cloud
+Service. In USENIX Security Symposium.
+[46] Ashay Rane, Calvin Lin, and Mohit Tiwari. 2015. Raccoon: Closing Digital
+Side-Channels through Obfuscated Execution. In USENIX Security Symposium.
+[47] Peter Sanders, Sebastian Lamm, Lorenz Hübschle-Schneider, Emanuel Schrade,
+and Carsten Dachsbacher. 2018. Efficient parallel random sampling—vectorized,
+cache-efficient, and online. ACM Transactions on Mathematical Software (TOMS)
+44, 3 (2018).
+[48] Sajin Sasy, Sergey Gorbunov, and Christopher W. Fletcher. 2018. ZeroTrace:
+Oblivious Memory Primitives from Intel SGX. In Network and Distributed System
+Security Symposium (NDSS).
+[49] Sajin Sasy, Aaron Johnson, and Ian Goldberg. 2022. Fast Fully Oblivious Com-
+paction and Shuffling. In 29th ACM Conference on Computer and Communications
+Security.
+[50] Sajin Sasy and Olga Ohrimenko. 2019. Oblivious Sampling Algorithms for Private
+Data Analysis. In Advances in Neural Information Processing Systems (NeurIPS).
+[51] Mingwei Shih. 2019. Securing Intel SGX against side-channel attacks via load-time
+synthesis. Ph. D. Dissertation. Georgia Institute of Technology.
+[52] Ming-Wei Shih, Sangho Lee, Taesoo Kim, and Marcus Peinado. 2017. T-SGX:
+Eradicating Controlled-Channel Attacks Against Enclave Programs. In Network
+and Distributed System Security Symposium (NDSS).
+[53] Shweta Shinde, Zheng Leong Chua, Viswesh Narayanan, and Prateek Saxena.
+2016. Preventing Page Faults from Telling Your Secrets. In ACM Asia Conference
+on Computer and Communications Security (AsiaCCS).
+[54] Laurent Simon, David Chisnall, and Ross Anderson. 2018. What you get is what
+you C: Controlling side effects in mainstream C compilers. In IEEE European
+Symposium on Security and Privacy (EuroS&P).
+[55] Ernst Stadlober. 1990. The ratio of uniforms approach for generating discrete
+random variates. Journal of computational and applied mathematics 31, 1 (1990).
+[56] Jo Van Bulck, Marina Minkin, Ofir Weisse, Daniel Genkin, Baris Kasikci, Frank
+Piessens, Mark Silberstein, Thomas F. Wenisch, Yuval Yarom, and Raoul Strackx.
+2018. Foreshadow: Extracting the Keys to the Intel SGX Kingdom with Transient
+Out-of-Order Execution. In USENIX Security Symposium.
+[57] Jo Van Bulck, Nico Weichbrodt, Rüdiger Kapitza, Frank Piessens, and Raoul
+Strackx. 2017. Telling Your Secrets without Page Faults: Stealthy Page Table-
+Based Attacks on Enclaved Execution. In USENIX Security Symposium.
+[58] Yuanzhong Xu, Weidong Cui, and Marcus Peinado. 2015. Controlled-Channel
+Attacks: Deterministic Side Channels for Untrusted Operating Systems. In IEEE
+Symposium on Security and Privacy (S&P).
+[59] Wenting Zheng, Ankur Dave, Jethro G Beekman, Raluca Ada Popa, Joseph E
+Gonzalez, and Ion Stoica. 2017. Opaque: An Oblivious and Encrypted Distributed
+Analytics Platform. In USENIX Symposium on Networked Systems Design and
+Implementation (NSDI).
+A
+OBLIVIOUSNESS DEFINITION AND PROOFS
+In order to define full obliviousness, we first describe relevant as-
+pects of our computational model. We consider a RAM model in
+which a set of instructions, a set of constant values, a set of regis-
+ters, and a memory are available for computation. Each instruction
+14
+
+=== PAGE 15 ===
+Fast Fully Oblivious Compaction and Shuffling
+takes a fixed number of registers to read from and write to. A subset
+of instructions reads from or writes to memory, the locations of
+which are to be specified in registers, and a subset of instructions
+can change the next instruction to be executed on the basis of a
+register value. An algorithm 𝐴consists of a sequence of instructions
+with registers given as arguments, which are executed sequentially
+unless the flow is changed by an instruction. 𝐴terminates when the
+address of the next instruction to be executed exceeds the length
+of 𝐴. We write 𝐴(𝑥1, . . . ,𝑥𝑘) to indicate that 𝐴operates on inputs
+(𝑥1, . . . ,𝑥𝑘), where the inputs reside in memory starting at a fixed
+location (e.g., at the beginning). 𝐴also has access to a sequence of
+random bytes by reading from a special memory region.
+An execution of 𝐴is the entire sequence of states during execu-
+tion. It consists of the sequence of executed instructions, the register
+values, and the memory contents. Let E(𝐴,𝑥1, . . . ,𝑥𝑘) denote an
+execution of 𝐴on inputs (𝑥1, . . . ,𝑥𝑘). E is a random variable due
+to the possibly random behavior of 𝐴.
+The output of an execution indicates the final value produced
+by the algorithm and returned to the caller. Given execution 𝐸=
+E(𝐴,𝑥1, . . . ,𝑥𝑘), O(𝐸) denotes the output of 𝐸. O(𝐸) is a random
+variable due to the randomness of 𝐸.
+The instruction trace of an execution indicates the order in which
+the instructions of an algorithm were executed. Given execution
+𝐸= E(𝐴,𝑥1, . . . ,𝑥𝑘), I(𝐸) denotes the instruction trace of 𝐸, that
+is, the sequence of indices (𝑖1,𝑖2, . . .), 𝑖𝑗∈N+, pointing to each
+instruction in 𝐸. By convention, 𝑖1 = 1, and, if the execution is of
+finite length ℓ, then 𝑖ℓ> |𝐴|. Note that I(𝐸) is a random variable
+due to the randomness of 𝐸.
+We similarly define the memory trace of an execution to be the
+sequence of memory locations that are accessed during execution,
+along with a bit indicating if they are read or written. Let 𝐸=
+E(𝐴,𝑥1, . . . ,𝑥𝑘). Then M(𝐸) denotes the memory trace of 𝐸, that
+is, the sequence of values (𝑡,𝑥, ℓ), where 𝑡∈N+ indicates that
+memory was accessed during the 𝑡th instruction execution, 𝑥∈
+{0, 1} indicates if the memory access was a read or write, and
+ℓ∈N+ indicates the memory location accessed. M(𝐸) is a random
+variable due to the randomness of 𝐸.
+We use a simulation-based definition of full obliviousness. If
+two random variables have identical distributions, we say that they
+are perfectly indistinguishable. Let [𝑘] denote the set {1, . . . ,𝑘}. Let
+𝐼⊆[𝑘] indicate the secret inputs, {𝑥𝑖}𝑖∈𝐼, with the remaining inputs
+considered non-secret inputs. The simulator will get the non-secret
+inputs but only the lengths of the secret inputs.
+We define fully oblivious algorithms as follows:
+Definition 1. Let 𝐸= E (𝐴,𝑥1, . . . ,𝑥𝑘) be the execution of al-
+gorithm 𝐴. For any 𝐼⊆[𝑘], 𝐴is fully oblivious with respect
+to {𝑥𝑖}𝑖∈𝐼if there exists a simulator S such that for all inputs
+(𝑥1, . . . ,𝑥𝑘),
+
+O(𝐸), S
+
+(𝑥𝑖)𝑖∈[𝑘]\𝐼, (|𝑥𝑖|)𝑖∈𝐼
+
+is perfectly indistin-
+guishable from (O(𝐸), (M(𝐸), I(𝐸))).
+Observe that Definition 1 requires that, for any possible out-
+put value O(𝐸) = 𝑜, the joint distribution of the instruction and
+memory traces, conditional on O(𝐸) = 𝑜, is the same for both
+S and 𝐴. Including the output in the definition ensures that the
+traces do not reveal any additional information about that output
+beyond what is implied by the inputs to S. A weaker version of this
+definition, which we will use for BORPStream, is statistical full
+obliviousness, which takes a parameter 𝜆(also implictly given to
+the target algorithm 𝐴and the simulator S) and replaces “perfectly
+indistinguishable from” with “within statistical distance 2−𝜆of”.
+An even weaker definition (which we will not use) is to require
+only that the distributions are computationally indistinguishable
+with security parameter 𝜆.
+Note that this definition does not take into account the possibility
+that some instructions might be variable-time, depending on their
+input values, which could yield execution times that depend on
+secret data even thought the instruction and memory traces are
+identical. Our computational model abstracts away instruction-level
+timing, but actual implementations must take this into account
+and should only use constant-time instructions when operating
+on sensitive data. We believe our implementation does satisfy this
+additional requirement.
+Finally, observe that the following primitive operations can be
+implemented with full obliviousness due to deterministic traces:
+arithmetic operations, OSwap, bitwise Boolean operators, and com-
+parisons. We will prove the obliviousness of our algorithms assum-
+ing they use oblivious implementations of these primitives.
+A.1
+Recursive Compaction
+To prove the obliviousness of ORCompact, we first prove in Lemma 1
+that OROffCompact is fully oblivious. Moreover, the memory and
+instruction traces are deterministic functions of the input size.
+Lemma 1. OROffCompact(𝐷, 𝑀,𝑧) is fully oblivious with respect
+to 𝐷, 𝑀, and 𝑧, given that 𝑛= |𝐷| = |𝑀| = 2𝑘, 𝑘∈N. In addition,
+its instruction and memory traces are deterministic given 𝑛.
+Proof. We describe a simulator S that outputs the same instruc-
+tions and memory accesses as OROffCompact(𝐷, 𝑀,𝑧), knowing
+only 𝑛= |𝐷|.
+In Line 1, the instructions and memory accesses are deterministic
+and depend only on 𝑛, and S outputs them.
+If 𝑛< 2, OROffCompact returns after Line 1.
+If 𝑛= 2, then OSwap is called (note that executing this case de-
+pends only on𝑛). The instructions and memory accesses to compute
+its swap bit are independent of the inputs and are deterministic. The
+OSwap instructions and memory accesses are input-independent
+and deterministic given the locations to swap, and those locations
+are input-independent and deterministic (𝐷0 and 𝐷1). Therefore, if
+𝑛= 2, S outputs those instructions and memory accesses.
+Otherwise, Lines 5–10 are executed (again, this conditional exe-
+cution depends only on 𝑛). OROffCompact is called in Lines 5 and
+6 with subarrays of 𝐷and 𝑀that are deterministic functions of 𝑛,
+and it is given offset values that can be computed obliviously and
+deterministically (note that 𝑛/2 can be obliviously computed with a
+bit shift, and (mod 𝑛/2) with an additional bit mask, as 𝑛is a power
+of two). The traces of these calls are produced by S recursively.
+The intermediate swap flag 𝑠can be computed in Line 7 with a
+fixed sequence of instructions, given that comparisons are com-
+puted obliviously. Finally, the pairwise swaps in Lines 8–10 occur
+between fixed pairs in 𝐷(viz., 𝐷𝑖and 𝐷𝑖+𝑛/2), the swap bit 𝑏can be
+computed using a fixed instruction sequence, and the final OSwap
+call is fully oblivious to the values of its arguments. S outputs
+15
+
+=== PAGE 16 ===
+Sajin Sasy, Aaron Johnson, and Ian Goldberg
+this deterministic sequence of memory accesses and instructions if
+𝑛> 2.
+S thereby outputs memory and instruction traces identical to
+those of OROffCompact, and they are deterministic given𝑛. OROf-
+fCompact is therefore fully oblivious to all of its inputs.
+□
+Theorem 6 proves that ORCompact is fully oblivious and that
+its memory and instruction traces are deterministic functions of
+the input size.
+Theorem 6. ORCompact(𝐷, 𝑀) is fully oblivious with respect to 𝐷
+and 𝑀. In addition, its instruction and memory traces are deterministic
+given 𝑛= |𝐷| = |𝑀|.
+Proof. We describe a simulator S that outputs the same in-
+structions and memory accesses as ORCompact(𝐷, 𝑀), given only
+𝑛.
+Line 1 returns only if 𝑛= 0, which S knows.
+The values computed in Line 2 can be computed using determin-
+istic memory accesses and instructions that are independent of the
+input values. S outputs these traces.
+Lines 3 and 4 call ORCompact and OROffCompact using ar-
+guments that are subarrays of 𝐷and 𝑀depending only on 𝑛, as
+well as offsets that can be computed with a fixed instruction se-
+quence and input-independent memory accesses. S outputs the
+memory and instruction traces used to compute these arguments,
+and then it recursively produces the instruction and memory traces
+of ORCompact and OROffCompact.
+Finally, Lines 5–7 execute a loop that iterates 𝑛2 times, which
+is a function of 𝑛. A swap bit 𝑏is computed with an oblivious
+comparison, for which S produces the memory and instruction
+sequences. Then an OSwap call is performed on a fixed pair of
+items in 𝐷using 𝑏, and so S produces its traces as well, which are
+deterministic and input-independent.
+S thereby outputs memory and instruction traces identical to
+those of ORCompact, and they are deterministic. ORCompact is
+therefore fully oblivious to its inputs.
+□
+A.2
+Recursive Shuffling
+Theorem 7 proves that ORShuffle is fully oblivious and that its
+memory and instruction traces are deterministic functions of the
+input size. We note that the implementation of MarkHalf can
+use integer arithmetic instead of more complicated floating-point
+arithmetic by instead generating a random integer 𝑟∈[0,𝑛−𝑖) in
+Line 4 and performing the integer comparison [𝑟< ℓ] in Line 5. In
+addition, our model gives random bytes as inputs, but in practice
+they are likely generated (e.g., by an RDRAND instruction), and such
+generation must be oblivious to the value of those random bytes.
+Theorem 7. ORShuffle(𝐷) is fully oblivious with respect to its
+input array 𝐷. In addition, its instruction and memory traces are
+deterministic given 𝑛= |𝐷|.
+Proof. We describe a simulator S that outputs the same in-
+structions and memory accesses as ORShuffle(𝐷), knowing only
+𝑛= |𝐷|.
+First, we consider the MarkHalf(𝑛) subroutine. Lines 1 and 2
+have a deterministic instruction and memory traces that depend
+only on 𝑛, and S outputs them. Lines 3–6 implement a loop with
+𝑛iterations, where the 𝑖th iteration involves a fixed sequence of
+instructions and memory locations. Note that in our model gener-
+ating randomness is simply reading the next random bytes from
+a designated memory location, and so to generate a random inte-
+ger in [0,𝑛) we obtain a uniformly random 𝛾-bit integer 𝜌and let
+𝑠= (𝜌𝑛) ≫𝛾, where ≫indicates a bit shift. Therefore, S can gen-
+erate as a deterministic function of 𝑛the memory and instruction
+traces of the loop and of MarkHalf(𝑛) overall.
+Next, we consider ORShuffle(𝐷). The execution of Line 1 de-
+pends only on 𝑛. If 𝑛= 2, a condition depending only on 𝑛, then 𝑏
+is obtained from the next byte of randomness and used in an OS-
+wap of 𝐷0 and 𝐷1, all of which deterministically yield instruction
+and memory traces. S outputs those traces in this case. If 𝑛> 2,
+MarkHalf(𝑛) is called, and so S produces its traces as just de-
+scribed. Then a call is made to ORCompact(𝐷, 𝑀) (Line 7), and by
+Theorem 6, S can produce its traces knowing only 𝑛. Finally, calls
+to ORShuffle are made with input subarrays of 𝐷that depend
+only on 𝑛. S recursively produces the traces for those calls, which
+we recursively assume are deterministic functions of their input
+lengths.
+S thereby outputs memory and instruction traces identical to
+those of ORShuffle, and they are deterministic. ORShuffle is
+therefore fully oblivious to its inputs.
+□
+A.3
+Bucket Oblivious Random Permutation
+To shuffle items with BORPStream (Figure 10), Initialize(𝑛,𝑏, 𝜆)
+is first called to set up the parameters and routing network, and
+then BORPStream_Phase1(𝑝) is called on each input item 𝑝. Let
+𝐷be the set of input items. To express the obliviousness guarantee,
+we use the extended function signature BORPStream(𝑛,𝑏, 𝜆, 𝐷),
+with |𝐷| = 𝑛and 𝑏the size of each item in 𝐷. Note that 𝑏is an
+implicit input to ORCompact and ORShuffle, and they are not
+oblivious with respect to it.
+Theorem 8 proves that BORPStream is statistically fully oblivi-
+ous with respect to 𝐷. Note that its instruction and memory traces
+are not deterministic because differing numbers of real items can be
+revealed in the final-layer buckets, depending on the randomness.
+Theorem 8. BORPStream(𝑛,𝑏, 𝜆, 𝐷) is statistically fully oblivious
+with respect to 𝐷.
+Proof. We describe a simulator S with an output distribution
+for instruction and memory traces that is statistically close to that
+of BORPStream(𝑛,𝑏, 𝜆, 𝐷), aggregated across all possible BORP-
+Stream outputs, knowing only 𝑛, 𝑏, and 𝜆.
+Initialize(𝑛,𝑏, 𝜆) is not given 𝐷as input, and it is a deterministic
+algorithm. Therefore, S simply runs and outputs its instruction and
+memory traces.
+For BORPStream_Phase1(𝑝), S deterministically assigns the
+next item (𝑝) to an entry bucket (Line 10). It simply reads sufficient
+random bytes to determine and assign a label (Lines 11–12), and
+doing so is independent of the value of those bytes, and S produces
+those instruction and memory accesses.
+ProcessItem(𝑝) is next called on the labeled item and a dummy
+item (Lines 13–14). This function is defined in the MergeSplitNode
+class (Figure 9). S can therefore output these instructions. The initial
+loop (Lines 7–12) to determine the item to forward executes s times,
+16
+
+=== PAGE 17 ===
+Fast Fully Oblivious Compaction and Shuffling
+a number which was produced by Initialize and is thus known
+to S. Within each iteration the next item within the local buffer
+(buffer[i]) is considered to replace the current one to be forwarded.
+The output streams of both items are determined obliviously (Lines
+8 and 9), via a deterministic sequence of bitwise operators (e.g.,
+bit shifts, AND) on their labels, and the buffer item is compared
+obliviously to the current output stream c (Line 9), and so S can
+produce those instruction executions and memory accesses. Next,
+oblivious comparisons are used to determine if 𝑝is a dummy packet
+and if its output stream is the current one (Line 10), and so S can
+produce those instruction and memory traces as well. The last lines
+of the iteration (Lines 11–12) obliviously determine a swap flag and
+then obliviously swap the current buffer item and 𝑝, and S produces
+the traces for them. After the loop, S has the information to evaluate
+the branch condition and determine which branch to execute (Line
+13). It can produce the instruction and memory traces appending
+𝑝to the output bucket (Line 14), as the traces of that operation do
+not depend on the value of 𝑝. We can recursively assume that it can
+produce the traces resulting from calling ProcessItem(𝑝) (Line 16).
+Finally, S has the information to perform the final increment to c.
+Thus the calls to ProcessItem(𝑝) in BORPStream_Phase1(𝑝)
+can be simulated by S. Returning to BORPStream_Phase1(𝑝) (Fig-
+ure 10), S has the information to perform the subsequent increment
+to 𝑐(Line 15), and it can also compute the comparison 𝑐= 𝑛and
+thus when the next phase is to be executed.
+In BORPStream_Phase2, FlushBuffers() is first executed (Line
+20). This procedure simply calls ProcessItem(⊥) s·f times on each
+MSN in order. Therefore, S can produce the traces for these calls, as
+we have already shown that each individual call can be simulated.
+BORPStream_Phase2 concludes with a loop repeated B times,
+a value that S knows. S can simulate the traces produced during
+MarkReal() (Line 22), as it performs a linear scan across the items
+in each bucket, performs an oblivious test for dummy packets,
+obliviously sets the next bit in 𝑀, and increments a count. By
+Theorem 6, S can produce the traces for the ORCompact call (Line
+23).
+To show obliviousness for the calls to ORShuffle and Append,
+we first exclude executions in which a failure occurs due to the
+buffer of some MSN becoming full and forcing a packet to be mis-
+routed. For this obliviousness argument, we consider instead a
+version of BORPStream in which the MSN buffers are sufficiently
+large to prevent any misrouting (e.g., s = 𝑛). Considering this modi-
+fied algorithm changes the distribution of executions (and therefore
+the distribution of (O(𝐸), (M(𝐸), I(𝐸)))) by at most 2−𝜆because
+that is the maximum failure probability of BORPStream.
+Assuming no failures, then, we examine the numbers of items
+in the final output buckets (i.e., the B-length sequence of r values
+computed in Line 22), which we here denote 𝑅. 𝑅follows the multi-
+nomial distribution with 𝑛trials and B events because each of the
+𝑛items is routed to its label, which is chosen independently and
+uniformly at random from [0, B −1]. Moreover, for a given output
+𝑜(i.e., a permutation of the input items), obtaining a specific value
+𝑅= (r0, . . . , rB−1) requires that each successive r𝑖-length subse-
+quence of the output items receives label 𝑖because the items in
+each bucket will appear in the output after all items in previous
+buckets and before items in subsequent buckets. Obtaining a given
+value for 𝑅, conditional on 𝑜, further requires that the final shuffle
+of the 𝑖th bucket applies a single, specific permutation, and this
+fact holds because, given the labels required for 𝑅(as just argued),
+BORPStream puts the items in each bucket in a deterministic order,
+and so exactly one permutation will yield the order they appear
+in 𝑜. Observe that these arguments also show that there exists a
+bijection between (1) the pairs consisting of each possible value of
+the sequence of final-bucket real-item numbers and each possible
+output permutation, and (2) pairs consisting of each possible value
+of the item labelings and the sequence of final-bucket shuffle per-
+mutations. Given a sequence of final-bucket real-item numbers, for
+all possible outputs the labeling and sequence of final-bucket shuf-
+fle permutations that are mapped to under this bijection have the
+same joint probability, and so each output has the same probability.
+Therefore,
+𝑃𝑟[𝑅= (r1, . . . , rB)|O(𝐸) = 𝑜] = 𝑛!B−𝑛
+B−1
+Ö
+𝑖=0
+1/(r𝑖!),
+where the initial 𝑛! factor is a normalization constant because
+𝑃𝑟[O(𝐸) = 𝑜] = 1/𝑛!. Importantly, this probability does not vary
+for different output values 𝑜, and therefore 𝑅conditioned on any
+output 𝑜also has as its probability distribution the multinomial
+distribution with 𝑛trials and B events. Thus, to produce memory
+and instruction traces for the ORShuffle and Append calls, the
+simulator S samples from that multinomial distribution to choose
+a value for 𝑅, which by Theorem 7 allows it to produce the needed
+traces.
+S can thereby produce instruction and memory traces such that
+their distribution, joint with the true output, is within statistical
+distance 2−𝜆of the joint output-trace distribution of BORPStream.
+Thus, BORPStream is statistically fully oblivious.
+□
+B
+PROOFS OF CORRECTNESS AND
+EFFICIENCY
+B.1
+Correctness of ORCompact
+Theorem 1 (from Section 3.2) states the correctness of ORCompact
+(Figure 2). To prove it, we first prove Lemma 2, which states that
+OROffCompact (Figure 1) compacts marked items and maintains
+their relative order. Recall that OROffCompact only operates on
+inputs with power-of-two size.
+Lemma 2. Let 𝑤= Í
+𝑖𝑀𝑖, 𝑛= |𝐷|, and (𝐷′
+0, . . . , 𝐷′
+𝑤−1) be the
+subsequence of 𝐷consisting of all𝑤items marked in 𝑀. When 𝑛= 2𝑘,
+𝑘∈N, OROffCompact(𝐷, 𝑀,𝑧) rearranges the items in 𝐷such that
+(𝐷𝑧, . . . , 𝐷(𝑧+𝑤−1) mod 𝑛) = (𝐷′
+0, . . . , 𝐷′
+𝑤−1).
+Proof. If 𝑛< 2, OROffCompact correctly does nothing to 𝐷.
+If 𝑛= 2, then the only possible rearrangement of 𝐷is to swap its
+two items. By a case analysis of the possible values of 𝑧, 𝑀0, and
+𝑀1, we can see that OROffCompact performs a swap iff doing so
+would compact the marked items to offset 𝑧and maintain their
+relative order. (Line 3).
+If𝑛> 2, OROffCompact calls itself on the left and right halves of
+its inputs. Because 𝑛is a power of two, 𝑛/2 is also. We can therefore
+recursively assume that these calls correctly compact each half to
+the specified offsets while preserving order of marked items. We
+17
+
+=== PAGE 18 ===
+Sajin Sasy, Aaron Johnson, and Ian Goldberg
+can show the rest of the algorithm (Lines 7–10) yields a correct
+output by a case analysis of 𝑧and 𝑚= Í𝑛/2−1
+𝑖=0
+𝑀𝑖:
+1) 𝑧< 𝑛/2, 𝑧+ 𝑚< 𝑛/2: In this case, 𝑠= 0 (Line 7). Swapping pairs
+does not begin until position 𝑖= 𝑧+ 𝑚(Line 9). Before then, the
+𝑚marked items in the left half have already been compacted in
+order to the offset of 𝑧with the first call to OROffCompact (Line 5).
+Starting then, the marked items get swapped from the right to the
+left side in order, up until 𝑖= 𝑛/2 −1, because those marked items
+were compacted in order to the offset of 𝑧+ 𝑚with the second call
+to OROffCompact (Line 6). Any marked items remaining on the
+right side already wrapped to start at 𝑖= 𝑛/2, which completes the
+order-preserving compaction.
+2) 𝑧< 𝑛/2, 𝑧+ 𝑚≥𝑛/2: In this case, 𝑠= 1. Swapping pairs occurs
+from positions 0 to (𝑧+ 𝑚) mod (𝑛/2) −1 inclusive. (Nothing is
+swapped if (𝑧+ 𝑚) mod (𝑛/2) = 0.) The marked items on the left
+side were recursively compacted in order to position 𝑧(Line 5). The
+swapping moves the𝑚+𝑧−𝑛/2 marked items that wrapped around
+to position 0 to instead continue into position 𝑛/2, producing the
+correct ordering. These are followed by the marked items in the
+right side, which were already recursively compacted in order to
+start at position 𝑧+ 𝑚(Line 6). Any marked items that wrapped
+around during the right-side compaction, of which there were at
+most the offset value of (𝑧+ 𝑚) mod (𝑛/2), were moved to instead
+wrap around the entire array (i.e., starting at position 0) during
+the pairwise swaps of the first (𝑧+ 𝑚) mod (𝑛/2) items, which
+completes the in-order compaction.
+3) 𝑧≥𝑛/2, (𝑧mod (𝑛/2)) + 𝑚< 𝑛/2: In this case, 𝑠= 1. Swapping
+pairs thus occurs from 𝑖= 0 to 𝑖= (𝑧+ 𝑚) mod (𝑛/2) −1. For
+the 𝑚positions starting at offset 𝑧, the swapping is active and
+swaps marked items on the left to the right, preserving their order,
+where the left items were marked due to the compaction to 𝑧mod
+(𝑛/2) (Line 5). For the subsequent positions from 𝑧+ 𝑚to 𝑛−1,
+swapping does not act on them, and a prefix of in-order marked
+items may exist due to the recursive right-side compaction. For the
+next positions (wrapping around), 0 to 𝑧mod (𝑛/2) −1, swapping
+is active, and a prefix of in-order marked items from the right
+side is moved to the left only if the marked items on the right
+side continued up to 𝑛−1. For the next positions 𝑧mod (𝑛/2) to
+(𝑧mod (𝑛/2)) +𝑚−1, swapping was applied, and similarly a prefix
+of in-order marked items from right side was moved to the left only
+if the compacted marked items on the right side wrapped around
+up to 𝑧. For the positions 𝑧mod (𝑛/2) +𝑚to 𝑛/2 −1, the positions
+are unmarked and were unswapped, and similarly the remaining
+positions 𝑛/2 to 𝑧−1 are unmarked but were swapped from the
+left side.
+4) 𝑧≥𝑛/2, (𝑧mod (𝑛/2)) + 𝑚≥𝑛/2: In this case, 𝑠= 0. Swapping
+pairs does not begin until position 𝑖= (𝑧+ 𝑚) mod (𝑛/2). For the
+positions from 𝑧to 𝑛−1, a sequence of in-order marked items
+is swapped in order from the left side due to its compaction to
+offset 𝑧mod (𝑛/2) (Line 5). For the subsequent (after wrapping
+around) positions 0 to (𝑧+ 𝑚) mod (𝑛/2) −1, they all contain in-
+orde marked items left over from the left side compaction, as the
+swapping did not act in that region. The following items from
+position (𝑧+𝑚) mod (𝑛/2) to 𝑧mod (𝑛/2) −1 (if any) may contain
+a in-order prefix of marked items that were compacted on the
+right side and then swapped in order. The next items from position
+𝑧mod (𝑛/2) to 𝑛/2 −1 potentially continue this sequence of ino-
+rder marked items as this region was also swapped in order from the
+right side after it was compacted. The subsequent items from 𝑛/2 to
+𝑛/2 + ((𝑧+𝑚) mod (𝑛/2)) −1 continue any preceding sequence of
+marked items if the right-side compacted region wrapped around,
+as this sequence was not swapped, which maintains the original
+order of the right-side marked items. Finally, the positions from
+𝑛/2+((𝑧+𝑚) mod (𝑛/2)) to𝑧−1 (if any) must be unmarked because
+they were swapped in from the left side and follow the sequence
+of 𝑚marked items on the left (wrapping around) due to left-side
+compaction to 𝑧mod (𝑛/2).
+□
+Using Lemma 2, we now prove Theorem 1.
+Theorem 1. Given 𝐷and 𝑀, let (𝐷′
+0, . . . , 𝐷′
+𝑤−1) be the subse-
+quence of 𝐷consisting of all𝑤items marked in 𝑀. ORCompact(𝐷, 𝑀)
+rearranges the items in 𝐷such that (𝐷0, . . . , 𝐷𝑤−1) = (𝐷′
+0, . . . , 𝐷′
+𝑤−1).
+Proof. If𝑛= 1 or𝑛= 2, then ORCompact calls OROffCompact
+with an offset of 0, which by Lemma 2 yields the correct result.
+If 𝑛> 2, then the input arrays are divided into a left side of
+length 𝑛2 = 𝑛−2⌊log2(𝑛)⌋and a right side of length 𝑛1 = 2⌊log2(𝑛)⌋,
+which is the longest power-of-two-sized suffix. OROffCompact is
+called on right side with an offset of (𝑛1 −𝑛2 + 𝑚) mod 𝑛1, where
+𝑚←Í𝑛2−1
+𝑖=0
+𝑀𝑖(Line 4), and by Lemma 2 this call compacts the
+marked items in that region to that offset while maintaining their
+relative order. ORCompact is then called on the left side (Line 3),
+and we can recursively assume that it compacts the marked items
+in that region while mainting their order. Thus, after the pairwise
+swaps of the last 𝑛2 −𝑚items of each side (Lines 5–7), all marked
+items on the right up to the (𝑛2 −𝑚)th one have been swapped
+in order from into the positions following the 𝑚marked items
+compacted into the first𝑚positions on the left. These marked items
+are then followed by a prefix of marked items in order among the
+next 𝑛1 −𝑛2 +𝑚positions, due to the right-side compaction to offset
+(𝑛1 −𝑛2 + 𝑚) mod 𝑛1, which are then followed by the unmarked
+items. This process results in a compaction to the beginning of 𝐷,
+it maintains the order within swapped subsequences, and it and
+places the right-side items to follow in order of the left-side items,
+proving the the theorem.
+□
+B.2
+Efficiency of ORCompact
+Theorem 2 (from Section 3.4) shows the asymptotic runtime of
+ORCompact (Figure 2).
+Theorem 2. ORCompact runs in time 𝑂(𝑛log𝑛).
+Proof. First, assume that 𝑛= 2𝑘, 𝑘∈N. Let the execution time
+of OROffCompact be 𝑇1(𝑛). OROffCompact takes linear time to
+perform all operations except for the two recursive calls. Those
+recursive calls are each given half of the original input as input,
+and recursion ends at 𝑛= 2. Therefore there exists some 𝑐such
+that 𝑇1(𝑛) ≤𝑐𝑛+ 2𝑇1(𝑛/2) = Ílog2 𝑛
+𝑖=1
+𝑐𝑛= 𝑐𝑛log2 𝑛.
+Next, consider arbitrary 𝑛. Let𝑇2(𝑛) be the execution time of OR-
+Compact. ORCompact first performs at most 𝑐′(𝑛2 + 1) operations
+for some 𝑐′, next calls OROffCompact on the first 𝑛1 items, and
+finally calls itself on the remaining 𝑛2 items (if any). Therefore, for
+𝑛a power of two, by the previous argument for 𝑇1 and the fact that
+𝑛2 < 𝑛, we have that 𝑇2(𝑛) ≤𝑐′𝑛+ 𝑐𝑛log2 𝑛. For 𝑛not a power of
+18
+
+=== PAGE 19 ===
+Fast Fully Oblivious Compaction and Shuffling
+two, inductively assume that, for 𝑛′ < 𝑛,𝑇2(𝑛′) ≤𝑐′𝑛′ +𝑐𝑛′ log2 𝑛′.
+Then
+𝑇2(𝑛) ≤𝑐′(𝑛2 + 1) +𝑇1(𝑛1) +𝑇2(𝑛2)
+(1)
+≤𝑐′(2𝑛2 + 1) + 𝑐𝑛1 log2 (𝑛1) + 𝑐𝑛2 log2 (𝑛2)
+(2)
+≤𝑐′(2𝑛2 + 1) + 𝑐𝑛log2 ((𝑛1/𝑛)𝑛1 + (𝑛2/𝑛)𝑛2)
+(3)
+≤𝑐′𝑛+ 𝑐𝑛log2 𝑛,
+(4)
+where Line 2 follows from the inductive assumption because 𝑛is
+not a power of two; Line 3 follows by applying Jensen’s inequality
+and using the concavity of log2, noting that 𝑛= 𝑛1 + 𝑛2; and Line 4
+holds because i) 2𝑛2 + 1 ≤𝑛, ii) (𝑛1/𝑛)𝑛1 + (𝑛2/𝑛)𝑛2 is a convex
+combination of 𝑛1 and 𝑛2, iii) 𝑛2 < 𝑛1 ≤𝑛, and iv) log2 is an
+increasing function.
+□
+Theorem 3 (from Section 3.4) bounds the number of OSwap calls
+made in ORCompact.
+Theorem 3. Let𝑆1(𝑛) count the OSwap calls in ORCompact. Then
+
+2⌊log2 𝑛⌋/2
+
+⌊log2 𝑛⌋≤𝑆1(𝑛) ≤⌊(𝑛/2) log2 𝑛⌋.
+Proof. Let 𝑏(𝑛) ∈{0, 1}∗be the binary expansion of 𝑛: 𝑛=
+Í⌊log2(𝑛)⌋
+𝑖=0
+𝑏(𝑛)𝑖2𝑖. We first prove that
+𝑆1(𝑛) =
+⌊log2 𝑛⌋
+∑︁
+𝑖=0
+𝑏(𝑛)𝑖
+
+2𝑖−1𝑖+
+
+𝑛mod 2𝑖
+.
+(5)
+This formula will lead to the desired lower bound, and also shows
+that the upper bound is tight when 𝑛is a power of two.
+Let 𝑆′
+1(𝑛) be the number of oblivious swaps in OROffCompact
+given an item array of length 𝑛= 2𝑘,𝑘∈N. There are (𝑛/2)
+OSwap calls (made in Line 3 or 10), and, for 𝑛> 2, two recursive
+calls on (𝑛/2) inputs each (Lines 5 and 6). Therefore, 𝑆′
+1(2) = 1,
+and 𝑆′
+1(𝑛) = (𝑛/2) + 2𝑆′
+1(𝑛/2). Solving this recurrence, we get that
+𝑆′
+1(𝑛) = (𝑛/2) log2(𝑛).
+When 𝑛is a power of two, ORCompact simply calls OROff-
+Compact on its entire input, and so 𝑆1(𝑛) = 𝑆′
+1(𝑛). However, for
+arbitrary 𝑛, we need to take into account the fact that ORCompact
+repeatedly reduces 𝑛by the largest power of two not greater than
+𝑛.
+Let 𝑛1(𝑛) be the largest power of two not greater than 𝑛, 𝑛∈N:
+𝑛1(𝑛) = 2⌊log2(𝑛)⌋, and let 𝑛2(𝑛) be the remaining quantity of 𝑛:
+𝑛2(𝑛) = 𝑛−𝑛1(𝑛). We denote by 𝑏(𝑛) the binary expansion of 𝑛.
+ORCompact calls OROffCompact on the first 𝑛1(𝑛) items (Line 4),
+calls itself on the remaining 𝑛2(𝑛) items (Line 3), and then calls
+OSwap 𝑛2(𝑛) times (Line 7). Therefore,
+𝑆1(𝑛) =𝑛2(𝑛) + 𝑆′
+1(𝑛1(𝑛)) + 𝑆1(𝑛2(𝑛))
+(6)
+=𝑛2(𝑛) + 𝑛1(𝑛)
+2
+log2 (𝑛1(𝑛)) + 𝑆1(𝑛2(𝑛))
+(7)
+= 𝑛1(𝑛)
+2
+log2 (𝑛1(𝑛)) + 𝑛2(𝑛)+
+(8)
+𝑛1(𝑛2(𝑛))
+2
+log2 (𝑛1(𝑛2(𝑛))) + 𝑛2(𝑛2(𝑛)) . . .
+=
+⌊log2(𝑛)⌋
+∑︁
+𝑖=0
+𝑏(𝑛)𝑖
+
+2𝑖−1𝑖+
+
+𝑛mod 2𝑖
+.
+(9)
+Equation 7 follows from substituting the expression we derived for
+𝑆′
+1(𝑛). Equation 8 simply repeats this expansion for 𝑆1(𝑛) until 𝑛2
+returns 0, at which point 𝑆1 also returns 0. Equation 9 follows from
+the facts that (1) the set of values returned by 𝑛1 is equal to the set
+of values {𝑏(𝑛)𝑖2𝑖}𝑖:𝑏(𝑛)𝑖=1, and (2) the set of values returned by
+𝑛2 is equal to the set of values {𝑛mod 2𝑖}𝑖:𝑏(𝑛)1=1. This derivation
+proves the formula for 𝑆1(𝑛) in Equation 5.
+This formula leads easily to the stated lower bound. We simply
+observe that 𝑛1(𝑛) = 2⌊log2(𝑛)⌋, and therefore the formula for 𝑆1(𝑛)
+contains the term (2⌊log (𝑛)⌋/2)⌊log2(𝑛)⌋. All the other terms are
+non-negative, and so that term is a lower bound on 𝑆1(𝑛).
+For𝑛a power of 2, the upper bound (and indeed equality) trivially
+holds because the sum has just a single term. Now suppose the
+upper bound holds for all 𝑚< 𝑛. For 𝑛not a power of 2, define
+𝑛1 and 𝑛2 as above (and taking 𝑛as the implicit argument), so
+that 𝑛1 is a power of 2, 1 ≤𝑛2 < 𝑛1, and 𝑛= 𝑛1 + 𝑛2. Note that
+for 0 < 𝑥< 1, 𝑥< log2(1 + 𝑥), and so since 0 < 𝑛2/𝑛1 < 1,
+(log2 𝑛1) + 𝑛2/𝑛1 < (log2 𝑛1) + log2(1 + 𝑛2/𝑛1) = log2(𝑛1 + 𝑛2).
+Also, 1 + log2 𝑛2 = log2(2𝑛2) < log2(𝑛1 + 𝑛2).
+Then
+𝑆1(𝑛) = 𝑛1
+2 log2 𝑛1 + 𝑛2 + 𝑆1(𝑛2)
+(10)
+≤𝑛1
+2 log2 𝑛1 + 𝑛2
+2 + 𝑛2
+2 + 𝑛2
+2 log2 𝑛2
+(11)
+= 𝑛1
+2
+
+(log2 𝑛1) + 𝑛2
+𝑛1
+
++ 𝑛2
+2 (1 + log2 𝑛2)
+(12)
+< 𝑛1
+2 log2(𝑛1 + 𝑛2) + 𝑛2
+2 log2(𝑛1 + 𝑛2)
+(13)
+= 𝑛
+2 log2 𝑛,
+(14)
+where Line 10 comes from the definition of ORCompact, Line 11
+follows from the inductive assumption, and Line 13 is obtained from
+the preceding arguments. Finally, 𝑆1(𝑛) is integral, and so if 𝑆1(𝑛) ≤
+(𝑛/2) log2 𝑛then it must also be that 𝑆1(𝑛) ≤⌊(𝑛/2) log2 𝑛⌋.
+□
+B.3
+Efficiency of ORShuffle
+Theorem 4 (from Section 4.2) gives the asymptotic runtime of OR-
+Shuffle (Figure 5).
+Theorem 4. ORShuffle runs in time 𝑂(𝑛log2 𝑛).
+Proof. Let 𝑇3(𝑛) be the runtime of ORShuffle. MarkHalf
+takes linear time, and by Theorem 2 ORCompact takes time𝑂(𝑛log𝑛).
+Therefore,𝑇3(𝑛) ≤𝑐(𝑛log𝑛) +2𝑇3(𝑛/2) for some 𝑐> 0. By expand-
+ing this recurrence and simplifying the arithmetic sum, we can see
+that 𝑇3(𝑛) ≤𝑐𝑛log2 𝑛((log2 𝑛) + 1)/2 = 𝑂(𝑛log2 𝑛).
+□
+Theorem 5 (from Section 4.2) bounds the number of OSwap calls
+made in ORShuffle.
+Theorem 5. Let 𝑆2(𝑛) count the number of OSwap calls performed
+by ORShuffle(𝐷), with |𝐷| = 𝑛. For 𝑛= 2𝑘,𝑘∈N, 𝑆2(𝑛) =
+(𝑛/4)(log2 𝑛+1) log2 𝑛. For all 𝑛, 𝑆2(𝑛) < (𝑛/4)(log2 𝑛+1) log2 𝑛+
+𝑛/(6 ln 2), and 𝑆2(𝑛) ≥
+
+2⌊log2 𝑛⌋/4
+
+(⌊log2 𝑛⌋+ 1)⌊log2 𝑛⌋.
+Proof. Let𝑆1(𝑛) be the number of OSwap calls for ORCompact;
+recall from Theorem 3 that 𝑆1(𝑛) ≤⌊(𝑛/2) log2 𝑛⌋. The number of
+19
+
+=== PAGE 20 ===
+Sajin Sasy, Aaron Johnson, and Ian Goldberg
+OSwap calls satisfies the recurrence 𝑆2(𝑛) = 𝑆1(𝑛) + 𝑆2(⌈𝑛/2⌉) +
+𝑆2(⌊𝑛/2⌋).
+Suppose that 𝑛= 2𝑘,𝑘∈N. Inductively assume that, for all 𝑚
+that are powers of 2 less than 𝑛, 𝑆2(𝑚) = (𝑚/4)(log2 𝑚+ 1) log2 𝑚.
+Observe that this assumption holds for 𝑛= 1 (𝑆2(1) = 0) and 𝑛= 2
+(𝑆2(2) = 1). Then it holds that
+𝑆2(𝑛) =
+𝑛
+2
+
+log2 𝑛+ 2𝑆2
+𝑛
+2
+
+(15)
+=
+𝑛
+2
+
+log2 𝑛+ 𝑛
+4 log2
+𝑛
+2
+ 
+log2
+𝑛
+2
+
++ 1
+
+(16)
+=
+𝑛
+4
+
+log2 𝑛(log2 𝑛+ 1),
+(17)
+where Line 15 follows by replacing 𝑆1(𝑛) using the formula given in
+Theorem 3 (noting the upper and lower bounds match for powers
+of 2), and Line 16 holds by the inductive assumption.
+To prove the lower bound, note that by the preceding argument it
+holds with equality for𝑛a power of two. For𝑛not a power of two, in-
+ductively assume that, for𝑚< 𝑛,𝑆2(𝑚) ≥
+
+2⌊log2 𝑚⌋/4
+
+(⌊log2 𝑚⌋+
+1)⌊log2 𝑚⌋. Let 𝑛1 = 2⌊log2 𝑛⌋. Then it follows that
+𝑆2(𝑛) =𝑆1(𝑛) + 𝑆2(⌈𝑛/2⌉) + 𝑆2(⌊𝑛/2⌋)
+(18)
+≥(𝑛1/2) ⌊log2 𝑛1⌋+ 𝑆2(⌈𝑛/2⌉) + 𝑆2(⌊𝑛/2⌋)
+(19)
+≥(𝑛1/2) ⌊log2 𝑛1⌋+
+(20)
+2
+
+2⌊log2(𝑛1/2)⌋/4
+
+(⌊log2(𝑛1/2)⌋+ 1)⌊log2(𝑛1/2)⌋
+= (𝑛1/4) log2 𝑛1(log2 𝑛1 + 1)
+(21)
+=
+
+2⌊log2 𝑛⌋/4
+
+⌊log2 𝑛⌋(⌊log2 𝑛⌋+ 1)
+(22)
+where Line 19 follows from the lower bound of Theorem 3, Line 20
+holds by the inductive assumption because ⌊𝑛/2⌋≤⌈𝑛/2⌉< 𝑛and
+𝑛1 < 𝑛, and Line 21 holds by the arguments in Lines 15–17.
+To prove the upper bound for 𝑛not a power of 2, observe that,
+by replacing 𝑆1(𝑛) in the recurrence for 𝑆2(𝑛) using Theorem 3,
+𝑆2(𝑛) ≤(𝑛/2) log2 𝑛+ 𝑆(⌈𝑛/2⌉) + 𝑆(⌊𝑛/2⌋). We can repeatedly
+expand the recurrence, where the 𝑘th expansion adds 2𝑘terms
+of the form (𝑥/2) log2 𝑥. The 𝑖th term of the 𝑘th expansion is
+(𝑡𝑘,𝑖/2) log2 𝑡𝑘,𝑖, where 𝑡𝑘,𝑖is the result of a sequence of 𝑘applica-
+tions to 𝑛of the functions ⌊𝑦/2⌋and ⌈𝑦/2⌉. Observe that we can
+express the 𝑡𝑘,𝑖as 𝑡𝑘,𝑖= ⌊(𝑛+ 𝑖−1)/2𝑘⌋, that they only take the
+values ⌊𝑛/2𝑘⌋and ⌈𝑛/2𝑘⌉, and that Í
+𝑖𝑡𝑘,𝑖= 𝑛.
+We first consider the sum of these terms, 𝑓(𝑘) = Í2𝑘
+𝑖=1(𝑡𝑘,𝑖/2) log2 𝑡𝑘,𝑖.
+We can bound it using the concavity of log(𝑥) and applying Jensen’s
+inequality:
+𝑓(𝑘) ≤𝑛
+2 log2
+©­
+«
+2𝑘
+∑︁
+𝑖=1
+𝑡𝑘,𝑖
+𝑛
+
+𝑡𝑘,𝑖ª®
+¬
+(23)
+Let 𝑐𝑘= 𝑛mod 2𝑘, which counts the number 𝑡𝑘,𝑖values with the
+value ⌈𝑛/2𝑘⌉. Then we can simplify Line 23 as follows:
+𝑓(𝑘) ≤𝑛
+2 log2
+ 𝑛
+2𝑘
+
++
+𝑐𝑘
+𝑛
+  𝑛
+2𝑘
+
+(24)
+We observe that
+ 𝑛
+2𝑘
+
+= (𝑛−𝑐𝑘)/2𝑘,
+and, when 𝑐𝑘> 0,
+ 𝑛
+2𝑘
+
+= (𝑛+ 2𝑘−𝑐𝑘)/2𝑘.
+These facts allows us to simplify the bound on 𝑓(𝑘):
+𝑓(𝑘) ≤𝑛
+2 log2
+ 
+𝑛−𝑐𝑘
+2𝑘
++
+𝑐𝑘
+𝑛
+ 
+𝑛
+2𝑘+ 2𝑘−𝑐𝑘
+2𝑘
+!!
+(25)
+= 𝑛
+2 log2
+ 𝑛
+2𝑘+
+𝑐𝑘
+𝑛
+ 
+1 −𝑐𝑘
+2𝑘
+
+.
+(26)
+Note that that this bound is still valid when 𝑐𝑘= 0 due to the
+𝑐𝑘/𝑛factor. Let 𝑔(𝑥) = (𝑥/𝑛)(1 −𝑥/2𝑘). The first derivative is
+𝑔′(𝑥) = (1/𝑛)(1 −𝑥/2𝑘−1), and therefore 𝑔(𝑥) is maximized at
+𝑥= 2𝑘−1. Using this fact and Line 26, we can conclude that
+𝑓(𝑘) ≤𝑛
+2 log2
+ 
+𝑛
+2𝑘+
+ 
+2𝑘−1
+𝑛
+! 
+1 −1
+2
+!
+(27)
+= 𝑛
+2 log2
+ 
+𝑛
+2𝑘+ 2𝑘−2
+𝑛
+!
+.
+(28)
+Using the concavity of log2 𝑥and its derivative of 1/((ln 2)𝑥), we
+have that
+𝑓(𝑘) ≤𝑛
+2 log2
+ 𝑛
+2𝑘
+
++
+𝑛
+2
+ 
+2𝑘
+(ln 2)𝑛
+! 
+2𝑘−2
+𝑛
+!
+(29)
+= 𝑛
+2 log2
+ 𝑛
+2𝑘
+
++
+4𝑘−1
+2(ln 2)𝑛.
+(30)
+We now return to the recurrence for 𝑆2(𝑛), which we can bound
+as
+𝑆2(𝑛) ≤𝑛
+2 log2 𝑛+
+⌈log2 𝑛⌉−1
+∑︁
+𝑘=1
+𝑓(𝑘)
+(31)
+≤𝑛
+2 log2 𝑛+
+⌈log2 𝑛⌉−1
+∑︁
+𝑘=1
+𝑛
+2 log2
+ 𝑛
+2𝑘
+
++
+4𝑘−1
+2(ln 2)𝑛
+(32)
+≤
+⌈log2 𝑛⌉−1
+∑︁
+𝑘=0
+𝑛
+2 log2
+ 𝑛
+2𝑘
+
++
+⌈log2 𝑛⌉−1
+∑︁
+𝑘=1
+4𝑘−1
+2(ln 2)𝑛
+(33)
+≤𝑛
+4 (log2 𝑛+ 1) log2 𝑛+ 4⌈log2 𝑛⌉−1 −1
+6(ln 2)𝑛
+(34)
+≤𝑛
+4 (log2 𝑛+ 1) log2 𝑛+ 𝑛2 −1
+6(ln 2)𝑛
+(35)
+< 𝑛
+4 (log2 𝑛+ 1) log2 𝑛+
+𝑛
+6 ln 2.
+(36)
+□
+B.4
+Efficiency of BORPStream
+BORPStream can always choose a trivial BRN, which makes its
+runtime no worse than that of ORShuffle, as shown by Theorem 9.
+Theorem 9. BORPStream runs in time 𝑂(𝑛log2 𝑛).
+Proof. For a given number of items 𝑛, let 𝑝𝑛= (f𝑛, d𝑛, s𝑛) be
+some set of parameters for the BRN. Fix a block size and failure
+probability, and consider the runtime 𝑇𝑛of BORPStream given
+𝑛items when 𝑝𝑛is used in place of the parameters produced by
+20
+
+=== PAGE 21 ===
+Fast Fully Oblivious Compaction and Shuffling
+BORP_Optimizer (Line 2, Figure 10). Suppose 𝑇𝑛= 𝑂(𝑓(𝑛)) for
+some function 𝑓. Then the runtime of BORPStream is 𝑂(𝑓(𝑛))
+because the optimizer outputs parameters that yield the smallest
+predicted runtime using a cost model that is linear in the overall
+number of operations performed.
+A trivial setting of 𝑝𝑛= (1, 1, 1) results in a BRN with only one
+MSN. BORPStream then simply copies its input packets to a single
+output bucket, runs ORCompact to remove dummy packets, and
+then runs ORShuffle to shuffle the 𝑛items. By Theorems 2 and 4,
+the resulting runtime is 𝑂(𝑛log2 𝑛).
+□
+Of course, BORPStream would not offer advantages if it simply
+devolved into ORShuffle, and our optimizer does in fact return
+non-trivial parameter settings (see Table 1). As described in Sec-
+tion 5.4, the runtime of Phase 1 is𝑂(𝑛sd), and in Phase 2 the runtime
+of FlushBuffers() is 𝑂(fds2d2), while cumulatively in Phase 2 the
+ORCompact calls take time 𝑂(fd log𝑉) and the ORShuffle calls
+are 𝑂(fd log2 𝑉), with 𝑉= 𝑂(𝑛/fd + sd). If, for example, we con-
+sider 2 ≤f = 𝑂(1) and d = logf(𝑛/𝑐) for some constant 𝑐≥1,
+which is a parameterization used by BORP [3], then the overall
+runtime becomes 𝑂(𝑛s2 log2 𝑛), with FlushBuffers() contributing
+the dominant term. This analysis indicates that (1) a “narrower”
+parameterization (i.e., with smaller fd) is needed to outperform OR-
+Shuffle; and (2) small buffer size s is crucial to good performance
+in BORPStream.
+C
+BORPSTREAM CORRECTNESS AND
+OPTIMIZER
+BORPStream fails in the event that any one of the MSNs incurs a
+buffer overflow; let the probability of this event be P. We implement
+a failure probability calculator to numerically bound P for a given
+number of items 𝑛, and use it to produce various choices of (f, d, s)
+that are below the desired failure probability threshold 2−𝜆. In
+our experiments we use 𝜆= 80. Table 1 lists the BORPStream
+parameters produced by our calculator for a few choices of 𝑛and 𝑏.
+The failure probability P is bounded by the union bound over
+all individual MSN’s buffer overflow probability. For each individ-
+ual MSN, we can bound this buffer overflow failure probability by
+analyzing the underlying Markov process of how the buffer occu-
+pancy changes as items are passed through it. Let an item entering
+a given MSN be real with probability 1
+2 and each MSN have f output
+streams or “flavours”. We perform this analysis under a simplified
+model where we consider the MSN receives a batch of f items at a
+time, and then tries to evict one item of each flavour (if possible,
+else it evicts a dummy); instead of the MSN evicting an item for
+each item received.
+For an MSN to fail in the above model, it is necessary that its
+buffer has no items of at least one flavour; if the buffer has at
+least one item of each flavour, even in the worst case when all
+incoming f items are real, the buffer size does not change. Given
+this observation, we consider the state of the MSN buffer at any
+time as a sorted tuple of the number of items of each flavour, and
+discard the smallest count in this tuple to reduce the state space
+and arrive at an upper bound of the failure probability.
+For a given s, we generate the transition matrix for one batch
+of f items by starting with the tuple of all 0’s as the buffer state,
+Table 1: BORPStream parameters produced by the optimizer
+for V1 (minimize total time) and V2 (minimize phase 2 time)
+modes across sample problem sizes 𝑛and block sizes 𝑏.
+Mode
+𝑛
+𝑏
+f
+d
+s
+𝜆
+V1
+220
+8
+2
+1
+32
+81
+V1
+220
+1024
+4
+3
+47
+82
+V1
+224
+8
+4
+1
+48
+82
+V2
+220
+8
+4
+4
+47
+80
+V2
+220
+1024
+4
+4
+47
+80
+V2
+224
+8
+4
+5
+49
+82
+and then computing the probability distribution of all the possible
+sequences of f items. We then repeat this process until a complete
+transition matrix for a maximum buffer size of s is constructed. The
+transition matrix also has a fail state which soaks all the events that
+lead to a buffer overflow and provides an upper bound for failure.
+Given n, the calculator selects the depth of the network d from a
+range of candidate choices. We exponentiate the transition matrix
+by 2𝑛
+fd (the number of f-item batches each MSN in a layer processes),
+to arrive at the failure probability of each individual MSN.
+21
+
+=== PAGE 22 ===
+Sajin Sasy, Aaron Johnson, and Ian Goldberg
+D
+ADDITIONAL GRAPHS FOR SMALL VALUES
+OF 𝑛
+Figure 14: Comparison of Goodrich compaction and ORCom-
+pact on computation time (in ms) zoomed in from Figure 11b
+on smaller values of 𝑛.
+Figure 15: Comparison of shuffling algorithms on compu-
+tation time (in ms) zoomed in from Figure 12a on smaller
+values of 𝑛.
+22

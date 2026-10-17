@@ -8,21 +8,21 @@
 \definecolor{navy}{HTML}{17324D}
 \definecolor{teal}{HTML}{176B73}
 \hypersetup{colorlinks=true,linkcolor=navy,urlcolor=teal,citecolor=teal,
- pdftitle={Hierarchical ORAM: Current Construction, AWS Cost, and Latency}}
+ pdftitle={Hierarchical ORAM: Communication, Cloud Cost, and Latency}}
 \setlength{\parindent}{0pt}\setlength{\parskip}{5pt}
 \setlength{\emergencystretch}{2em}\setlength{\headheight}{14pt}
 \setlist{nosep,leftmargin=1.6em}
 \pagestyle{fancy}\fancyhf{}
-\fancyhead[L]{\small\textcolor{navy}{Hierarchical ORAM on AWS}}
+\fancyhead[L]{\small\textcolor{navy}{Hierarchical ORAM: cloud deployment}}
 \fancyhead[R]{\small Current construction and deployment}
 \fancyfoot[C]{\thepage}
 \begin{document}
 {\color{teal}\large TECHNICAL REPORT\par}
-{\color{navy}\LARGE\bfseries Hierarchical ORAM:\\Communication, AWS Cost, and Latency\par}
+{\color{navy}\LARGE\bfseries Hierarchical ORAM:\\Communication, Cloud Cost, and Latency\par}
 17 October 2026\quad$\cdot$\quad Single projected AES per lookup
 
 \section*{Result}
-At 10,000 queries/s, the seven-state deployment costs \textbf{\$6.69M/\$9.97M annually} for $N=2^{28}/2^{32}$ with $B=1024$. At $B=2048$, the cost is \textbf{\$5.75M/\$8.71M}, with about 241.0/239.2 ms mean and 362.6/358.3 ms p99 query latency.
+At 10,000 queries/s, the seven-state same-AZ deployment costs \textbf{\$6.69M/\$9.97M annually} for $N=2^{28}/2^{32}$ with $B=1024$. At $B=2048$, the cost is \textbf{\$5.75M/\$8.71M}, with about 241.0/239.2 ms mean and 362.6/358.3 ms p99 query latency.
 
 \begin{center}\footnotesize
 \begin{tabular}{rrrrrrrr}\toprule
@@ -48,6 +48,11 @@ prefetching remain the larger worker pool. The predictions assume that
 loading/transferring circuit material dominates CPU computation. They are
 conditional analytical results and finite deterministic traces, not AWS
 benchmarks or latency guarantees. All MB/GB/TB are decimal; MiB/GiB are binary.
+
+For parties on different cloud platforms, Section~\ref{sec:cross-cloud}
+extends the analysis to private AWS--Google links and larger batches.
+The resulting budgets include cross-cloud bandwidth and allow a few
+seconds of query latency.
 
 \section{The current construction}
 \subsection{Tables, reads, and representations}
@@ -319,7 +324,7 @@ modeled active rates per worker are
  C_{\rm DRAM}&=56\ {\rm GB/s}.
 \end{align*}
 The NIC factors are network and distributed efficiency. The DRAM rate is
-an explicit effective-loading proxy, not an AWS specification. Pool sizing
+an explicit effective-loading proxy, not an AWS specification. Same-AZ pool sizing
 then limits modeled mean utilization to 70\%; this factor is not applied
 again to active service durations. All traffic receives 5\% framing.
 
@@ -402,7 +407,7 @@ but evolve their own ORAM placements. Each request changes one state and
 is charged once. Application updates that must reach every state require
 an additional consistency protocol and are outside this workload.
 
-Pool sizes are chosen separately so mean foreground and background
+For the same-AZ deployment, pool sizes are chosen separately so mean foreground and background
 occupancy, including modeled round/load waits, stay at or below 70\%.
 The full binary-counter trace is then simulated. Each run spans two global
 $N/B$ batch cycles: about 14.91 hours at $N=2^{28}$ or 9.94 days at
@@ -461,7 +466,7 @@ throughput $T_v$ MiB/s, and IOPS $J_v$, the annual budget is
  C_{\rm year}=63576.576(K_G+K_E)+
  \sum_v[0.96D_v+0.48(T_v-125)_++0.06(J_v-3000)_+].
 \]
-Both parties use private addresses in the same Availability Zone, so this
+The baseline places both parties at private addresses in the same Availability Zone, so this
 transfer placement has no separate EC2 regional data-transfer charge
 \cite{aws-transfer}. Cross-AZ placement would need a different budget.
 
@@ -557,6 +562,130 @@ traces. Smaller batches remain relevant if a substantially tighter latency
 target is imposed.
 
 \clearpage
+\section{Cross-cloud deployment}\label{sec:cross-cloud}
+Placing the parties on AWS and Google Cloud costs \textbf{\$68.6M/\$95.9M annually} for $N=2^{28}/2^{32}$ at 10,000 reads/s. With $B=16{,}384$ and a 5 ms round-trip time, mean latency is about 2.3 seconds and p99 about 3.2 seconds. Cross-cloud networking accounts for 89--90\% of the budget.
+
+AWS us-east-1 hosts the garbler and Google us-east4 hosts the evaluator,
+connected privately in Northern Virginia. The workload remains a static
+database with 32-byte keys and 32-byte values. Both scenarios retain the
+construction, cache policy, and seven states; their RTTs are assumed.
+
+\begin{center}\footnotesize
+\begin{tabular}{rrrrrrrr}\toprule
+RTT ms & Records & $B$ & Mean s & p99 s & Infra. & Network & Total\\\midrule
+5 & $2^{28}$ & 16,384 & 2.27 & 3.20 & 6.5 & 62.1 & \textbf{68.6}\\
+5 & $2^{32}$ & 16,384 & 2.24 & 3.15 & 10.1 & 85.8 & \textbf{95.9}\\
+10 & $2^{28}$ & 32,768 & 4.57 & 6.38 & 6.8 & 64.9 & \textbf{71.8}\\
+10 & $2^{32}$ & 32,768 & 4.54 & 6.33 & 10.8 & 91.5 & \textbf{102.3}\\
+\bottomrule\end{tabular}\end{center}
+{\footnotesize Model estimates at 10,000 reads/s, seven states. Costs are annual USD millions for both parties. Infrastructure uses AWS-equivalent compute, storage, and I/O prices for both clouds; latency includes batch fill and admission queues.\par}
+
+\subsection{Larger batches absorb round trips}
+At $B=2048$, about 100 RTT-equivalent dependencies occupy the foreground
+pool for half a second at 5 ms RTT, while a batch arrives every 0.205 seconds.
+Relaxing response latency alone cannot make this pool sustain 10,000 reads/s.
+More workers cannot remove the dependency delay. Keeping $B=2048$ would
+require concurrent batch pipelines and a revised scheduler.
+
+Larger batches give the pools time to finish each job. At $B=16{,}384$,
+the arrival interval is 1.638 seconds and mean fill delay is 0.819 seconds,
+supporting the 5 ms RTT scenario. At 10 ms RTT, $B=32{,}768$ gives a
+3.277-second interval and 1.638-second mean fill delay. Removing lower
+hierarchy levels also reduces communication per read despite the larger
+frontend sort.
+
+Cross-cloud pools target at most 90\% mean occupancy, including round and
+loading waits, versus 70\% for same-AZ pools. This uses the extra latency
+budget to reduce fleet and burst-bandwidth requirements. Two global
+counter cycles include two largest-table rebuild starts per scenario;
+reported latencies include the admission queue.
+
+\subsection{Charge traffic in its actual direction}
+About 98.6\% of cross-party bytes travel from garbler to evaluator.
+AWS flat-rate Direct Connect covers that dominant direction; only the
+smaller Google-to-AWS stream incurs a per-GiB transfer charge. Charge each
+send once, excluding matching receives and same-party transfers.
+
+\begin{center}\footnotesize
+\begin{tabular}{rrrrrr}\toprule
+Records & $B$ & AWS to Google & Google to AWS & Total MB/read & Forward Tbps\\\midrule
+$2^{28}$ & 2,048 & 19.812 & 0.279 & 20.091 & 1.585\\
+$2^{32}$ & 2,048 & 26.689 & 0.385 & 27.075 & 2.135\\
+$2^{28}$ & 16,384 & 17.931 & 0.251 & 18.182 & 1.434\\
+$2^{32}$ & 16,384 & 24.735 & 0.356 & 25.091 & 1.979\\
+$2^{28}$ & 32,768 & 17.258 & 0.241 & 17.499 & 1.381\\
+$2^{32}$ & 32,768 & 24.062 & 0.346 & 24.408 & 1.925\\
+\bottomrule\end{tabular}\end{center}
+{\footnotesize Directional columns are MB/read, including 5\% framing, cache waste, and bridges. Forward throughput assumes 10,000 reads/s. Intra-party transfers are excluded.\par}
+
+\clearpage
+\subsection{Private-link prices and capacity}
+The price snapshot checked on 17 October 2026 combines an AWS Tier 1
+100 Gbps Direct Connect port-pair at \$102.74/hour with two Google
+100 Gbps Cross-Cloud Interconnect circuits at \$30/hour each and two
+100 Gbps VLAN attachments at \$1/hour each
+\cite{aws-flat-rate,gcp-interconnect}. Thus one redundant bundle costs
+\[
+ 102.74+2(30+1)=\$164.74/{\rm hour},
+\]
+or \$1.443M/year. Its usable capacity is 100 Gbps, including a redundant
+path; the two physical connections do not provide 200 Gbps of usable
+capacity. AWS outbound transfer is included for the covered path. Google
+charges \$0.02/GiB for outbound transfer on the selected US path and
+nothing for inbound transfer. The selected topology connects primary
+and redundant ports on both providers \cite{gcp-cci-topology}.
+
+Average traffic alone understates the capacity needed by the scheduled
+rebuild bursts. We reserve enough cross-cloud bandwidth for the foreground
+and background pools to use their full modeled active NIC rates
+simultaneously. For $F+R$ workers per party and $H$ usable 100 Gbps bundles,
+the reservation satisfies
+\[
+ 0.90\,H\,(12.5\ {\rm GB/s})\ \geq
+ (F+R)(11.375\ {\rm GB/s}).
+\]
+The 10\% link allowance is separate from worker-pool occupancy. A second
+check keeps mean traffic below 70\% of raw link capacity; the burst
+condition determines the link counts in every scenario below.
+
+\begin{center}\footnotesize
+\begin{tabular}{rrrrrrr}\toprule
+RTT ms & Records & $F$ & $R$ & 100 Gbps bundles & Links/year & Reverse/year\\\midrule
+5 & $2^{28}$ & 9 & 32 & 42 & 60.611 & 1.473\\
+5 & $2^{32}$ & 12 & 45 & 58 & 83.701 & 2.091\\
+10 & $2^{28}$ & 10 & 33 & 44 & 63.497 & 1.416\\
+10 & $2^{32}$ & 13 & 48 & 62 & 89.474 & 2.034\\
+\bottomrule\end{tabular}\end{center}
+{\footnotesize Workers are per party. Link and reverse-transfer costs are annual USD millions. Each bundle includes primary and redundant connections with 100 Gbps usable capacity in total.\par}
+
+This reservation covers even the portion of worker NIC capacity used for
+internal transfers, so cross-cloud bandwidth cannot further constrain the
+modeled schedule. Those internal bytes do not enter the billed reverse
+egress volume. With $q=10{,}000$ reads/s and $d_{\leftarrow}$ reverse
+bytes/read, the annual networking cost is
+\[
+ C_{\rm net}=8760H(164.74)
+ +\frac{(365\cdot24\cdot3600)q\,d_{\leftarrow}}{2^{30}}(0.02).
+\]
+
+Network charges dominate the total, so smoothing rebuild traffic across
+time and sharing link capacity more tightly are useful optimization
+targets. The reported budgets retain the full simultaneous-burst
+reservation. A budget based only on average traffic would need a new
+schedule before inheriting these latency estimates.
+
+\paragraph{Scope of the estimate.}
+Compute, storage, and I/O for both parties use the existing AWS prices as
+a common infrastructure proxy. The CPU and storage assumptions are the
+same as in the baseline. Provider selection must confirm the assumed RTT,
+multi-terabit capacity, and eligibility of the chosen dedicated AWS
+port-pair for flat-rate billing. Google workers and their VLAN attachments
+must be in the same region to avoid extra regional transfer charges.
+Any separately charged installation, cross-connect, colocation, or
+optional network-service fees are outside this budget. The estimate is
+a deployment projection from component prices, not a negotiated quote.
+
+\clearpage
 \section{Validation and remaining work}
 All current resource paths consume the same materialized single-PRF case.
 The annual model and report renderer reject a schedule stamped with a
@@ -599,6 +728,7 @@ python -m mpc_cost.hierarchical_prf_optimization
 python -m mpc_cost.hierarchical_schedule
 python -m mpc_cost.hierarchical_schedule --suite variants
 python -m mpc_cost.hierarchical_annual
+python -m mpc_cost.hierarchical_cross_cloud
 python -m unittest discover -s mpc_cost -t . -p "test_hierarchical*.py"
 python -m mpc_cost.render_hierarchical_throughput_report
 \end{verbatim}
@@ -610,6 +740,12 @@ The original split ledger remains a reproducible input to the explicit
 current-case transformation. It is not the protocol used for the final
 resource tables. The standalone LaTeX includes all numerical tables and
 needs no project-specific inputs to compile.
+
+The cross-cloud command reruns the four larger-batch schedules and saves
+their traffic, resource counts, link reservations, and costs in
+\texttt{hierarchical\_cross\_cloud.json}. Published link prices and their
+source URLs are recorded in
+\texttt{mpc\_cost/data/cross\_cloud\_prices\_2026-10-17.json}.
 
 \clearpage
 \begin{thebibliography}{99}
@@ -638,5 +774,13 @@ saved in \texttt{aws\_hierarchical\_prices\_2026-10-17.json}.
 \url{https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/us-east-1/index.csv}
 \bibitem{aws-transfer} AWS. Billing and metering for VPC owners and participants.
 \url{https://docs.aws.amazon.com/vpc/latest/userguide/vpc-share-billing.html}
+\bibitem{aws-flat-rate} AWS. Direct Connect flat-rate pricing.
+Tier 1 100 Gbps port-pair, accessed 17 October 2026.
+\url{https://aws.amazon.com/directconnect/pricing/flat-rate/}
+\bibitem{gcp-interconnect} Google Cloud. Cloud Interconnect pricing,
+Cross-Cloud Interconnect section. Accessed 17 October 2026.
+\url{https://cloud.google.com/network-connectivity/interconnect/pricing}
+\bibitem{gcp-cci-topology} Google Cloud. Cross-Cloud Interconnect overview.
+\url{https://docs.cloud.google.com/network-connectivity/docs/interconnect/concepts/cci-overview}
 \end{thebibliography}
 \end{document}

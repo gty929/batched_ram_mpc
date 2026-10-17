@@ -1,32 +1,39 @@
 \section{A Reality Check and Proposed Work}
-\elaine{TODO: fix table 1}
 
-The goal of the proposal is to enable private accesses to on-chain data
-at the Ethereum scale. 
-We first perform a reality check of where we are today 
-by comparing several 
-alternative techniques
-in terms of their performance and security assumptions (\Cref{sec:comparison}), 
-and then give an overview our proposed work (\Cref{sec:proposed}). 
+The goal of this proposal is to enable private accesses to on-chain data
+at the Ethereum scale. We compare existing approaches in terms of
+performance and security assumptions (\Cref{sec:comparison}), then present
+our proposed work (\Cref{sec:proposed}).
 
-
-
-% Comparison table, transcribed from table.pdf.
+% Numerical provenance, updated 17 October 2026:
+% Preliminary GRAM: mpc_cost/results/two_party_serial_comparison.json,
+% rows[].complete_service_time_scenarios, optimistic 50 ms endpoint.
+% Annual costs: $548,465,115 at N=2^28; $6,978,813,444 at N=2^32.
+% This is the low end of our estimates, not a formal cost lower bound.
+% Host counts include network_nodes_total + extra_attached_storage_nodes.
+% Proposed 2PC: mpc_cost/results/hierarchical_annual.json, variants with
+% batch=2048 and seven independent states, selected by
+% mpc_cost/render_hierarchical_throughput_report.py.
+% Exact annual costs: $5,745,710.592 / $8,705,673.216; total workers: 72/96.
+% Mean latency: 241.0387/239.2399 ms; p99: 362.6083/358.3029 ms.
+% These replace the old inverse-latency and ballpark-target rows. Neither
+% model is an end-to-end benchmark, and their ratio is not a measured speedup.
 \begin{table}[H]
 \centering
 \footnotesize
 \renewcommand{\arraystretch}{1.1}
 \setlength{\tabcolsep}{3pt}
-\newcommand{\q}[1]{\linebreak{\scriptsize #1}}% qualifier under a value
+\newcommand{\q}[1]{\linebreak{\scriptsize #1}}
 \newcommand{\sysrow}[2]{\textbf{#1}\linebreak{\scriptsize #2}}
 \newcommand{\band}[1]{%
   \rowcolor{black!8}\multicolumn{5}{l}{\rule{0pt}{2.4ex}\textbf{#1}}\\}
 \newcommand{\tn}[1]{\textsuperscript{#1}}
-\newcommand{\schemesep}{% gray rule between schemes
+\newcommand{\schemesep}{%
   \arrayrulecolor{black!25}\specialrule{0.4pt}{3pt}{3pt}\arrayrulecolor{black}}
-\caption{Private access to Ethereum data: existing approaches and the
-  targets of our proposed work. Our existing ORAM and Garbled RAM were run on a 32-core Intel Xeon
-   Platinum 8352S machine.}
+\caption{Private access to Ethereum data. neOMAP uses a 32-core Intel
+  Xeon Platinum 8352S; MicrORAM entries are targets. Garbled RAM and
+  MicrORAM + 2PC use two-party estimates, with accounts padded to $2^{28}$ records.
+  Prior Garbled RAM uses the optimistic end of our estimates.}
 \label{tab:comparison}
 \begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{3.4cm}
                              *{4}{>{\centering\arraybackslash}X}}
@@ -37,47 +44,42 @@ and then give an overview our proposed work (\Cref{sec:proposed}).
 & \multicolumn{2}{c}{\scriptsize $2^{32}$ records of 64 bytes} \\
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}
 & Latency & Throughput & Latency & Throughput \\
-& & {\scriptsize per GPU or CPU} & & {\scriptsize per GPU or CPU} \\
+& & {\scriptsize queries/sec/host} & & {\scriptsize queries/sec/host} \\
 \specialrule{\lightrulewidth}{\aboverulesep}{0pt}
-\band{Status quo}
+\band{Status quo and preliminary work}
 \addlinespace[3pt]
 \sysrow{neOMAP}{Oblivious Labs' TEE-based ORAM~\cite{neomap}}
 & 30\,$\mu$s\q{non-batched}\par\smallskip
   10--20\,ms\q{batched}
-& 33K\q{queries/sec}\par\smallskip
-  300K--400K\q{queries/sec}
-& 50\,$\mu$s\q{non-batched}\par\smallskip
-  50\,ms\q{batched}
-& 20K\q{queries/sec}\par\smallskip
-  33K\tn{$\star$}\q{queries/sec} \\
+& 33K\q{non-batched}\par\smallskip 300K--400K\q{batched}
+& 50\,$\mu$s\q{non-batched}\par\smallskip 50\,ms\q{batched}
+& 20K\q{non-batched}\par\smallskip 33K\tn{$\star$}\q{batched} \\
 \schemesep
 \sysrow{InsPIRe}{Ethereum's GPU-based PIR~\cite{efinspire}}
-& ${\sim}250$\,ms
-& 40--60\q{queries/sec}
-& 5.2\,s\tn{$\dagger$}
-& 2--3\q{queries/sec}\tn{$\dagger$} \\
+& ${\sim}250$\,ms & 40--60
+& 5.2\,s\tn{$\dagger$} & 2--3\tn{$\dagger$} \\
 \schemesep
-\sysrow{Garbled RAM}{our preliminary work~\cite{picogram,zebra}}
-& ${\sim}400$\,ms\tn{$\dagger$}
-& 1/latency\tn{$\diamond$}%\tn{$\dagger$}
-& ${\sim}700$\,ms\tn{$\dagger$}
-& 1/latency\tn{$\diamond$} \\
+\sysrow{Garbled RAM}{our preliminary work~\cite{picogram}}
+& 50\,ms
+& 7.5\tn{$\diamond$}
+& 50\,ms
+& 1.16\tn{$\diamond$} \\
 \addlinespace[3pt]
-\band{Proposed work (ballpark targets)}
+\band{Proposed work}
 \addlinespace[3pt]
 \sysrow{MicrORAM}{faster TEE-based ORAM (Thrust~2)}
 & ${<}2$\,$\mu$s\q{non-batched}\par\smallskip
   ${<}300$\,$\mu$s\q{batched}
-& ${>}2$M\q{queries/sec}\q{batched}
+& ${>}2$M\q{batched}
 & ${<}3$\,$\mu$s\q{non-batched}\par\smallskip
   ${<}400$\,$\mu$s\q{batched}
-& ${>}1.5$M\q{queries/sec}\q{batched} \\
+& ${>}1.5$M\q{batched} \\
 \schemesep
-\sysrow{Garbled RAM}{our proposed work (Thrust~1)}
-& ${\sim}100$\,ms
-& 40--60\q{queries/sec}
-& ${\sim}150$\,ms
-& 30--40\q{queries/sec} \\
+\sysrow{MicrORAM + 2PC}{batch 2,048 (Thrust~1)}
+& 241\,ms\q{mean}
+& 139\tn{$\diamond$}
+& 239\,ms\q{mean}
+& 104\tn{$\diamond$} \\
 \addlinespace[2pt]
 \bottomrule
 \end{tabularx}
@@ -85,114 +87,84 @@ and then give an overview our proposed work (\Cref{sec:proposed}).
 \smallskip
 \begin{minipage}{\linewidth}
 \scriptsize
-\tn{$\star$}\,neOMAP swaps data to SSD at this scale, and the throughput is bounded by the SSD bandwidth. \\
-% \tn{$\star$}\,Could be faster with parallelization; the database no longer fits
-% in a single GPU.\quad
-% \tn{$\diamond$}\,Cannot be parallelized away; the actual number can be worse because
-% the database does not fit in a single GPU.\quad
-\tn{$\diamond$}\,The current implementation has no throughput optimization. \\
-\tn{$\dagger$}\,Extrapolated, current experiments are at smaller scales.
+\tn{$\star$}\,neOMAP swaps data to SSD at this scale, so SSD bandwidth bounds throughput.
+\tn{$\dagger$}\,Extrapolated from smaller experiments.\\
+\tn{$\diamond$}\,10K queries/sec divided by all billed machines in
+\Cref{tab:cost}, including both parties and storage/background workers.
+Prior Garbled RAM uses an assumed service time; MicrORAM + 2PC latency
+includes batch filling and queueing.
 \end{minipage}
 \end{table}
 
-\begin{samepage}
 \subsection{Reality Check}
 \label{sec:comparison}
 
 Three approaches offer different tradeoffs between performance, scalability,
 and trust for private access to blockchain data: trusted execution environments
 (TEEs) combined with Oblivious RAM (ORAM), private information retrieval (PIR),
-and Garbled RAM. The comparison in \Cref{tab:comparison} considers both an account-sized database
-and a larger database representing the full Ethereum state. It illustrates why
-we propose to advance two complementary directions: faster TEE-based access for
-deployments that accept trusted hardware, and scalable cryptographic access for
+and Garbled RAM. \Cref{tab:comparison} compares an account-sized database
+with a larger database representing the full Ethereum state. We propose
+two complementary directions: faster TEE-based access for deployments
+that accept trusted hardware, and scalable cryptographic access for
 deployments that require privacy without that hardware assumption.
-\Cref{tab:cost} translates the throughput in \Cref{tab:comparison} into the
-number of machines, and the annual cost on AWS, needed when 10\% of a
-typical RPC load requires privacy.
-\par
-\end{samepage}
+\Cref{tab:cost} estimates the resources needed to serve 10K private
+requests/sec, or 10\% of a typical RPC load.
 
-% Cost of serving a typical RPC load, derived from Table 1's throughput.
 \begin{table}[H]
 \centering
 \footnotesize
 \renewcommand{\arraystretch}{1.1}
 \setlength{\tabcolsep}{3pt}
-\newcommand{\q}[1]{\linebreak{\scriptsize #1}}% qualifier under a value
-% Row padding sits inside the rows rather than in \addlinespace or rule
-% spacing, so the shaded cost columns have no gaps.
+\newcommand{\q}[1]{\linebreak{\scriptsize #1}}
 \newcommand{\toppad}{\rule{0pt}{\dimexpr\arraystretch\ht\strutbox+3pt\relax}}
 \newcommand{\botpad}{\rule[-\dimexpr\arraystretch\dp\strutbox+3pt\relax]{0pt}{0pt}}
 \newcommand{\sysrow}[2]{\toppad\textbf{#1}\linebreak{\scriptsize #2}\botpad}
 \newcommand{\band}[1]{%
-  \rowcolor{black!8}\multicolumn{7}{l}{\rule{0pt}{2.4ex}\textbf{#1}}\\}
-\newcommand{\schemesep}{% gray rule between schemes
+  \rowcolor{black!8}\multicolumn{5}{l}{\rule{0pt}{2.4ex}\textbf{#1}}\\}
+\newcommand{\schemesep}{%
   \arrayrulecolor{black!25}\specialrule{0.4pt}{0pt}{0pt}\arrayrulecolor{black}}
-\newcommand{\cpu}{m6id.\linebreak 16xlarge}
-\newcommand{\largecpu}{x8i.\linebreak 24xlarge}
-\newcommand{\gpu}{p5.\linebreak 4xlarge}
-\captionsetup{justification=raggedright}% long URLs
-\caption{Machines and annual AWS cost for 10K private requests/sec
-  (10\% of a typical 100K/sec RPC load). Flat-database columns assume one
-  lookup per request. The added account-MPT columns include complete
-  proof retrieval for 206.8M accounts; they are illustrative extrapolations
-  under the model below, not benchmarks. K, M, and B denote thousands,
-  millions, and billions.}
+\newcommand{\cpu}{m6id.16xlarge}
+\newcommand{\largecpu}{x8i.24xlarge}
+\newcommand{\gpu}{p5.4xlarge}
+\newcommand{\netcpu}{c6in.32xlarge}
+\caption{Machines and annual AWS cost for 10K private requests/sec,
+  with one flat key--value lookup per request. Garbled RAM and MicrORAM + 2PC
+  charge both parties and use $2^{28}$ records for the account-sized case.
+  Prior Garbled RAM uses our optimistic estimate; MicrORAM + 2PC uses
+  batches of 2,048 and seven independent ORAM states.
+  K, M, and B denote thousands, millions, and billions.}
 \label{tab:cost}
-\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{2.65cm}
-                             *{3}{>{\centering\arraybackslash}X
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{3.0cm}
+                             *{2}{>{\centering\arraybackslash}X
                                   >{\columncolor{yellow!20}\centering\arraybackslash}X}}
 \toprule
 & \multicolumn{2}{c}{\textbf{Ethereum accounts}}
-& \multicolumn{2}{c}{\textbf{Full Ethereum state}}
-& \multicolumn{2}{c}{\textbf{Accounts + MPT proof}} \\
+& \multicolumn{2}{c}{\textbf{Full Ethereum state}} \\
 & \multicolumn{2}{c}{\scriptsize ${\sim}206.8$M records of 64 bytes}
-& \multicolumn{2}{c}{\scriptsize $2^{32}$ records of 64 bytes}
-& \multicolumn{2}{c}{\scriptsize ${\sim}206.8$M accounts} \\
-\cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
-& Config & Annual cost & Config & Annual cost & Config & Annual cost \\[\aboverulesep]
+& \multicolumn{2}{c}{\scriptsize $2^{32}$ records of 64 bytes} \\
+\cmidrule(lr){2-3}\cmidrule(lr){4-5}
+& Config & Annual cost & Config & Annual cost \\[\aboverulesep]
 \specialrule{\lightrulewidth}{0pt}{0pt}
-\band{Status quo}
+\band{Status quo and preliminary work}
 \sysrow{neOMAP}{Oblivious Labs' TEE-based ORAM}
-& \cpu\q{1 machine}\q{batched}
-& \$33K\q{batched}
-& \largecpu\q{1 machine}\q{batched}
-& \$92K\q{batched}
-& \cpu\q{6 capacity units}
-& \$200K \\
+& \cpu\q{1 machine, batched} & \$33K
+& \largecpu\q{1 machine, batched} & \$92K \\
 \schemesep
 \sysrow{InsPIRe}{Ethereum's GPU-based PIR}
-& \gpu\q{167--250 machines}
-& \$10M--\$15M
-& \gpu\q{3.3K--5K machines}
-& \$201M--\$301M
-& \gpu\q{20K--30K machines}
-& \$1.21B--\$1.81B \\
+& \gpu\q{167--250 machines} & \$10M--\$15M
+& \gpu\q{3.3K--5K machines} & \$201M--\$301M \\
 \schemesep
-\sysrow{Garbled RAM}{our preliminary work}
-& \cpu\q{4K machines}
-& \$133M
-& \cpu\q{7K machines}
-& \$233M
-& \cpu\q{24K capacity units}
-& \$799M \\
-\band{Proposed work (ballpark targets)}
+\sysrow{Garbled RAM}{our preliminary work~\cite{picogram}}
+& \netcpu\q{1,330 machines} & \$548M
+& \netcpu\q{8,628 machines} & \$6.98B \\
+\band{Proposed work}
 \sysrow{MicrORAM}{faster TEE-based ORAM (Thrust~2)}
-& \cpu\q{1 machine}\q{batched}
-& \$33K\q{batched}
-& \largecpu\q{1 machine}\q{batched}
-& \$92K\q{batched}
-& \cpu\q{6 capacity units}
-& \$200K \\
+& \cpu\q{1 machine, batched} & \$33K
+& \largecpu\q{1 machine, batched} & \$92K \\
 \schemesep
-\sysrow{Garbled RAM}{our proposed work (Thrust~1)}
-& \cpu\q{167--250 machines}
-& \$5.6M--\$8.3M
-& \cpu\q{250--334 machines}
-& \$8.3M--\$11M
-& \cpu\q{1,002--1,500 capacity units}
-& \$33.4M--\$49.9M \\
+\sysrow{MicrORAM + 2PC}{batch 2,048 (Thrust~1)}
+& \netcpu\q{72 machines total}\q{36 per party} & \$5.75M
+& \netcpu\q{96 machines total}\q{48 per party} & \$8.71M \\
 \specialrule{\heavyrulewidth}{0pt}{\belowbottomsep}
 \end{tabularx}
 \end{table}
@@ -210,118 +182,31 @@ QuickNode, over 8.2B/day in 2024 (${\approx}95$K/sec,
 \url{https://www.quicknode.com/blog/quicknodes-2024-wrapped}); and Ankr,
 1T/month (${\approx}390$K/sec,
 \url{https://www.ankr.com/blog/inside-ankr-s-1-t-monthly-rpc-requests-served-powering-web3/}).
-We retain the existing October 2026 us-east-1 planning rates
-(\url{https://aws.amazon.com/ec2/pricing/on-demand/}): m6id.16xlarge at
-\$3.80/hour (\$33,288/year), p5.4xlarge at \$6.88/hour
-(\$60,268.80/year), and x8i.24xlarge at \$10.50/hour
-(\$91,980/year), with 8,760 hours of operation annually. These are the
-existing CPU and H100 instance choices; the full-state neOMAP and
-MicrORAM columns retain the larger x8i instance. Flat-database machine
-counts divide the private load by the throughput in \Cref{tab:comparison}
-and round up.
+We retain the existing October 2026 us-east-1 planning rates for the TEE
+and PIR rows: m6id.16xlarge at \$3.80/hour, p5.4xlarge at \$6.88/hour,
+and x8i.24xlarge at \$10.50/hour. Their machine counts divide the private
+load by the throughput in \Cref{tab:comparison} and round up.
+Both Garbled RAM models use c6in.32xlarge at \$7.2576/hour and 8,760
+hours/year, with the parties in the same Availability Zone. They assume
+two semi-honest parties and records with a 32-byte key and a 32-byte value.
+
+\paragraph{Garbled RAM model assumptions.}
+The prior Garbled RAM estimate assumes 50 ms per sequential lookup and
+includes the replicated encoded databases and retained garbled programs.
+MicrORAM + 2PC includes seven database states, their working storage, and
+the machines and storage bandwidth needed for both lookups and rebuilding.
+Both estimates cover steady-state reads.
+% Prior GRAM: 70% utilization gives 715 independent states at 50 ms.
+% Two complete current/next epochs are retained. The budget includes network
+% machines, SSD capacity, and attachment hosts, but excludes full CPU, SSD
+% I/O, and secure epoch renewal. Short-epoch renewal is not implemented.
+% MicrORAM + 2PC: 36/48 workers per party = 7/9 foreground + 29/39 background.
+% Includes scratch and provisioned gp3 capacity, throughput, and IOPS.
+% Assumes circuit loading/transfer dominate CPU and 0.2 ms between dependent
+% communication steps. Initialization, client transport, and application
+% update consistency across states are excluded. Latency comes from finite
+% scheduling traces, not an end-to-end implementation benchmark.
 \par\endgroup
-
-\paragraph{Account-MPT cost model (illustrative).}
-The new columns in \Cref{tab:cost} use only the 206.8M-account case.
-We model a resident pruned trie with $N=206.8\times10^6$ retained account
-leaves, rooted at Ethereum's state root and retaining the boundary hashes
-of omitted sub-tries. All nodes on the requested proof path are retrieved
-privately; no client-side proof cache is assumed.
-A canonical account proof contains the RLP-encoded nodes on the path,
-including the sibling references in each branch~\cite{eip1186,ethmpt}.
-Reading just the selected 32-byte child reference suffices for navigation,
-but cannot supply that complete proof. The ORAM and Garbled RAM layouts
-store node encodings in 32-byte pieces and retrieve each proof piece once;
-there is no additional full-node read just to select the next child.
-
-For a representative path, take eight branch nodes, one extension
-(two pieces), and one account leaf (five pieces, including its encoded
-path and all four account fields). Eight branches is a rounded planning
-estimate for hashed keys at this scale, not a maximum-depth guarantee.
-A fully populated branch encodes in at most 532 bytes, or 17 pieces.
-Thus the proof workload is $k=8\cdot17+2+5=143$ piece reads per request
-(4,576 bytes before transport overhead). This budgets full branches;
-sparse branches can be smaller. Stored encodings and hashes are reused,
-so serving a proof does not require recomputing the trie or evaluating
-Keccak inside a garbled circuit. Private deployments must pad paths and
-proof lengths to their chosen public limits; paths exceeding this
-representative budget require additional work.
-
-We use a storage expansion $s=6$ relative to the flat $64N$-byte database,
-including leaf data, child references, and node metadata. This is a
-planning budget, not a measured Ethereum footprint. For orientation, a
-random hexary trie at this size has about $0.33N$ branches; reserving 17
-pieces per branch and five per leaf already costs about $5.3\times64N$
-bytes. The remaining allowance covers extensions and layout overhead.
-The resulting logical database is about 79.4\,GB, or $12N$ 32-byte pieces.
-All references into omitted sub-tries must be retained. The 206.8M-account
-baseline is not itself a census of every leaf in Ethereum's state trie;
-an actual pruned layout must be measured before deployment.
-
-At $L=10{,}000$ private requests/sec, we assume neOMAP, MicrORAM,
-and both Garbled RAM configurations are memory-capacity-bound. Their MPT
-costs therefore scale with storage, rather than with the number of proof
-reads. If $m_0$ and $C_0$ are the account-case provisioned capacity and cost
-in the flat-database columns, the model is
-\[
- m_{\mathrm{MPT}}=6m_0, \qquad C_{\mathrm{MPT}}\approx6C_0.
-\]
-We apply this to the existing rounded-up machine counts, with costs
-calculated at the unrounded annual instance rate. This gives six capacity
-units and \$199,728/year for each TEE scheme; 24,000 units and
-\$798,912,000/year for preliminary Garbled RAM; and 1,002--1,500 units and
-\$33,354,576--\$49,932,000/year for proposed Garbled RAM. A capacity unit
-is the memory provisioned by one m6id.16xlarge at the retained rate.
-These entries assume sixfold memory provisioning remains sufficient for
-the proof workload, a constant physical-to-logical storage factor, and
-private access across any partitions. They are stipulated capacity
-estimates, not new throughput measurements; full replicas alone do not
-expand the addressable database. Garbled RAM retains the baseline's
-protocol-party accounting. Larger memory instances may change cost.
-
-\emph{InsPIRe with whole-node responses.}
-InsPIRe remains compute-bound. Its GPU engine accepts configurable entry
-widths and recommends padded widths of 15, 30, 60, 120, 240, \ldots\ bytes;
-the serving layer already packs multiple cells into a response
-record~\cite{inspiregpu,efinspire}. We propose separate branch, extension,
-and leaf databases with whole-node records. For example, 960-, 120-, and
-240-byte records accommodate the respective encoded nodes and lookup
-metadata. Keeping the types separate avoids padding every leaf to branch
-size. Conservatively allow up to twice the compact $6D$ storage budget
-for PIR record padding and indexing, where $D=64N$: the scanned databases
-together are budgeted at $D_{\mathrm{PIR}}=12D$. This extra factor is a
-planning allowance, not a measured packing ratio.
-
-The representative proof visits $r=8+1+1=10$ nodes. In every round, look
-up the next node's hash in all three type databases and discard nonmatches.
-This keeps the observed database selection independent of the next node's
-type, even when that type is not yet known to the client. Each round scans
-their combined $12D$ bytes and returns one complete needed node. Dummy
-rounds after termination maintain the same round count within this path
-budget. This is 30 typed lookups over ten rounds, not
-143 independent scans of a piece database. With work linear in scanned
-bytes and the baseline batching efficiency retained, the work multiplier
-is $f=rD_{\mathrm{PIR}}/D=120$, giving
-\[
- m_{\mathrm{InsPIRe}}=
- \left\lceil\frac{Lf}{q}\right\rceil
- =20{,}000\text{--}30{,}000,
- \qquad q=40\text{--}60\text{ account lookups/sec}.
-\]
-At \$60,268.80 per GPU-year, this is \$1.205B--\$1.808B/year, about
-$7.15\times$ below the earlier piece-query estimate ($143\cdot6=858$
-times baseline work). Both numerator and baseline $q$ count complete
-keyword lookups, so the existing cuckoo candidate queries are not charged
-a second time. This is a proposed layout and linear-work extrapolation;
-its record packing, lookup indexing, batching, and multi-GPU placement
-still require benchmarking. It stores shared trie nodes, rather than
-materializing a separate complete proof for every account.
-
-All annual costs use the retained hourly rates and 8,760 hours/year.
-Proof egress, updates, preprocessing, failover, and padding beyond the
-representative path budget are not priced. The non-PIR rows depend on
-the memory-bound assumption above; InsPIRe depends on the proposed
-whole-node layout and its compute-scaling assumptions.
 
 \paragraph{TEE-based ORAM.}
 In this approach, the TEE protects the computation and its data, while ORAM
@@ -402,15 +287,17 @@ PicoGRAM and Zebra~\cite{picogram,zebra}.
 However, deployment requires two or more
   servers and a threshold assumption that limits how many can be corrupted
   or collude.
-\item \emph{Competitive latency.} Preliminary estimates in
-  \Cref{tab:comparison} suggest access latencies comparable to PIR for a
-  moderate, account-sized database.
-\item \emph{Logarithmic scaling.} Garbled RAM replaces a linear scan with
-  logarithmic per-access overhead. Moving from an account-sized database to
-  the full Ethereum state (or larger) therefore incurs a very mild increase
-  in per-access cost, provided sufficient memory is available. Garbled RAM
-  thus offers a promising route to outperforming scan-based PIR at larger
-  database sizes and as Ethereum's state continues to grow.
+\item \emph{Competitive latency.} Our proposed MicrORAM + 2PC design,
+  combining MicrORAM with two-party computation (2PC), has an estimated
+  mean latency of 241 ms for
+  the account-sized database, comparable to InsPIRe's 250 ms
+  (\Cref{tab:comparison}).
+\item \emph{Scaling to larger databases.} ORAM replaces full database
+  scans with polylogarithmic work per access. For MicrORAM + 2PC,
+  increasing the database from $2^{28}$ to
+  $2^{32}$ records raises the annual estimate from \$5.75M to \$8.71M
+  at the same 10K queries/sec. This makes the approach promising for
+  larger databases, where scan-based PIR's work grows linearly.
 \end{pros}
 \begin{cons}
 %\item \emph{Non-collusion assumption.} 
@@ -418,7 +305,7 @@ However, deployment requires two or more
   prototypes that have not yet been fully optimized. This is partly because
   Garbled RAM was previously a theoretical line of research, and only
   recently did our work make it concretely efficient~\cite{picogram,zebra}.
-Nonetheless our preliminary performance numbers
+Nonetheless the MicrORAM + 2PC estimates
 are encouraging and
 suggest that with further algorithmic and systems-level optimizations,
 Garbled RAM might be more desirable than scan-based PIR
@@ -431,24 +318,52 @@ Garbled RAM so far, there may still be much room for further improvement.
 
 %\begin{samepage}
 
+% Optional advisor wording: maturity and long-term potential.
+% Garbled RAM is still at an early stage of systems development compared
+% with practical PIR. Its current implementations leave substantial room
+% for algorithmic and engineering improvements. The reason to invest in
+% this direction is its scaling: oblivious accesses let per-query work
+% grow much more slowly than full database scans. We therefore see Garbled
+% RAM as a particularly promising foundation for private access to large
+% and growing databases, even while its systems technology is less mature.
+
 \subsection{Proposed Work}
 \label{sec:proposed}
 
 \paragraph{Thrust 1: transitioning Garbled RAM into deployable systems.}
-Our current Garbled RAM implementations are research prototypes developed
-through basic research at CMU. Their promising latency results provide a
-starting point, but substantial algorithmic and systems work remains. In
-particular, the current implementation has not been optimized for throughput,
-so the baseline throughput in the comparison is essentially the inverse of
-access latency. We will develop techniques to increase aggregate throughput,
-reduce memory consumption, and reduce the amount of cryptographic computation
-per access. We will also explore parallel execution and GPU acceleration,
-alongside new algorithmic and cryptographic techniques for faster preprocessing.
-Together, these improvements aim to turn our research advances into practical
-infrastructure for private blockchain access. The Garbled RAM estimates remain
-preliminary, and the proposed performance figures in the comparison are targets
-for this work.
+Our preliminary estimates use PicoGRAM~\cite{picogram} with the
+Garbled Merge improvement~\cite{garbledmerge}. Garbled Merge
+replaces PicoGRAM's expensive public-key merge operations with
+symmetric-key computation, reducing this computational overhead as well
+as communication. The main remaining problems are \emph{limited
+parallelism} and \emph{storage overhead}. Each encoded ORAM state serves
+a sequential stream of requests, so high throughput requires many copies
+of the encoded database and their prepared garbled programs.
 
+We propose \emph{MicrORAM + 2PC}, which combines MicrORAM's hierarchical
+ORAM approach with secure two-party computation and batches of 2,048
+requests. Fully non-interactive evaluation is appealing in theory, but
+round-trip delays are not the bottleneck in this batched setting: each
+exchange advances thousands of requests at once. Allowing the parties
+to interact lets them stream garbled circuits as needed and discard
+consumed circuit material, substantially reducing storage overhead.
+
+The hierarchical organization also makes batching straightforward.
+Lookups within a batch and the work of rebuilding tables can be spread
+across many processors, giving both parties computational parallelism
+within each database copy. High throughput therefore requires far fewer
+copies of the encoded database. Our estimates use just seven independent
+states and reduce annual costs from \$548M to \$5.75M for Ethereum accounts
+and from \$6.98B to \$8.71M for the full state (\Cref{tab:cost}).
+
+% Optional advisor wording: current phase and next phase.
+% The current phase will further optimize the two-party construction and
+% establish a baseline multi-party scheme. Both settings must perform
+% the same oblivious lookups and rebuilds, so reducing this work is also
+% necessary for an efficient multi-party system. We will carry these
+% algorithmic improvements into the multi-party construction. The next
+% phase will focus on making that construction practical, including its
+% communication, preprocessing, and coordination costs.
 
 \paragraph{Thrust 2: MicrORAM.}
 For deployments that accept trusted hardware, we will develop MicrORAM, a
@@ -511,14 +426,67 @@ technology transfer of the basic research.
 \subsection{Faster Garbled RAM}
 \label{sec:gram}
 
-We build on our open-source Garbled RAM implementations,
-PicoGRAM~\cite{picogram} and Zebra~\cite{zebra}. PicoGRAM is a practical
-Garbled RAM based on the Decisional Diffie-Hellman assumption, and Zebra is
-an arithmetic Garbled RAM for large words based on the Decisional Composite
-Residuosity assumption. To turn these research prototypes into a
-deployable service for private access to Ethereum data, we will extend
-them to multiple parties, make their preprocessing faster, and accelerate
-their cryptographic computation with GPUs and AVX-512 vector instructions.
+MicrORAM + 2PC and the TEE-based MicrORAM share the hierarchical ORAM
+framework of Goldreich and Ostrovsky~\cite{GO96,oram11}. It stores records
+in hash tables of increasing size. An access searches the tables from
+smallest to largest and reinserts the requested record into the smallest
+table. As small tables fill, their records are periodically rebuilt into
+larger tables. This organization avoids the recursive position map used
+by tree-based ORAM.
+
+\paragraph{Rebuilding with private routing.}
+Rebuilds must hide where records move. MicrORAM routes records to their
+destination buckets through a butterfly network, using private register
+permutations inside a TEE (\Cref{sec:microram}). We adapt this routing
+approach to 2PC: garbled circuits compute the hidden routing decisions,
+and oblivious transfers move payloads held as compact shares. Many
+records can move independently at each stage, so both parties can
+distribute the rebuild across their processors. Thus the routing idea
+that makes MicrORAM fast inside a TEE also provides parallel work for
+secure computation.
+% Costed representation: 32-byte payload shares, 128-bit fingerprints with
+% Boolean wire labels, and two Boolean flags. Rebuilds route through 512-slot
+% buckets before refining to 64-slot lookup buckets, balancing overflow
+% during rebuilding against the cost of scanning buckets during lookups.
+
+\paragraph{Batching and continuous service.}
+Within a batch, we remove repeated keys once and process the distinct
+lookups in parallel. At each table, the parties scan the requested
+buckets together and then advance to the next table. This lets many
+requests share one sequence of communication rounds. To keep serving
+requests during large rebuilds, we maintain seven independent states
+and send each batch to a ready state while background workers rebuild
+the others. The deployment therefore needs only a small number of
+encoded database copies to sustain 10K queries/sec.
+% Each lookup scans a bucket and the table's overflow stash. A match
+% invalidates the old copy; later levels receive private dummy probes.
+% One representative per distinct key is reinserted, including tombstones
+% for absent keys. Shared buckets/stashes receive a combined batch update.
+% A rebuild blocks its own state. Availability uses independent states,
+% whereas MicrORAM's deamortization permits reads during a state's rebuild.
+
+% Optional advisor wording: optimizations beyond the current model.
+% Several further optimizations remain outside the current implementation
+% and cost estimates. During rebuilding, we will investigate moving compact
+% shares of record fingerprints instead of their Boolean wire labels, while
+% accounting for conversion back to the representation used by lookups.
+% We will also explore GPU and AVX-512 acceleration of garbling and
+% preprocessing. A further goal is to rebuild each ORAM state while it
+% continues serving requests, reducing storage for independent states.
+% Supporting application updates across those states will require a
+% consistency protocol. These improvements will be evaluated separately
+% from the batch-2,048 estimates reported here.
+% The current estimates already include packed payloads, single-PRF
+% addressing with private random dummy addresses, short-output AES pruning,
+% circuit prefetching, and tiled rebuilds. Do not count them as future gains.
+
+The two-party estimates give a concrete starting point for the
+multi-party research below. Our open-source systems PicoGRAM~\cite{picogram}
+and Zebra~\cite{zebra} provide complementary cryptographic techniques:
+PicoGRAM uses the Decisional Diffie-Hellman assumption, while Zebra
+supports large arithmetic words under the Decisional Composite
+Residuosity assumption. The performance tables do not yet include the
+cost of extending these techniques to multiple parties.
 
 \paragraph{Extending Garbled RAM to multiple parties.}
 PicoGRAM and Zebra are two-party Garbled RAM schemes. 
@@ -548,7 +516,7 @@ Ethereum's setting records of 64 bytes to kilobytes,
 depending on whether Merkle proofs are attached. 
 
 \paragraph{Faster preprocessing.}
-Our current Garbled RAM has a preprocessing phase that generates
+The multi-party garbling backend has a preprocessing phase that generates
 multiplication triples and garbles the circuitry that is later evaluated
 online. Preprocessing can be performed offline and is embarrassingly
 parallel, so it does not count toward the online cost of a query. It is
@@ -558,7 +526,7 @@ preprocessing requires at least an order of magnitude more work than the
 online phase, and this work adds to the computing bill of running the
 service.
 
-Our current construction uses pseudorandom correlation generators (PCGs)
+This backend uses pseudorandom correlation generators (PCGs)
 based on Learning Parity with Noise (LPN) to produce the authenticated
 randomness and multiplication triples needed for preprocessing. A PCG lets
 the parties locally expand short correlated seeds into a large amount of
@@ -586,15 +554,16 @@ building on our experience vectorizing ORAM with AVX-512 in MicrORAM
 (Thrust~2).
 
 \paragraph{Prototyping and evaluation.}
-Combining the techniques above, we will develop an efficient multi-party
-Garbled RAM implementation and release it as open source, as we did for
-PicoGRAM and Zebra. We will evaluate it first on the account dataset
-(${\sim}206.8$M records). Our current implementation keeps all of the
-garbled circuitry in memory~\cite{picogram}, so we will then develop
-further memory optimizations and evaluate the implementation on the full
-Ethereum state ($2^{32}$ records). For both datasets, we will report a
-performance comparison with the Ethereum Foundation's PIR-based approach,
-its GPU-based InsPIRe implementation~\cite{efinspire}.
+We will implement MicrORAM + 2PC and evaluate its latency, throughput,
+and total provisioning cost at 10K queries/sec with batches of 2,048.
+We will compare both the account-sized and full-state databases with
+InsPIRe~\cite{efinspire}, measuring how performance scales as the database
+grows and how effectively the two parties use parallel hardware.
+The multi-party extension will be evaluated separately, with its
+preprocessing and communication costs included. We will release the
+resulting implementations as open source, as we did for PicoGRAM and Zebra.
+% Validation also covers circuit interfaces, shared-bucket updates, and
+% overflow/fingerprint-collision bounds for the full service lifetime.
 
 \subsection{MicrORAM: Micro-Second Level Oblivious Accesses for Blockchain Data}
 \label{sec:microram}
@@ -607,10 +576,9 @@ its GPU-based InsPIRe implementation~\cite{efinspire}.
 %oblivious.
 
 ORAM constructions fall primarily into two categories: hierarchical and
-tree-based. Hierarchical ORAM~\cite{GO96,oram11} organizes records into hash
-tables of exponentially increasing size. Every access writes the requested
-record to the smallest table, so the smaller tables periodically fill up and
-must be rebuilt into larger ones. Tree-based ORAM~\cite{pathoramjrnl}
+tree-based. MicrORAM uses the same hierarchical hash-table framework as
+MicrORAM + 2PC (\Cref{sec:gram}), with TEE protection in place of secure
+computation. Tree-based ORAM~\cite{pathoramjrnl}
 avoids periodic rebuilds altogether. Each access retrieves the record's
 location from a \emph{position map} and performs a fixed amount of
 maintenance, termed \emph{eviction}. Tree-based ORAM has traditionally been

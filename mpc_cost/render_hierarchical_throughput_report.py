@@ -1,4 +1,4 @@
-"""Render one consistent current-construction AWS report from saved results."""
+"""Render current-construction AWS and cross-cloud results from saved ledgers."""
 from math import ceil
 from pathlib import Path
 import json
@@ -16,6 +16,7 @@ def table(headers,rows,columns=None,size='small',caption=None):
 def main():
     throughput=json.loads((ROOT/'results/hierarchical_throughput.json').read_text())
     annual=json.loads((ROOT/'results/hierarchical_annual.json').read_text())
+    cross=json.loads((ROOT/'results/hierarchical_cross_cloud.json').read_text())
     audit=json.loads((ROOT/'results/hierarchical_communication_audit.json').read_text())['cases']
     selected=sorted([r for r in annual['variants'] if r['states']==7],key=lambda r:(r['batch'],r['log_records']))
     if len(selected)!=4 or any(r['address_scheme']!=SCHEME or r['schedule']['address_scheme']!=SCHEME for r in selected):
@@ -28,7 +29,7 @@ def main():
     def n(r): return rf"$2^{{{r['log_records']}}}$"
     def ms(value): return f'{value*1000:.1f}'
     repl={}
-    repl['RESULTPROSE']=(rf"At 10,000 queries/s, the seven-state deployment costs "
+    repl['RESULTPROSE']=(rf"At 10,000 queries/s, the seven-state same-AZ deployment costs "
         rf"\textbf{{\${selected[0]['total_year']/1e6:.2f}M/\${selected[1]['total_year']/1e6:.2f}M annually}} "
         rf"for $N=2^{{28}}/2^{{32}}$ with $B=1024$. At $B=2048$, the cost is "
         rf"\textbf{{\${selected[2]['total_year']/1e6:.2f}M/\${selected[3]['total_year']/1e6:.2f}M}}, "
@@ -115,6 +116,35 @@ def main():
             ms(next(t['mean_query_seconds'] for t in l['rtt_sensitivity'] if t['rtt_seconds']==.001))])
     repl['LATENCYSENS']=table(['Records','$B$','Primary ready','EBS 1 ms','EBS 3 ms','RTT 1 ms'],sensitivity,
         'rrrrrr',size='footnotesize',caption='Mean query ms with a ready state and unchanged foreground pool. Change one delay at a time.')
+    xc=sorted(cross['scheduled_scenarios'],key=lambda r:(r['rtt_seconds'],r['log_records']))
+    if len(xc)!=4 or any(r['infrastructure']['address_scheme']!=SCHEME or
+            r['infrastructure']['schedule']['address_scheme']!=SCHEME for r in xc):
+        raise ValueError('Need four current-protocol cross-cloud schedules')
+    net_shares=[100*r['network']['total_network_year']/r['total_year'] for r in xc[:2]]
+    repl['CROSSHEADLINE']=(rf"Placing the parties on AWS and Google Cloud costs "
+        rf"\textbf{{\${xc[0]['total_year']/1e6:.1f}M/\${xc[1]['total_year']/1e6:.1f}M annually}} "
+        rf"for $N=2^{{28}}/2^{{32}}$ at 10,000 reads/s. With $B=16{{,}}384$ and a "
+        rf"5 ms round-trip time, mean latency is about 2.3 seconds and p99 about "
+        rf"3.2 seconds. Cross-cloud networking accounts for "
+        rf"{min(net_shares):.0f}--{max(net_shares):.0f}\% "
+        rf"of the budget.")
+    repl['CROSSSUMMARY']=table(['RTT ms','Records','$B$','Mean s','p99 s','Infra.','Network','Total'],[
+        [f"{r['rtt_seconds']*1000:.0f}",n(r),f"{r['batch']:,}",
+         *[f"{r['infrastructure']['schedule'][k]:.2f}" for k in ('mean_query_seconds','p99_query_seconds')],
+         f"{r['infrastructure']['total_year']/1e6:.1f}",f"{r['network']['total_network_year']/1e6:.1f}",
+         rf"\textbf{{{r['total_year']/1e6:.1f}}}"] for r in xc],
+        'rrrrrrrr',size='footnotesize',caption='Model estimates at 10,000 reads/s, seven states. Costs are annual USD millions for both parties. Infrastructure uses AWS-equivalent compute, storage, and I/O prices for both clouds; latency includes batch fill and admission queues.')
+    traffic=sorted(cross['batch2048_traffic_reference']+xc,key=lambda r:(r['batch'],r['log_records']))
+    repl['CROSSTRAFFIC']=table(['Records','$B$','AWS to Google','Google to AWS','Total MB/read','Forward Tbps'],[
+        [n(r),f"{r['batch']:,}",*[f"{r['network'][k]/1e6:.3f}" for k in (
+            'framed_forward_bytes_per_query','framed_reverse_bytes_per_query','framed_total_bytes_per_query')],
+         f"{r['network']['forward_bits_second']/1e12:.3f}"] for r in traffic],
+        'rrrrrr',size='footnotesize',caption=r'Directional columns are MB/read, including 5\% framing, cache waste, and bridges. Forward throughput assumes 10,000 reads/s. Intra-party transfers are excluded.')
+    repl['CROSSCAPACITY']=table(['RTT ms','Records','$F$','$R$','100 Gbps bundles','Links/year','Reverse/year'],[
+        [f"{r['rtt_seconds']*1000:.0f}",n(r),r['infrastructure']['foreground_workers_per_party'],
+         r['infrastructure']['background_workers_per_party'],r['network']['provisioned_100gbps_bundles'],
+         f"{r['network']['fixed_link_year']/1e6:.3f}",f"{r['network']['google_reverse_egress_year']/1e6:.3f}"]
+        for r in xc],'rrrrrrr',size='footnotesize',caption='Workers are per party. Link and reverse-transfer costs are annual USD millions. Each bundle includes primary and redundant connections with 100 Gbps usable capacity in total.')
     source=(ROOT/'hierarchical_throughput_report.tex').read_text()
     for key,value in repl.items(): source=source.replace('%%'+key+'%%',value)
     if '%%' in source: raise ValueError('Unresolved report marker')

@@ -1,0 +1,114 @@
+{
+  "schema_version": 1,
+  "access_date": "2026-10-17",
+  "currency": "USD",
+  "status": "Published component prices for a planning estimate; not a negotiated quote or a capacity reservation.",
+  "aws_direct_connect_flat_rate": {
+    "source_url": "https://aws.amazon.com/directconnect/pricing/flat-rate/",
+    "embedded_table_url": "https://c0.b0.p.awsstatic.com/#/apex/f18b7947-b7d1-40fb-abf0-a5362e95d7de",
+    "verification_method": "Read the live pricing page and its embedded pricing table in the browser with Direct Connect Flat Rate Tier set to Tier1.",
+    "tier": "Tier1",
+    "usable_capacity_gbps": 100,
+    "physical_ports_per_pair": 2,
+    "usd_per_port_pair_hour": 102.74,
+    "covered_aws_egress_usd_per_gib": 0.0,
+    "ingress_usd_per_gib": 0.0,
+    "billing_increment_hours": 1,
+    "aws_region": "us-east-1",
+    "example_local_metro": "Ashburn / Northern Virginia (IAD)",
+    "secondary_reference_10gbps_usd_per_port_pair_hour": 10.96,
+    "notes": [
+      "The second AWS port is included for redundancy; a 100-Gbps pair provides 100 Gbps of usable capacity, not 200 Gbps.",
+      "The fixed rate includes AWS port hours and outbound transfer from AWS Regions covered by the selected tier.",
+      "A single unpaired flat-rate connection costs the same as a port-pair at the same bandwidth and tier.",
+      "Do not add the pay-as-you-go AWS Direct Connect port-hour or per-GB egress charges to this covered flat-rate path."
+    ]
+  },
+  "google_cross_cloud_interconnect": {
+    "source_url": "https://cloud.google.com/network-connectivity/interconnect/pricing",
+    "verification_method": "Read the Cross-Cloud Interconnect pricing table through web retrieval and verified the same rates in the live browser page.",
+    "product": "Cross-Cloud Interconnect, not Partner Cross-Cloud Interconnect",
+    "circuit_capacity_gbps": 100,
+    "usd_per_circuit_hour": 30.0,
+    "vlan_attachment_capacity_gbps": 100,
+    "usd_per_vlan_attachment_hour": 1.0,
+    "circuits_per_redundant_bundle": 2,
+    "vlan_attachments_per_redundant_bundle": 2,
+    "egress_usd_per_gib": 0.02,
+    "egress_billing_unit_bytes": 1073741824,
+    "ingress_usd_per_gib": 0.0,
+    "connection_location_geography": "United States or Canada",
+    "vlan_attachment_region_geography": "United States or Canada",
+    "example_evaluator_region": "us-east4",
+    "notes": [
+      "Google charges separately for the primary and redundant circuits and VLAN attachments.",
+      "The reverse evaluator-to-garbler traffic is the Google outbound transfer charged at $0.02/GiB.",
+      "The Google compute resources and their VLAN attachments must be in the same region to avoid additional cross-region transfer charges.",
+      "Application awareness and optional VPN services are not included."
+    ]
+  },
+  "derived_redundant_bundle": {
+    "usable_capacity_gbps": 100,
+    "usd_per_hour": 164.74,
+    "formula": "102.74 + 2 * (30.00 + 1.00)",
+    "aws_to_google_variable_usd_per_gib": 0.0,
+    "google_to_aws_variable_usd_per_gib": 0.02
+  },
+  "topology_and_eligibility": {
+    "topology_source_url": "https://docs.cloud.google.com/network-connectivity/docs/interconnect/concepts/cci-overview",
+    "aws_setup_source_url": "https://docs.cloud.google.com/network-connectivity/docs/interconnect/how-to/cci/aws/connectivity-overview",
+    "aws_flat_rate_eligibility_source_url": "https://docs.aws.amazon.com/directconnect/latest/UserGuide/flat-rate-connections.html",
+    "aws_flat_rate_terms_source_url": "https://docs.aws.amazon.com/directconnect/latest/PricingGuide/pricing-flat-rate.html",
+    "quota_source_url": "https://docs.cloud.google.com/network-connectivity/docs/interconnect/quotas",
+    "assumptions": [
+      "AWS hosts the garbler and Google Cloud hosts the evaluator, so the dominant garbled-circuit traffic leaves AWS on the flat-rate path.",
+      "The selected AWS dedicated ports are eligible for flat-rate Tier1 and can form a qualifying port-pair with the chosen Google primary and redundant physical connections.",
+      "The AWS dedicated connection and all its virtual interfaces belong to the same AWS account. Hosted connections are not eligible for AWS flat-rate billing.",
+      "Primary and redundant Google connections use different edge availability domains within the selected metro; the basic pair corresponds to Google's documented 99.9% availability topology.",
+      "The model scales the published component prices across multiple bundles. Provider acceptance, physical capacity, connection quotas, VLAN quotas, and regional aggregate bandwidth are not guaranteed by these prices.",
+      "The application can distribute traffic across the provisioned links and machines; modeled link utilization is a separate parameter."
+    ]
+  },
+  "excluded_costs": {
+    "source_url": "https://docs.aws.amazon.com/directconnect/latest/PricingGuide/pricing-flat-rate.html",
+    "items": [
+      "Any separately charged cross-connect, colocation, or last-mile provider fees, including any provider-specific installation charges.",
+      "AWS Transit Gateway or Cloud WAN processing, SiteLink, optional VPN, and other services not used in the assumed direct private path.",
+      "Taxes, support plans, initial database migration, and workload-independent setup labor."
+    ],
+    "one_time_fees_note": "No numeric one-time setup fee is included. AWS pay-as-you-go Direct Connect pricing explicitly states that AWS has no setup charges; the reviewed Google Cross-Cloud Interconnect table lists circuit hours, attachment hours, and data transfer without a separate setup-fee line. This does not establish that every physical deployment has zero third-party setup charges.",
+    "aws_no_setup_charge_source_url": "https://aws.amazon.com/directconnect/pricing/pay-as-you-go/"
+  },
+  "internet_reference_prices": {
+    "status": "Optional comparison only. Applying these rates to exabytes per year is an extrapolation of list prices, not a quote.",
+    "aws": {
+      "source_url": "https://aws.amazon.com/ec2/pricing/on-demand-backup/",
+      "current_terms_url": "https://aws.amazon.com/ec2/pricing/on-demand/",
+      "published_billing_unit_label": "GB",
+      "published_billing_unit_bytes": null,
+      "unit_note": "The reviewed EC2 and Direct Connect pricing pages label the billing unit GB without an unambiguous byte definition. A comparison must state its byte-conversion assumption.",
+      "free_outbound_gb_per_month": 100,
+      "tiers": [
+        {"published_band": "First 10 TB/month", "usd_per_gb": 0.09},
+        {"published_band": "Next 40 TB/month", "usd_per_gb": 0.085},
+        {"published_band": "Next 100 TB/month", "usd_per_gb": 0.07},
+        {"published_band": "Greater than 150 TB/month", "usd_per_gb": 0.05}
+      ],
+      "contact_sales_above_published_tb_per_month": 500,
+      "ingress_usd_per_gb": 0.0
+    },
+    "google_premium": {
+      "source_url": "https://cloud.google.com/vpc/network-pricing",
+      "destination": "North America",
+      "published_billing_unit_label": "GiB",
+      "published_billing_unit_bytes": 1073741824,
+      "tiers": [
+        {"start_gib_per_month": 0, "end_gib_per_month": 1, "usd_per_gib": 0.0},
+        {"start_gib_per_month": 1, "end_gib_per_month": 1024, "usd_per_gib": 0.12},
+        {"start_gib_per_month": 1024, "end_gib_per_month": 10240, "usd_per_gib": 0.11},
+        {"start_gib_per_month": 10240, "end_gib_per_month": null, "usd_per_gib": 0.08}
+      ],
+      "ingress_usd_per_gib": 0.0
+    }
+  }
+}
